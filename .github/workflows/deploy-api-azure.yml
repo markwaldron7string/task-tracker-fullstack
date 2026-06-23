@@ -11,6 +11,7 @@ on:
 
 env:
   DOTNET_VERSION: '10.0.x'
+  RUNTIME_IDENTIFIER: 'win-x86'
   AZURE_WEBAPP_NAME: ${{ vars.AZURE_WEBAPP_NAME }}
   AZURE_WEBAPP_PACKAGE_PATH: './server/publish'
 
@@ -42,13 +43,13 @@ jobs:
           fi
 
       - name: Restore
-        run: dotnet restore ./server/TaskTracker.Api.csproj
+        run: dotnet restore ./server/TaskTracker.Api.csproj --runtime "${{ env.RUNTIME_IDENTIFIER }}"
 
       - name: Build
-        run: dotnet build ./server/TaskTracker.Api.csproj --configuration Release --no-restore
+        run: dotnet build ./server/TaskTracker.Api.csproj --configuration Release --runtime "${{ env.RUNTIME_IDENTIFIER }}" --self-contained true --no-restore
 
       - name: Publish
-        run: dotnet publish ./server/TaskTracker.Api.csproj --configuration Release --no-build --output "${{ env.AZURE_WEBAPP_PACKAGE_PATH }}"
+        run: dotnet publish ./server/TaskTracker.Api.csproj --configuration Release --runtime "${{ env.RUNTIME_IDENTIFIER }}" --self-contained true --no-build --output "${{ env.AZURE_WEBAPP_PACKAGE_PATH }}"
 
       - name: Deploy to Azure App Service
         uses: azure/webapps-deploy@v3
