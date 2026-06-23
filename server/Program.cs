@@ -5,7 +5,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddOpenApi();
 
-var connectionString = builder.Configuration.GetConnectionString("Tasks") ?? "Data Source=tasks.db";
+var connectionString = ResolveTasksConnectionString(builder.Configuration);
 EnsureSqliteDirectoryExists(connectionString);
 builder.Services.AddDbContext<TaskDbContext>(options => options.UseSqlite(connectionString));
 
@@ -90,6 +90,42 @@ app.MapDelete("/api/tasks", async (TaskDbContext db) =>
 app.Run();
 
 // ----- Data types -----
+
+static string ResolveTasksConnectionString(IConfiguration configuration)
+{
+    var configuredConnectionString = configuration.GetConnectionString("Tasks");
+    if (IsRunningOnAzureAppService() && UsesLocalSqlitePath(configuredConnectionString))
+    {
+        return GetAzureSqliteConnectionString();
+    }
+
+    return string.IsNullOrWhiteSpace(configuredConnectionString)
+        ? "Data Source=tasks.db"
+        : configuredConnectionString;
+}
+
+static bool IsRunningOnAzureAppService()
+{
+    return !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("WEBSITE_SITE_NAME"));
+}
+
+static bool UsesLocalSqlitePath(string? connectionString)
+{
+    if (string.IsNullOrWhiteSpace(connectionString))
+    {
+        return true;
+    }
+
+    var dataSource = new SqliteConnectionStringBuilder(connectionString).DataSource;
+    return string.IsNullOrWhiteSpace(dataSource) || !Path.IsPathRooted(dataSource);
+}
+
+static string GetAzureSqliteConnectionString()
+{
+    var homeDirectory = Environment.GetEnvironmentVariable("HOME") ?? @"D:\home";
+    var databasePath = Path.Combine(homeDirectory, "data", "tasks.db");
+    return $"Data Source={databasePath}";
+}
 
 static void EnsureSqliteDirectoryExists(string connectionString)
 {
