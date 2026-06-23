@@ -12,6 +12,7 @@ public class TaskApiTests : IClassFixture<TaskApiFactory>
     public TaskApiTests(TaskApiFactory factory)
     {
         client = factory.CreateClient();
+        client.DefaultRequestHeaders.Add("X-User-ID", Guid.NewGuid().ToString());
     }
 
     [Fact]
@@ -26,14 +27,12 @@ public class TaskApiTests : IClassFixture<TaskApiFactory>
     }
 
     [Fact]
-    public async Task Get_tasks_returns_seeded_tasks()
+    public async Task Get_tasks_returns_empty_list_for_new_user()
     {
         var tasks = await client.GetFromJsonAsync<JsonElement[]>("/api/tasks");
 
         Assert.NotNull(tasks);
-        Assert.Contains(tasks, task => task.GetProperty("title").GetString() == "Buy groceries");
-        Assert.Contains(tasks, task => task.GetProperty("title").GetString() == "Walk the dog");
-        Assert.Contains(tasks, task => task.GetProperty("title").GetString() == "Learn C#");
+        Assert.Empty(tasks);
     }
 
     [Fact]
