@@ -1,0 +1,58 @@
+name: Deploy API to Azure App Service
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'server/**'
+      - '.github/workflows/deploy-api-azure.yml'
+  workflow_dispatch:
+
+env:
+  DOTNET_VERSION: '10.0.x'
+  AZURE_WEBAPP_NAME: ${{ vars.AZURE_WEBAPP_NAME }}
+  AZURE_WEBAPP_PACKAGE_PATH: './server/publish'
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Validate Azure deployment settings
+        env:
+          PUBLISH_PROFILE: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+        run: |
+          if [ -z "$AZURE_WEBAPP_NAME" ]; then
+            echo "::error::Set the AZURE_WEBAPP_NAME repository variable to your Azure App Service name."
+            exit 1
+          fi
+
+          if [ -z "$PUBLISH_PROFILE" ]; then
+            echo "::error::Set the AZURE_WEBAPP_PUBLISH_PROFILE repository secret to the Azure publish profile XML."
+            exit 1
+          fi
+
+      - name: Restore
+        run: dotnet restore ./server/TaskTracker.Api.csproj
+
+      - name: Build
+        run: dotnet build ./server/TaskTracker.Api.csproj --configuration Release --no-restore
+
+      - name: Publish
+        run: dotnet publish ./server/TaskTracker.Api.csproj --configuration Release --no-build --output "${{ env.AZURE_WEBAPP_PACKAGE_PATH }}"
+
+      - name: Deploy to Azure App Service
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ env.AZURE_WEBAPP_NAME }}
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+          package: ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}

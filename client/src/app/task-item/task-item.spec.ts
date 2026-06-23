@@ -12,7 +12,9 @@ describe('TaskItem', () => {
     }).compileComponents();
 
     fixture = TestBed.createComponent(TaskItem);
+    fixture.componentRef.setInput('task', { id: 1, title: 'Test task', done: false });
     component = fixture.componentInstance;
+    fixture.detectChanges();
     await fixture.whenStable();
   });
 

@@ -1,16 +1,22 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Data.Sqlite;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddOpenApi();
 
 var connectionString = builder.Configuration.GetConnectionString("Tasks") ?? "Data Source=tasks.db";
+EnsureSqliteDirectoryExists(connectionString);
 builder.Services.AddDbContext<TaskDbContext>(options => options.UseSqlite(connectionString));
 
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowAngular", policy =>
-        policy.WithOrigins("http://localhost:4200")
+    var allowedOrigins = builder.Configuration
+        .GetSection("Cors:AllowedOrigins")
+        .Get<string[]>() ?? ["http://localhost:4200"];
+
+    options.AddPolicy("AllowConfiguredOrigins", policy =>
+        policy.WithOrigins(allowedOrigins)
               .AllowAnyHeader()
               .AllowAnyMethod());
 });
@@ -22,7 +28,15 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 }
 
-app.UseCors("AllowAngular");
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<TaskDbContext>();
+    await db.Database.MigrateAsync();
+}
+
+app.UseCors("AllowConfiguredOrigins");
+
+app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
 
 app.MapGet("/api/tasks", async (TaskDbContext db) =>
     await db.Tasks.ToListAsync());
@@ -76,6 +90,22 @@ app.MapDelete("/api/tasks", async (TaskDbContext db) =>
 app.Run();
 
 // ----- Data types -----
+
+static void EnsureSqliteDirectoryExists(string connectionString)
+{
+    var dataSource = new SqliteConnectionStringBuilder(connectionString).DataSource;
+    if (string.IsNullOrWhiteSpace(dataSource) ||
+        string.Equals(dataSource, ":memory:", StringComparison.OrdinalIgnoreCase))
+    {
+        return;
+    }
+
+    var directory = Path.GetDirectoryName(Path.GetFullPath(dataSource));
+    if (!string.IsNullOrWhiteSpace(directory))
+    {
+        Directory.CreateDirectory(directory);
+    }
+}
 
 class TaskItem
 {
