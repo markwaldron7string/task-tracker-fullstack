@@ -38,34 +38,46 @@ app.UseCors("AllowConfiguredOrigins");
 
 app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
 
-app.MapGet("/api/tasks", async (TaskDbContext db) =>
-    await db.Tasks.OrderBy(task => task.Id).ToListAsync());
-
-app.MapGet("/api/tasks/{id}", async (int id, TaskDbContext db) =>
+app.MapGet("/api/tasks", async (HttpContext ctx, TaskDbContext db) =>
 {
-    var task = await db.Tasks.FindAsync(id);
+    var userId = ctx.Request.Headers["X-User-ID"].FirstOrDefault();
+    if (string.IsNullOrWhiteSpace(userId)) return Results.BadRequest("X-User-ID header is required.");
+    return Results.Ok(await db.Tasks.Where(t => t.UserId == userId).OrderBy(t => t.Id).ToListAsync());
+});
+
+app.MapGet("/api/tasks/{id}", async (int id, HttpContext ctx, TaskDbContext db) =>
+{
+    var userId = ctx.Request.Headers["X-User-ID"].FirstOrDefault();
+    if (string.IsNullOrWhiteSpace(userId)) return Results.BadRequest("X-User-ID header is required.");
+    var task = await db.Tasks.FirstOrDefaultAsync(t => t.Id == id && t.UserId == userId);
     return task is null ? Results.NotFound() : Results.Ok(task);
 });
 
-app.MapPost("/api/tasks", async (CreateTaskRequest request, TaskDbContext db) =>
+app.MapPost("/api/tasks", async (CreateTaskRequest request, HttpContext ctx, TaskDbContext db) =>
 {
+    var userId = ctx.Request.Headers["X-User-ID"].FirstOrDefault();
+    if (string.IsNullOrWhiteSpace(userId)) return Results.BadRequest("X-User-ID header is required.");
+
     var title = request.Title?.Trim();
     if (string.IsNullOrWhiteSpace(title))
         return Results.BadRequest("Title is required.");
 
-    var newTask = new TaskItem { Title = title, Done = false };
+    var newTask = new TaskItem { UserId = userId, Title = title, Done = false };
     db.Tasks.Add(newTask);
     await db.SaveChangesAsync();
     return Results.Created($"/api/tasks/{newTask.Id}", newTask);
 });
 
-app.MapPut("/api/tasks/{id}", async (int id, UpdateTaskRequest request, TaskDbContext db) =>
+app.MapPut("/api/tasks/{id}", async (int id, UpdateTaskRequest request, HttpContext ctx, TaskDbContext db) =>
 {
+    var userId = ctx.Request.Headers["X-User-ID"].FirstOrDefault();
+    if (string.IsNullOrWhiteSpace(userId)) return Results.BadRequest("X-User-ID header is required.");
+
     var title = request.Title?.Trim();
     if (string.IsNullOrWhiteSpace(title))
         return Results.BadRequest("Title is required.");
 
-    var task = await db.Tasks.FindAsync(id);
+    var task = await db.Tasks.FirstOrDefaultAsync(t => t.Id == id && t.UserId == userId);
     if (task is null) return Results.NotFound();
 
     task.Title = title;
@@ -74,9 +86,12 @@ app.MapPut("/api/tasks/{id}", async (int id, UpdateTaskRequest request, TaskDbCo
     return Results.Ok(task);
 });
 
-app.MapDelete("/api/tasks/{id}", async (int id, TaskDbContext db) =>
+app.MapDelete("/api/tasks/{id}", async (int id, HttpContext ctx, TaskDbContext db) =>
 {
-    var task = await db.Tasks.FindAsync(id);
+    var userId = ctx.Request.Headers["X-User-ID"].FirstOrDefault();
+    if (string.IsNullOrWhiteSpace(userId)) return Results.BadRequest("X-User-ID header is required.");
+
+    var task = await db.Tasks.FirstOrDefaultAsync(t => t.Id == id && t.UserId == userId);
     if (task is null) return Results.NotFound();
 
     db.Tasks.Remove(task);
@@ -84,10 +99,13 @@ app.MapDelete("/api/tasks/{id}", async (int id, TaskDbContext db) =>
     return Results.NoContent();
 });
 
-app.MapDelete("/api/tasks", async (TaskDbContext db) =>
+app.MapDelete("/api/tasks", async (HttpContext ctx, TaskDbContext db) =>
 {
-    var allTasks = await db.Tasks.ToListAsync();
-    db.Tasks.RemoveRange(allTasks);
+    var userId = ctx.Request.Headers["X-User-ID"].FirstOrDefault();
+    if (string.IsNullOrWhiteSpace(userId)) return Results.BadRequest("X-User-ID header is required.");
+
+    var userTasks = await db.Tasks.Where(t => t.UserId == userId).ToListAsync();
+    db.Tasks.RemoveRange(userTasks);
     await db.SaveChangesAsync();
     return Results.NoContent();
 });
@@ -151,6 +169,7 @@ static void EnsureSqliteDirectoryExists(string connectionString)
 class TaskItem
 {
     public int Id { get; set; }
+    public string UserId { get; set; } = "";
     public string Title { get; set; } = "";
     public bool Done { get; set; }
 }
@@ -166,14 +185,7 @@ class TaskDbContext : DbContext
 
     public DbSet<TaskItem> Tasks => Set<TaskItem>();
 
-    protected override void OnModelCreating(ModelBuilder modelBuilder)
-    {
-        modelBuilder.Entity<TaskItem>().HasData(
-            new TaskItem { Id = 1, Title = "Buy groceries", Done = false },
-            new TaskItem { Id = 2, Title = "Walk the dog", Done = false },
-            new TaskItem { Id = 3, Title = "Learn C#", Done = false }
-        );
-    }
+    protected override void OnModelCreating(ModelBuilder modelBuilder) { }
 }
 
 public partial class Program { }
