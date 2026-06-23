@@ -10,6 +10,7 @@
 ![SQLite](https://img.shields.io/badge/SQLite-003B57?logo=sqlite&logoColor=white)
 ![Vitest](https://img.shields.io/badge/Vitest-frontend%20tests-6E9F18?logo=vitest&logoColor=white)
 ![xUnit](https://img.shields.io/badge/xUnit-backend%20tests-512BD4)
+![PWA](https://img.shields.io/badge/PWA-installable-5A0FC8?logo=pwa&logoColor=white)
 ![Vercel](https://img.shields.io/badge/Vercel-frontend-000000?logo=vercel&logoColor=white)
 ![Azure App Service](https://img.shields.io/badge/Azure%20App%20Service-backend-0078D4?logo=microsoftazure&logoColor=white)
 
@@ -28,6 +29,7 @@ This is a learning project, but it is wired like a real full-stack app: separate
 - Add, edit, complete, and delete tasks
 - View all, active, and completed tasks
 - Responsive layout for desktop and mobile
+- Installable Progressive Web App for phone home screens
 - Live remaining-task count with Angular signals
 - REST API with CRUD endpoints and validation
 - SQLite persistence with EF Core migrations
@@ -170,3 +172,12 @@ Cors__AllowedOrigins__0=https://task-tracker-fullstack-nu.vercel.app
 ```
 
 More detail is in [AZURE_DEPLOYMENT.md](AZURE_DEPLOYMENT.md).
+
+## Install On Phone
+
+After the Vercel deployment finishes, open the frontend URL on your phone:
+
+- iPhone: open in Safari, tap Share, then tap **Add to Home Screen**.
+- Android: open in Chrome, tap the install prompt or menu, then tap **Install app**.
+
+The PWA installs with its own home-screen icon and standalone app window. Task data still syncs through the Azure API, so the app needs a network connection for live task changes.

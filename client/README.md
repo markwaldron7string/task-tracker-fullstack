@@ -15,6 +15,7 @@ Angular frontend for Task Tracker. The app displays tasks, keeps derived views i
 ## Features
 
 - Responsive task list and navigation for desktop and mobile
+- Installable Progressive Web App shell with app manifest and icons
 - Add, edit, complete, clear, and delete tasks
 - All, active, and completed routes
 - Runtime API configuration through `public/app-config.json`
@@ -48,6 +49,13 @@ yarn build    # writes runtime config, then builds
 yarn test     # interactive tests
 yarn test:ci  # one-shot test run for CI
 ```
+
+## Install On Phone
+
+Builds include a web manifest and Angular service worker. After deploying to Vercel, open the live URL on your phone:
+
+- iPhone: Safari > Share > Add to Home Screen.
+- Android: Chrome > Install app.
 
 ## Structure
 
