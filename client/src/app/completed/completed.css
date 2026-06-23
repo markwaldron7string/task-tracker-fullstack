@@ -1,0 +1,40 @@
+.card {
+  background: var(--surface);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+  padding: 1.75rem;
+}
+
+h2 {
+  margin: 0 0 1.25rem;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text);
+  padding-bottom: 0.75rem;
+  border-bottom: 2px solid var(--red-border);
+}
+
+.task-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.task-row {
+  padding: 0.7rem 0.5rem;
+  border-bottom: 1px solid var(--border-light);
+  font-size: 0.95rem;
+  color: var(--text-muted);
+  text-decoration: line-through;
+}
+
+.task-row:last-child {
+  border-bottom: none;
+}
+
+.empty-state {
+  text-align: center;
+  color: var(--text-faint);
+  padding: 2.5rem 1rem;
+  font-size: 0.925rem;
+  font-style: italic;
+}

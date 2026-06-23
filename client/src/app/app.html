@@ -1,0 +1,17 @@
+<header>
+  <div class="header-content">
+    <div class="logo">
+      <span class="angular-shield">&#9650;</span>
+      <h1>{{ appName }}</h1>
+    </div>
+    <nav>
+      <a routerLink="/" routerLinkActive="active-link" [routerLinkActiveOptions]="{ exact: true }">All Tasks</a>
+      <a routerLink="/active" routerLinkActive="active-link">Active</a>
+      <a routerLink="/completed" routerLinkActive="active-link">Completed</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <router-outlet />
+</main>

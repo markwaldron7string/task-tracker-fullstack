@@ -1,0 +1,10 @@
+<div class="card">
+  <h2>Active Tasks</h2>
+  <div class="task-list">
+    @for (task of store.activeTasks(); track task.id) {
+      <div class="task-row">{{ task.title }}</div>
+    } @empty {
+      <div class="empty-state">All caught up — nothing active!</div>
+    }
+  </div>
+</div>

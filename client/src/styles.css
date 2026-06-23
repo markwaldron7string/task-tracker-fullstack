@@ -1,0 +1,35 @@
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+:root {
+  --red: #DD0031;
+  --red-dark: #C3002F;
+  --red-light: #FFEBEE;
+  --red-border: #FFCDD2;
+  --bg: #F5F5F5;
+  --surface: #FFFFFF;
+  --text: #212121;
+  --text-muted: #757575;
+  --text-faint: #BDBDBD;
+  --border: #E0E0E0;
+  --border-light: #F0F0F0;
+  --shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+body {
+  font-family: 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  margin: 0;
+  padding: 0;
+  line-height: 1.5;
+}
+
+button {
+  font-family: inherit;
+}
+
+input {
+  font-family: inherit;
+}

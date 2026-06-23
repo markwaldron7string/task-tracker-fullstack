@@ -1,0 +1,17 @@
+@if (isEditing()) {
+  <div class="edit-row">
+    <input #editInput class="edit-input" [value]="task().title" title="Edit task title" placeholder="Enter task title" />
+    <button type="button" class="action-btn save-btn" (click)="saveEdit(editInput.value)">Save</button>
+    <button type="button" class="action-btn" (click)="cancelEditing()">Cancel</button>
+  </div>
+} @else {
+  <label class="task-label">
+    <input class="task-checkbox" type="checkbox" [checked]="task().done" (change)="onToggle()" />
+    <span class="task-number">{{ position() }}.</span>
+    <span class="task-title" [class.done]="task().done">{{ task().title }}</span>
+  </label>
+  <div class="task-actions">
+    <button type="button" class="action-btn" (click)="startEditing()">Edit</button>
+    <button type="button" class="action-btn delete-btn" (click)="onRemove()">Delete</button>
+  </div>
+}
