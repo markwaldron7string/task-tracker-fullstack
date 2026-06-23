@@ -8,6 +8,8 @@
     <span>{{ store.tasks().length }} total</span>
     <span class="separator">·</span>
     <span>{{ store.remaining() }} remaining</span>
+    <span class="separator">·</span>
+    <span class="sync-status" [class.is-pending]="store.pendingChanges() > 0">{{ store.syncMessage() }}</span>
   </div>
 
   <div class="add-task-row">

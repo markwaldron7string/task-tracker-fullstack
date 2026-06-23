@@ -30,6 +30,7 @@ This is a learning project, but it is wired like a real full-stack app: separate
 - View all, active, and completed tasks
 - Responsive layout for desktop and mobile
 - Installable Progressive Web App for phone home screens
+- Offline task editing with queued sync when the connection returns
 - Live remaining-task count with Angular signals
 - REST API with CRUD endpoints and validation
 - SQLite persistence with EF Core migrations
@@ -57,6 +58,12 @@ SQLite database in Azure App Service storage
 | Database | SQLite, EF Core migrations |
 | Tests | Vitest/Angular TestBed, xUnit, ASP.NET Core WebApplicationFactory |
 | Deployment | Vercel, Azure App Service, GitHub Actions |
+
+## Offline Editing
+
+The PWA keeps a local copy of tasks on the device. Adds, edits, toggles, deletes, and clear-all actions update the UI immediately and are saved locally first. If the Azure API is unavailable, the app queues those changes and retries the sync when the browser reports that the network is back online.
+
+The app shell is cached by Angular's service worker, and task data is persisted in browser storage. This makes the installed app usable without a connection, while still syncing back to the Azure API when possible.
 
 ## Repository Layout
 

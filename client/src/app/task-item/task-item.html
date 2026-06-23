@@ -9,6 +9,9 @@
     <input class="task-checkbox" type="checkbox" [checked]="task().done" (change)="onToggle()" />
     <span class="task-number">{{ position() }}.</span>
     <span class="task-title" [class.done]="task().done">{{ task().title }}</span>
+    @if (task().pending) {
+      <span class="pending-pill">Pending</span>
+    }
   </label>
   <div class="task-actions">
     <button type="button" class="action-btn" (click)="startEditing()">Edit</button>

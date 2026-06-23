@@ -16,6 +16,7 @@ Angular frontend for Task Tracker. The app displays tasks, keeps derived views i
 
 - Responsive task list and navigation for desktop and mobile
 - Installable Progressive Web App shell with app manifest and icons
+- Offline-first task editing with queued API sync
 - Add, edit, complete, clear, and delete tasks
 - All, active, and completed routes
 - Runtime API configuration through `public/app-config.json`
@@ -56,6 +57,10 @@ Builds include a web manifest and Angular service worker. After deploying to Ver
 
 - iPhone: Safari > Share > Add to Home Screen.
 - Android: Chrome > Install app.
+
+## Offline Editing
+
+`TaskStore` writes task changes to browser storage immediately, marks unsynced tasks as pending, and queues API changes while offline. When the browser comes back online, the queue is replayed against the configured task API.
 
 ## Structure
 

@@ -53,6 +53,18 @@
   color: var(--text-faint);
 }
 
+.pending-pill {
+  flex-shrink: 0;
+  border: 1px solid var(--red-border);
+  border-radius: 999px;
+  background: var(--red-light);
+  color: var(--red-dark);
+  font-size: 0.7rem;
+  font-weight: 700;
+  line-height: 1;
+  padding: 0.25rem 0.45rem;
+}
+
 .task-actions {
   display: flex;
   gap: 0.25rem;
@@ -135,6 +147,7 @@
 
   .task-label {
     align-items: flex-start;
+    flex-wrap: wrap;
   }
 
   .task-checkbox {
@@ -142,6 +155,7 @@
   }
 
   .task-title {
+    flex-basis: calc(100% - 4rem);
     overflow: visible;
     text-overflow: clip;
     white-space: normal;
