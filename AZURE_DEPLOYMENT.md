@@ -11,8 +11,8 @@ In the Azure Portal, create an App Service Web App:
 
 - Publish: `Code`
 - Runtime stack: `.NET 10`
-- Operating system: `Linux`
-- Pricing plan: Free/Basic is fine for a learning project.
+- Operating system: `Windows`
+- Pricing plan: `Free F1` is fine for this learning project.
 
 Pick a globally unique app name, for example `task-tracker-fullstack-api-yourname`. Your API URL will be:
 
@@ -25,7 +25,7 @@ https://<your-app-name>.azurewebsites.net
 In the Azure Web App, go to **Settings > Environment variables** and add:
 
 ```text
-ConnectionStrings__Tasks=Data Source=/home/data/tasks.db
+ConnectionStrings__Tasks=Data Source=D:/home/data/tasks.db
 Cors__AllowedOrigins__0=https://<your-vercel-project>.vercel.app
 ```
 
@@ -45,6 +45,7 @@ In GitHub, add:
 - Repository secret: `AZURE_WEBAPP_PUBLISH_PROFILE` = the full publish profile XML.
 
 The workflow is in `.github/workflows/deploy-api-azure.yml`. It publishes only the `server/` project.
+It currently publishes a Windows self-contained `win-x86` package to match the Windows Free App Service plan.
 
 ## 4. Configure Vercel
 

@@ -71,3 +71,58 @@ main {
   margin: 2rem auto;
   padding: 0 1rem;
 }
+
+@media (max-width: 640px) {
+  header {
+    padding: 0 1rem;
+  }
+
+  .header-content {
+    align-items: stretch;
+    gap: 0.85rem;
+    padding: 0.85rem 0;
+  }
+
+  .logo {
+    justify-content: center;
+  }
+
+  .angular-shield {
+    font-size: 1.45rem;
+  }
+
+  h1 {
+    font-size: 1.15rem;
+  }
+
+  nav {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.25rem;
+    padding: 0.25rem;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.12);
+  }
+
+  nav a {
+    padding: 0.55rem 0.35rem;
+    text-align: center;
+    font-size: 0.8rem;
+  }
+
+  main {
+    margin: 1rem auto;
+    padding: 0 0.75rem;
+  }
+}
+
+@media (max-width: 360px) {
+  .logo {
+    justify-content: flex-start;
+  }
+
+  nav {
+    grid-template-columns: 1fr;
+  }
+}

@@ -24,12 +24,15 @@ body {
   margin: 0;
   padding: 0;
   line-height: 1.5;
+  min-width: 0;
 }
 
 button {
   font-family: inherit;
+  min-width: 0;
 }
 
 input {
   font-family: inherit;
+  min-width: 0;
 }

@@ -1,5 +1,5 @@
 {
-  "buildCommand": "npm run build",
+  "buildCommand": "yarn build",
   "outputDirectory": "dist/task-tracker/browser",
   "rewrites": [
     { "source": "/(.*)", "destination": "/index.html" }

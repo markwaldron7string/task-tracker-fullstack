@@ -1,88 +1,64 @@
-# Task Tracker
+# Task Tracker Client
 
-A full-stack task management app. An Angular single-page frontend talks to an ASP.NET Core (C#) Web API, which persists tasks to a SQLite database.
+Angular frontend for Task Tracker. The app displays tasks, keeps derived views in sync with signals, and talks to the ASP.NET Core API over HTTP.
 
-Built as a hands-on project to learn modern Angular and C# / ASP.NET Core from the ground up.
+## Tech
 
-## Architecture
+- Angular 22
+- TypeScript 6
+- Standalone components
+- Angular Router
+- Angular signals
+- HttpClient
+- Vitest/Angular TestBed
 
-```
-client/  Angular app (localhost:4200)
-   │
-   │  HTTP / JSON
-   ▼
-server/  ASP.NET Core API (localhost:5226)
-   │
-   ▼
-         SQLite database (tasks.db)
-```
+## Features
 
-The frontend holds no data of its own - it reads and writes everything through the API, which persists tasks to a SQLite file. During development, both servers run at the same time.
+- Responsive task list and navigation for desktop and mobile
+- Add, edit, complete, clear, and delete tasks
+- All, active, and completed routes
+- Runtime API configuration through `public/app-config.json`
 
-## Repository layout
-
-```
-task-tracker/
-├── client/   # Angular 22 frontend  (see client/README.md)
-└── server/   # ASP.NET Core C# API  (see server/README.md)
-```
-
-## Tech stack
-
-| | |
-| --- | --- |
-| **Frontend** | Angular 22, TypeScript, signals, standalone components, Angular Router, HttpClient |
-| **Backend** | C# / .NET 10, ASP.NET Core Minimal APIs, Entity Framework Core 10, SQLite |
-
-## Running the app
-
-You need two terminals - one per half. **Start the backend first.**
-
-### 1. Backend (`server/`)
+## Running Locally
 
 ```bash
-cd server
-dotnet tool install --global dotnet-ef   # first time only
-dotnet ef database update                # creates tasks.db (first time only)
-dotnet watch run
+yarn install
+yarn start
 ```
 
-Runs on `http://localhost:5226`. Verify at `http://localhost:5226/api/tasks`.
+The dev server runs at:
 
-### 2. Frontend (`client/`)
+```text
+http://localhost:4200
+```
+
+Local API requests default to:
+
+```text
+http://localhost:5226/api/tasks
+```
+
+For deployed builds, set `TASKS_API_URL` before running `yarn build`. The build writes `public/app-config.json`, and `TaskStore` reads that file at runtime.
+
+## Scripts
 
 ```bash
-cd client
-npm install                              # first time only
-ng serve --open
+yarn start    # Angular dev server
+yarn build    # writes runtime config, then builds
+yarn test     # interactive tests
+yarn test:ci  # one-shot test run for CI
 ```
 
-Runs on `http://localhost:4200` and opens in your browser.
+## Structure
 
-See each subfolder's README for full details, prerequisites, and the API reference.
-
-## API summary
-
-Base URL: `http://localhost:5226/api/tasks`
-
-| Method | Route             | Description            |
-| ------ | ----------------- | ---------------------- |
-| GET    | `/api/tasks`      | List all tasks         |
-| GET    | `/api/tasks/{id}` | Get a single task      |
-| POST   | `/api/tasks`      | Create a task          |
-| PUT    | `/api/tasks/{id}` | Update / toggle a task |
-| DELETE | `/api/tasks/{id}` | Delete a single task   |
-| DELETE | `/api/tasks`      | Delete all tasks       |
-
-Full request/response details are in [`server/README.md`](server/README.md).
-
-## What this project demonstrates
-
-- A componentized Angular UI with signals, routing, and reactive derived state
-- A REST API with full CRUD, validation, and conventional HTTP status codes
-- Real persistence via Entity Framework Core and SQLite, managed with code-first migrations
-- Frontend and backend connected over HTTP, including CORS and JSON serialization between two languages
-
----
-
-*A personal learning project.*
+```text
+src/app/
+├── app.ts
+├── app.routes.ts
+├── task-store.ts
+├── task-list/
+├── task-item/
+├── task-summary/
+├── active/
+└── completed/
+```

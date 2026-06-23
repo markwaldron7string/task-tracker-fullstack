@@ -46,8 +46,9 @@ export class TaskStore {
   }
 
   addTask(title: string) {
-    if (title.trim() === '') return;
-    this.http.post<Task>(this.tasksApiUrl, { title }).subscribe(() => this.loadTasks());
+    const trimmedTitle = title.trim();
+    if (trimmedTitle === '') return;
+    this.http.post<Task>(this.tasksApiUrl, { title: trimmedTitle }).subscribe(() => this.loadTasks());
   }
 
   toggleTask(id: number) {
@@ -59,8 +60,9 @@ export class TaskStore {
 
   editTask(id: number, newTitle: string) {
     const task = this.tasks().find(t => t.id === id);
-    if (!task || newTitle.trim() === '') return;
-    this.http.put<Task>(`${this.tasksApiUrl}/${id}`, { title: newTitle, done: task.done })
+    const trimmedTitle = newTitle.trim();
+    if (!task || trimmedTitle === '') return;
+    this.http.put<Task>(`${this.tasksApiUrl}/${id}`, { title: trimmedTitle, done: task.done })
       .subscribe(() => this.loadTasks());
   }
 

@@ -1,0 +1,21 @@
+# OS/editor noise
+.DS_Store
+.idea/
+.vscode/
+
+# .NET build output
+**/bin/
+**/obj/
+
+# Local SQLite databases
+*.db
+*.db-shm
+*.db-wal
+
+# Angular/Vercel build output and dependencies
+client/.angular/
+client/dist/
+client/node_modules/
+
+# This project uses Yarn via client/yarn.lock.
+client/package-lock.json

@@ -74,6 +74,7 @@
   padding: 0.3rem 0.5rem;
   border-radius: 4px;
   transition: color 0.15s, background 0.15s;
+  min-height: 2rem;
 }
 
 .action-btn:hover {
@@ -113,4 +114,67 @@
 .save-btn:hover {
   background: var(--red-dark);
   color: white;
+}
+
+@media (hover: none) {
+  .task-actions {
+    opacity: 1;
+  }
+}
+
+@media (max-width: 640px) {
+  :host {
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 0.85rem 0;
+    flex-wrap: wrap;
+  }
+
+  :host:hover {
+    background: transparent;
+  }
+
+  .task-label {
+    align-items: flex-start;
+    flex-basis: 100%;
+  }
+
+  .task-checkbox {
+    margin-top: 0.15rem;
+  }
+
+  .task-title {
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    line-height: 1.4;
+  }
+
+  .task-actions {
+    width: 100%;
+    justify-content: flex-end;
+    opacity: 1;
+  }
+
+  .action-btn {
+    border: 1px solid var(--border);
+    padding: 0.45rem 0.7rem;
+  }
+
+  .edit-row {
+    align-items: stretch;
+    flex-wrap: wrap;
+  }
+
+  .edit-input {
+    flex-basis: 100%;
+    min-height: 44px;
+  }
+
+  .save-btn,
+  .edit-row .action-btn {
+    flex: 1;
+    min-height: 40px;
+  }
 }

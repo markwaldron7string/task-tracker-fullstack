@@ -39,7 +39,7 @@ app.UseCors("AllowConfiguredOrigins");
 app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
 
 app.MapGet("/api/tasks", async (TaskDbContext db) =>
-    await db.Tasks.ToListAsync());
+    await db.Tasks.OrderBy(task => task.Id).ToListAsync());
 
 app.MapGet("/api/tasks/{id}", async (int id, TaskDbContext db) =>
 {
@@ -49,10 +49,11 @@ app.MapGet("/api/tasks/{id}", async (int id, TaskDbContext db) =>
 
 app.MapPost("/api/tasks", async (CreateTaskRequest request, TaskDbContext db) =>
 {
-    if (string.IsNullOrWhiteSpace(request.Title))
+    var title = request.Title?.Trim();
+    if (string.IsNullOrWhiteSpace(title))
         return Results.BadRequest("Title is required.");
 
-    var newTask = new TaskItem { Title = request.Title, Done = false };
+    var newTask = new TaskItem { Title = title, Done = false };
     db.Tasks.Add(newTask);
     await db.SaveChangesAsync();
     return Results.Created($"/api/tasks/{newTask.Id}", newTask);
@@ -60,10 +61,14 @@ app.MapPost("/api/tasks", async (CreateTaskRequest request, TaskDbContext db) =>
 
 app.MapPut("/api/tasks/{id}", async (int id, UpdateTaskRequest request, TaskDbContext db) =>
 {
+    var title = request.Title?.Trim();
+    if (string.IsNullOrWhiteSpace(title))
+        return Results.BadRequest("Title is required.");
+
     var task = await db.Tasks.FindAsync(id);
     if (task is null) return Results.NotFound();
 
-    task.Title = request.Title;
+    task.Title = title;
     task.Done = request.Done;
     await db.SaveChangesAsync();
     return Results.Ok(task);
@@ -150,8 +155,8 @@ class TaskItem
     public bool Done { get; set; }
 }
 
-record CreateTaskRequest(string Title);
-record UpdateTaskRequest(string Title, bool Done);
+record CreateTaskRequest(string? Title);
+record UpdateTaskRequest(string? Title, bool Done);
 
 // ----- Database -----
 
@@ -170,3 +175,5 @@ class TaskDbContext : DbContext
         );
     }
 }
+
+public partial class Program { }

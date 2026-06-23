@@ -1,84 +1,78 @@
-# Task Tracker - Client (Angular)
+# Task Tracker API
 
-The frontend for **Task Tracker**, a full-stack task management app. This is an Angular single-page app that reads and writes tasks through the Task Tracker API.
+ASP.NET Core Minimal API for Task Tracker. It exposes task CRUD endpoints and persists data through Entity Framework Core and SQLite.
 
-> This is one half of the project. The backend (C# / ASP.NET Core) lives in [`../server`](../server). See the [root README](../README.md) for the full picture.
+## Tech
 
-## Features
+- .NET 10
+- ASP.NET Core Minimal APIs
+- Entity Framework Core 10
+- SQLite
+- Code-first migrations
+- OpenAPI in development
 
-- Add, complete (checkbox), edit inline, and delete tasks
-- Three filtered views via routing - **All tasks**, **Active**, and **Completed**
-- Live "remaining" count and task summary that stay in sync automatically
-- All data is loaded from and saved to the backend API (no local-only storage)
-
-## Tech stack
-
-- [Angular](https://angular.dev) 22
-- TypeScript
-- Standalone components (no NgModules)
-- Signals - `signal` and `computed`
-- Angular Router
-- `HttpClient` for REST calls to the API
-
-## Prerequisites
-
-- [Node.js](https://nodejs.org) (LTS version)
-- Angular CLI: `npm install -g @angular/cli`
-- **The backend API must be running** - see [`../server`](../server). The app expects it at `http://localhost:5226`.
-
-## Running locally
+## Running Locally
 
 ```bash
-# install dependencies (first time only)
-npm install
-
-# start the dev server and open the browser
-ng serve --open
+dotnet run
 ```
 
-The app runs at `http://localhost:4200`. Start the backend API **first**, otherwise the task list will load empty and requests will fail.
+The API runs at:
 
-> The API base URL is set in `src/app/task-store.ts` (`API_URL`). If your backend runs on a different port, update it there.
-
-## How it works
-
-**One source of truth.** All task state lives in a single signal inside `TaskStore` (`src/app/task-store.ts`). Every component reads from it, so the whole UI stays in sync automatically.
-
-**The store talks to the API.** `TaskStore` injects `HttpClient` and calls the backend for every operation (load, add, toggle, edit, delete). After any change, it re-fetches the list so the UI always reflects the server's state.
-
-**Derived views are computed.** The Active and Completed pages don't keep their own lists - they read `computed` signals (`activeTasks`, `completedTasks`) derived from the single source.
-
-**Components communicate explicitly.** Data flows down into `task-item` through `input()`s, and events (toggle, edit, remove) flow back up through `output()`s for the parent to handle.
-
-## Project structure
-
-```
-src/app/
-├── app.ts              # Root shell: nav bar + <router-outlet>
-├── app.routes.ts       # Routes: '' -> TaskList, 'completed', 'active'
-├── app.config.ts       # App providers (router + HttpClient)
-│
-├── task-store.ts       # Injectable store - holds state, calls the API
-│
-├── task-list/          # "All tasks" page (add box + full list)
-├── active/             # "Active" page (incomplete tasks only)
-├── completed/          # "Completed" page (done tasks only)
-│
-├── task-item/          # Reusable row: checkbox, inline edit, delete
-└── task-summary/       # Small reusable task-count summary
+```text
+http://localhost:5226
 ```
 
-## Angular concepts demonstrated
+The default local database is:
 
-- Components, templates, and interpolation
-- The binding family: `[property]`, `(event)`, and `[class.x]`
-- Signals: `signal` and `computed`
-- Control flow blocks: `@for`, `@empty`, and `@if` / `@else`
-- Component communication with `input()` and `output()`
-- Services and dependency injection via `inject()`
-- Client-side routing with `routerLink` and `<router-outlet>`
-- Calling a REST API with `HttpClient` and Observables
+```text
+server/tasks.db
+```
 
----
+Migrations are applied automatically on startup.
 
-*Part of a personal full-stack learning project built to learn Angular and C# / ASP.NET Core.*
+## Configuration
+
+Optional connection string:
+
+```text
+ConnectionStrings__Tasks=Data Source=tasks.db
+```
+
+Optional CORS origin:
+
+```text
+Cors__AllowedOrigins__0=http://localhost:4200
+```
+
+On Azure App Service, use the persistent home directory:
+
+```text
+ConnectionStrings__Tasks=Data Source=D:/home/data/tasks.db
+```
+
+## Endpoints
+
+| Method | Route | Description |
+| --- | --- | --- |
+| `GET` | `/health` | Health check |
+| `GET` | `/api/tasks` | List tasks |
+| `GET` | `/api/tasks/{id}` | Get one task |
+| `POST` | `/api/tasks` | Create task |
+| `PUT` | `/api/tasks/{id}` | Update task |
+| `DELETE` | `/api/tasks/{id}` | Delete one task |
+| `DELETE` | `/api/tasks` | Delete all tasks |
+
+## Tests
+
+Backend integration tests live in:
+
+```text
+../tests/TaskTracker.Api.Tests
+```
+
+Run them from the repository root:
+
+```bash
+dotnet test TaskTracker.slnx
+```

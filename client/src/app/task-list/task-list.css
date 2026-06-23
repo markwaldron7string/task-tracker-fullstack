@@ -50,6 +50,7 @@ h2 {
   transition: border-color 0.15s;
   color: var(--text);
   background: var(--surface);
+  min-width: 0;
 }
 
 .task-input:focus {
@@ -103,4 +104,48 @@ h2 {
   padding: 2.5rem 1rem;
   font-size: 0.925rem;
   font-style: italic;
+}
+
+@media (max-width: 640px) {
+  .card {
+    padding: 1rem;
+  }
+
+  .card-header {
+    align-items: flex-start;
+  }
+
+  h2 {
+    font-size: 1.1rem;
+  }
+
+  .task-stats {
+    flex-wrap: wrap;
+    margin-bottom: 1rem;
+  }
+
+  .add-task-row {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .task-input {
+    grid-column: 1 / -1;
+    min-height: 44px;
+  }
+
+  .btn {
+    width: 100%;
+    min-height: 44px;
+  }
+
+  .empty-state {
+    padding: 2rem 0.75rem;
+  }
+}
+
+@media (max-width: 360px) {
+  .add-task-row {
+    grid-template-columns: 1fr;
+  }
 }

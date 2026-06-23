@@ -38,3 +38,23 @@ h2 {
   font-size: 0.925rem;
   font-style: italic;
 }
+
+@media (max-width: 640px) {
+  .card {
+    padding: 1rem;
+  }
+
+  h2 {
+    font-size: 1.1rem;
+    margin-bottom: 1rem;
+  }
+
+  .task-row {
+    padding: 0.85rem 0;
+    overflow-wrap: anywhere;
+  }
+
+  .empty-state {
+    padding: 2rem 0.75rem;
+  }
+}
