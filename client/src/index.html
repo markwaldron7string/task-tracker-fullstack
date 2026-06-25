@@ -15,6 +15,10 @@
     <link rel="manifest" href="manifest.webmanifest" />
   </head>
   <body>
+    <script>
+      const t = localStorage.getItem('theme');
+      if (t) document.documentElement.setAttribute('data-theme', t);
+    </script>
     <app-root></app-root>
     <noscript>Please enable JavaScript to continue using this application.</noscript>
   </body>

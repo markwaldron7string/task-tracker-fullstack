@@ -1,0 +1,167 @@
+:host {
+  display: flex;
+  align-items: center;
+}
+
+.picker {
+  position: relative;
+  display: inline-flex;
+}
+
+/* ---- Trigger pill (lives on the colored header) ---- */
+.trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: white;
+  font-family: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  line-height: 1;
+  padding: 0.45rem 0.7rem;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.trigger:hover {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.trigger--open {
+  background: rgba(255, 255, 255, 0.26);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.trigger-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--swatch-color);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.25), 0 0 6px rgba(0, 0, 0, 0.2);
+  flex-shrink: 0;
+}
+
+.trigger-label {
+  white-space: nowrap;
+}
+
+.chevron {
+  font-size: 0.7rem;
+  opacity: 0.85;
+  transition: transform 0.18s ease;
+}
+
+.trigger--open .chevron {
+  transform: rotate(180deg);
+}
+
+/* ---- Dropdown panel ---- */
+.panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.85rem;
+  min-width: 224px;
+  background: var(--surface);
+  background-image: var(--card-overlay);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: var(--shadow), 0 16px 40px rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  animation: panel-in 0.16s ease;
+}
+
+@keyframes panel-in {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panel { animation: none; }
+}
+
+.filter-tabs {
+  display: flex;
+  gap: 4px;
+}
+
+.tab {
+  flex: 1;
+  background: var(--surface-hover);
+  border: 1px solid transparent;
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: 0.64rem;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  padding: 0.4rem 0.5rem;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.tab:hover {
+  color: var(--text);
+  background: var(--red-light);
+  border-color: var(--red-border);
+}
+
+.tab--active {
+  background: var(--red);
+  color: var(--on-primary, white);
+  border-color: var(--red);
+}
+
+.swatches {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.7rem;
+  justify-items: center;
+}
+
+.swatch {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  background: var(--swatch-color);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.2), 0 1px 3px rgba(0, 0, 0, 0.25);
+  transition: transform 0.15s, box-shadow 0.15s;
+  flex-shrink: 0;
+}
+
+.swatch:hover {
+  transform: scale(1.18);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.2), 0 2px 8px rgba(0, 0, 0, 0.35);
+}
+
+.swatch--active {
+  box-shadow:
+    0 0 0 2px var(--surface),
+    0 0 0 4px var(--red);
+}
+
+.swatch--active:hover {
+  transform: scale(1.12);
+}
+
+@media (max-width: 640px) {
+  .trigger {
+    justify-content: center;
+  }
+
+  .panel {
+    min-width: 200px;
+  }
+}

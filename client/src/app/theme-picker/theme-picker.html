@@ -1,0 +1,39 @@
+<div class="picker">
+  <button
+    type="button"
+    class="trigger"
+    [class.trigger--open]="open()"
+    (click)="toggle()"
+    aria-haspopup="true"
+    [attr.aria-expanded]="open()"
+    aria-label="Change theme"
+  >
+    <span class="trigger-dot" [style.--swatch-color]="activeTheme()?.swatch"></span>
+    <span class="trigger-label">{{ activeTheme()?.name }}</span>
+    <span class="chevron" aria-hidden="true">&#9662;</span>
+  </button>
+
+  @if (open()) {
+    <div class="panel" role="group" aria-label="Theme settings">
+      <div class="filter-tabs" role="group" aria-label="Theme category">
+        <button type="button" class="tab" [class.tab--active]="category() === 'light'" (click)="switchCategory('light')">Light</button>
+        <button type="button" class="tab" [class.tab--active]="category() === 'dark'" (click)="switchCategory('dark')">Dark</button>
+        <button type="button" class="tab" [class.tab--active]="category() === 'neon'" (click)="switchCategory('neon')">Neon</button>
+      </div>
+      <div class="swatches" role="group" aria-label="Choose color theme">
+        @for (t of filteredThemes(); track t.id) {
+          <button
+            type="button"
+            class="swatch"
+            [class.swatch--active]="theme.active() === t.id"
+            [style.--swatch-color]="t.swatch"
+            [title]="t.name"
+            [attr.aria-label]="t.name"
+            [attr.aria-pressed]="theme.active() === t.id"
+            (click)="select(t.id)"
+          ></button>
+        }
+      </div>
+    </div>
+  }
+</div>
