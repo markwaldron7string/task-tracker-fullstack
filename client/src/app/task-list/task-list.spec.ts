@@ -7,6 +7,7 @@ const taskStoreStub = {
   tasks: () => [],
   remaining: () => 0,
   pendingChanges: () => 0,
+  syncStatus: () => 'synced',
   syncMessage: () => 'Synced',
   addTask: () => {},
   toggleTask: () => {},
