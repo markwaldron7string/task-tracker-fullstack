@@ -107,6 +107,22 @@ public class TaskApiTests : IClassFixture<TaskApiFactory>
         var getDeletedResponse = await client.GetAsync($"/api/tasks/{id}");
         Assert.Equal(HttpStatusCode.NotFound, getDeletedResponse.StatusCode);
     }
+
+    [Fact]
+    public async Task Create_task_accepts_project_and_recurrence()
+    {
+        var createResponse = await client.PostAsJsonAsync("/api/tasks", new
+        {
+            title = "Standup",
+            project = "Work",
+            recurrence = "weekdays"
+        });
+        createResponse.EnsureSuccessStatusCode();
+
+        var created = await createResponse.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal("work", created.GetProperty("project").GetString());
+        Assert.Equal("weekdays", created.GetProperty("recurrence").GetString());
+    }
 }
 
 public sealed class CoachApiTests : IClassFixture<TaskApiFactory>

@@ -4,18 +4,18 @@
       <span class="angular-shield">&#9650;</span>
       <h1>{{ appName }}</h1>
     </div>
-    <nav>
-      <a routerLink="/" routerLinkActive="active-link" [routerLinkActiveOptions]="{ exact: true }">All Tasks</a>
+    <nav data-tour="nav">
+      <a routerLink="/" routerLinkActive="active-link" [routerLinkActiveOptions]="{ exact: true }"><span class="nav-short">All</span><span class="nav-long">All Tasks</span></a>
       <a routerLink="/today" routerLinkActive="active-link">Today</a>
       <a routerLink="/calendar" routerLinkActive="active-link">Calendar</a>
       <a routerLink="/active" routerLinkActive="active-link">Active</a>
-      <a routerLink="/completed" routerLinkActive="active-link">Completed</a>
+      <a routerLink="/completed" routerLinkActive="active-link"><span class="nav-short">Done</span><span class="nav-long">Completed</span></a>
     </nav>
     <div class="header-actions">
       @if (pro.unlocked()) {
         <span class="pro-badge" aria-label="Pro unlocked">Pro</span>
       } @else {
-        <a routerLink="/upgrade" class="upgrade-btn">Upgrade</a>
+        <a routerLink="/upgrade" class="upgrade-btn" data-tour="upgrade">Upgrade</a>
       }
       <theme-picker />
     </div>
@@ -25,6 +25,8 @@
 <main>
   <router-outlet />
 </main>
+
+<app-onboarding-walkthrough />
 
 <app-pro-assistant />
 

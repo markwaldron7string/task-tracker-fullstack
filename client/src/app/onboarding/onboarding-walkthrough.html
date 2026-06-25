@@ -1,0 +1,35 @@
+@if (onboarding.active() && step(); as current) {
+  <div class="tour-root" role="dialog" aria-modal="true" [attr.aria-label]="current.title">
+    @if (spotlight(); as box) {
+      <div
+        class="tour-spotlight"
+        [class.tour-spotlight--pulse]="true"
+        [style.top.px]="box.top"
+        [style.left.px]="box.left"
+        [style.width.px]="box.width"
+        [style.height.px]="box.height"
+      ></div>
+    } @else {
+      <div class="tour-scrim tour-scrim--full"></div>
+    }
+
+    <article
+      class="tour-flag"
+      [class.tour-flag--center]="current.placement === 'center'"
+      [style.top.px]="flagPos()?.top"
+      [style.left.px]="flagPos()?.left"
+      [style.--flag-arrow-x.px]="flagPos()?.arrowX"
+      [attr.data-placement]="flagPlacement()"
+    >
+      <p class="tour-progress">{{ onboarding.progressLabel() }}</p>
+      <h2 class="tour-title">{{ current.title }}</h2>
+      <p class="tour-body">{{ current.body }}</p>
+      <div class="tour-actions">
+        <button type="button" class="tour-skip" (click)="onboarding.skip()">Skip tour</button>
+        <button type="button" class="tour-next" (click)="onboarding.next()">
+          {{ isLastStep() ? 'Get started' : 'Next' }}
+        </button>
+      </div>
+    </article>
+  </div>
+}

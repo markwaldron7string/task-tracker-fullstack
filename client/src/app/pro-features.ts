@@ -1,4 +1,12 @@
-export type ProFeatureId = 'calendar' | 'custom-themes' | 'ai-coach' | 'smart-scheduling' | 'realistic-day';
+export type ProFeatureId =
+  | 'calendar'
+  | 'custom-themes'
+  | 'ai-coach'
+  | 'smart-scheduling'
+  | 'realistic-day'
+  | 'domains'
+  | 'recurring'
+  | 'daily-review';
 
 export interface ProFeature {
   id: ProFeatureId;
@@ -8,8 +16,10 @@ export interface ProFeature {
   highlight?: boolean;
 }
 
-export const PRO_PRICE_LABEL = '$2.99';
-export const PRO_TAGLINE = 'One-time unlock — no subscription.';
+export const PRO_PRICE_LABEL = '$11.99';
+export const PRO_TAGLINE = 'One-time purchase — yours forever. No subscription.';
+export const PRO_AI_NOTE =
+  'Cloud AI coach included with a generous monthly allowance. Heavy users can add AI credits later.';
 
 export const PRO_FEATURES: ProFeature[] = [
   {
@@ -23,6 +33,22 @@ export const PRO_FEATURES: ProFeature[] = [
     title: 'Calendar planning',
     description: 'Month and week views, drag tasks between days, and a day panel for focused scheduling.',
     highlight: true,
+  },
+  {
+    id: 'daily-review',
+    title: 'Daily review & wrap-up',
+    description: 'End-of-day summary, roll unfinished work to tomorrow, and a morning briefing on Today.',
+    highlight: true,
+  },
+  {
+    id: 'recurring',
+    title: 'Recurring tasks',
+    description: 'Daily habits, weekly routines, and repeating chores — complete one, the next appears automatically.',
+  },
+  {
+    id: 'domains',
+    title: 'Life domains',
+    description: 'Tag tasks by Work, Home, Health, and more. Filter and search across everything you track.',
   },
   {
     id: 'smart-scheduling',

@@ -2,6 +2,8 @@ import { Injectable, signal, computed, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { catchError, firstValueFrom, of } from 'rxjs';
 import { parseQuickAdd } from './task-quick-parse';
+import { normalizeProject } from './task-domains';
+import { nextRecurrenceDue, normalizeRecurrence, RecurrenceRule } from './task-recurrence';
 
 export type Priority = 'none' | 'low' | 'medium' | 'high';
 
@@ -19,6 +21,8 @@ export interface Task {
   priority: Priority;
   due: string | null;
   estimateMinutes: number | null;
+  project: string | null;
+  recurrence: RecurrenceRule | null;
   checklist: ChecklistItem[];
 }
 
@@ -84,6 +88,8 @@ interface QueuedTaskChange {
   priority?: Priority;
   due?: string | null;
   estimateMinutes?: number | null;
+  project?: string | null;
+  recurrence?: RecurrenceRule | null;
   checklist?: ChecklistItem[];
   createdAt: string;
 }
@@ -131,6 +137,8 @@ function normalizeTask(raw: Partial<Task> & Pick<Task, 'id' | 'title' | 'done'>)
     priority: normalizePriority(raw.priority),
     due: raw.due ?? null,
     estimateMinutes: raw.estimateMinutes ?? null,
+    project: normalizeProject(raw.project),
+    recurrence: normalizeRecurrence(raw.recurrence),
     checklist: normalizeChecklist(raw.checklist),
   };
 }
@@ -163,6 +171,8 @@ function taskPayload(task: Task) {
     priority: task.priority,
     due: task.due,
     estimateMinutes: task.estimateMinutes,
+    project: task.project,
+    recurrence: task.recurrence,
     checklist: task.checklist,
   };
 }
@@ -176,6 +186,8 @@ export class TaskStore {
   private syncRequested = false;
 
   tasks = signal<Task[]>([]);
+  searchQuery = signal('');
+  projectFilter = signal<string | null>(null);
   dayCapacityMinutes = signal(readStoredJson<number>(DAY_CAPACITY_STORAGE_KEY, DEFAULT_DAY_CAPACITY_MINUTES));
   syncStatus = signal<SyncStatus>('loading');
   pendingChanges = signal(0);
@@ -200,6 +212,47 @@ export class TaskStore {
         return a.id - b.id;
       })
   );
+
+  /** Tasks filtered by search query and optional project. */
+  filteredEnrichedTasks = computed(() => {
+    const query = this.searchQuery().trim().toLowerCase();
+    const project = this.projectFilter();
+
+    return this.enrichedTasks().filter(task => {
+      if (project && task.project !== project) return false;
+      if (!query) return true;
+
+      const haystack = [
+        task.title,
+        task.project ?? '',
+        ...(task.checklist.map(item => item.title)),
+      ]
+        .join(' ')
+        .toLowerCase();
+
+      return haystack.includes(query);
+    });
+  });
+
+  projectOptions = computed(() => {
+    const values = new Set<string>();
+    for (const task of this.tasks()) {
+      if (task.project) values.add(task.project);
+    }
+    return [...values].sort();
+  });
+
+  completedDueTodayCount = computed(() => {
+    const today = todayIso();
+    return this.tasks().filter(task => task.done && task.due === today).length;
+  });
+
+  incompleteDueTodayCount = computed(() => this.dueTodayTasks().length);
+
+  tomorrowTaskCount = computed(() => {
+    const tomorrow = tomorrowIso();
+    return this.enrichedTasks().filter(task => !task.done && task.due === tomorrow).length;
+  });
 
   overdueTasks = computed(() => {
     const today = todayIso();
@@ -311,6 +364,8 @@ export class TaskStore {
       priority: parsed.priority,
       due: parsed.due,
       estimateMinutes: parsed.estimateMinutes,
+      project: parsed.project,
+      recurrence: parsed.recurrence,
       checklist: [],
     };
 
@@ -324,6 +379,8 @@ export class TaskStore {
       priority: task.priority,
       due: task.due,
       estimateMinutes: task.estimateMinutes,
+      project: task.project,
+      recurrence: task.recurrence,
       checklist: task.checklist,
       createdAt: new Date().toISOString()
     });
@@ -342,6 +399,8 @@ export class TaskStore {
       priority: parsed.priority,
       due: dueIso,
       estimateMinutes: parsed.estimateMinutes,
+      project: parsed.project,
+      recurrence: parsed.recurrence,
       checklist: [],
     };
 
@@ -355,6 +414,8 @@ export class TaskStore {
       priority: task.priority,
       due: task.due,
       estimateMinutes: task.estimateMinutes,
+      project: task.project,
+      recurrence: task.recurrence,
       checklist: task.checklist,
       createdAt: new Date().toISOString()
     });
@@ -376,6 +437,11 @@ export class TaskStore {
     const updatedTask = normalizeTask({ ...stripFlags(task), done: nextDone, checklist });
     this.updateLocalTask(updatedTask);
     this.queueTaskUpdate(updatedTask);
+
+    if (nextDone && task.recurrence) {
+      this.spawnRecurringNext(stripFlags(task));
+    }
+
     void this.syncNow();
   }
 
@@ -390,6 +456,10 @@ export class TaskStore {
     const updatedTask = normalizeTask({ ...stripFlags(task), checklist, done: allDone });
     this.updateLocalTask(updatedTask);
     this.queueTaskUpdate(updatedTask);
+    if (allDone && task.recurrence) {
+      this.spawnRecurringNext(stripFlags(task));
+    }
+
     void this.syncNow();
   }
 
@@ -447,7 +517,7 @@ export class TaskStore {
     this.updatePlanningFields(id, { estimateMinutes });
   }
 
-  updateTask(id: number, patch: Partial<Pick<Task, 'title' | 'priority' | 'due' | 'estimateMinutes' | 'done' | 'checklist'>>) {
+  updateTask(id: number, patch: Partial<Pick<Task, 'title' | 'priority' | 'due' | 'estimateMinutes' | 'done' | 'checklist' | 'project' | 'recurrence'>>) {
     const task = this.tasks().find(t => t.id === id);
     if (!task) return;
 
@@ -504,6 +574,25 @@ export class TaskStore {
     }
   }
 
+  /** Move incomplete due-today tasks to tomorrow — end-of-day wrap-up. */
+  wrapUpDay(): number {
+    let moved = 0;
+    for (const task of this.dueTodayTasks()) {
+      if (task.done) continue;
+      this.setDue(task.id, tomorrowIso());
+      moved++;
+    }
+    return moved;
+  }
+
+  setSearchQuery(query: string) {
+    this.searchQuery.set(query);
+  }
+
+  setProjectFilter(project: string | null) {
+    this.projectFilter.set(project);
+  }
+
   applySchedule(
     assignments: Array<{
       taskId?: number | null;
@@ -542,6 +631,8 @@ export class TaskStore {
         priority: 'none',
         due: assignment.due,
         estimateMinutes: assignment.estimateMinutes ?? null,
+        project: null,
+        recurrence: null,
         checklist,
       };
 
@@ -555,6 +646,8 @@ export class TaskStore {
         priority: task.priority,
         due: task.due,
         estimateMinutes: task.estimateMinutes,
+        project: task.project,
+        recurrence: task.recurrence,
         checklist: task.checklist,
         createdAt: new Date().toISOString(),
       });
@@ -601,6 +694,8 @@ export class TaskStore {
       priority: task.priority,
       due: task.due,
       estimateMinutes: task.estimateMinutes,
+      project: task.project,
+      recurrence: task.recurrence,
       checklist: task.checklist,
     }))));
     this.migrateLegacyMeta();
@@ -674,6 +769,8 @@ export class TaskStore {
               priority: task.priority,
               due: task.due,
               estimateMinutes: task.estimateMinutes,
+              project: task.project,
+              recurrence: task.recurrence,
               checklist: task.checklist,
             })));
           }
@@ -704,6 +801,8 @@ export class TaskStore {
         priority: change.priority ?? 'none',
         due: change.due ?? null,
         estimateMinutes: change.estimateMinutes ?? null,
+        project: change.project ?? null,
+        recurrence: change.recurrence ?? null,
         checklist: change.checklist ?? [],
       }));
       const normalized = normalizeTask({
@@ -713,6 +812,8 @@ export class TaskStore {
         priority: createdTask.priority ?? change.priority,
         due: createdTask.due ?? change.due ?? null,
         estimateMinutes: createdTask.estimateMinutes ?? change.estimateMinutes ?? null,
+        project: createdTask.project ?? change.project ?? null,
+        recurrence: createdTask.recurrence ?? change.recurrence ?? null,
         checklist: createdTask.checklist ?? change.checklist,
       });
 
@@ -728,6 +829,8 @@ export class TaskStore {
           priority: doneResponse.priority ?? normalized.priority,
           due: doneResponse.due ?? normalized.due,
           estimateMinutes: doneResponse.estimateMinutes ?? normalized.estimateMinutes,
+          project: doneResponse.project ?? normalized.project,
+          recurrence: doneResponse.recurrence ?? normalized.recurrence,
           checklist: doneResponse.checklist ?? normalized.checklist,
         });
       }
@@ -743,6 +846,8 @@ export class TaskStore {
         priority: change.priority ?? 'none',
         due: change.due ?? null,
         estimateMinutes: change.estimateMinutes ?? null,
+        project: change.project ?? null,
+        recurrence: change.recurrence ?? null,
         checklist: change.checklist ?? [],
       };
 
@@ -755,6 +860,8 @@ export class TaskStore {
           priority: updatedTask.priority ?? change.priority,
           due: updatedTask.due ?? change.due ?? null,
           estimateMinutes: updatedTask.estimateMinutes ?? change.estimateMinutes ?? null,
+          project: updatedTask.project ?? change.project ?? null,
+          recurrence: updatedTask.recurrence ?? change.recurrence ?? null,
           checklist: updatedTask.checklist ?? change.checklist,
         }));
       } catch (error) {
@@ -765,6 +872,8 @@ export class TaskStore {
           priority: change.priority ?? 'none',
           due: change.due ?? null,
           estimateMinutes: change.estimateMinutes ?? null,
+          project: change.project ?? null,
+          recurrence: change.recurrence ?? null,
           checklist: change.checklist ?? [],
         }));
         const normalized = normalizeTask({
@@ -774,6 +883,8 @@ export class TaskStore {
           priority: recreatedTask.priority ?? change.priority,
           due: recreatedTask.due ?? change.due ?? null,
           estimateMinutes: recreatedTask.estimateMinutes ?? change.estimateMinutes ?? null,
+          project: recreatedTask.project ?? change.project ?? null,
+          recurrence: recreatedTask.recurrence ?? change.recurrence ?? null,
           checklist: recreatedTask.checklist ?? change.checklist,
         });
         let syncedTask = normalized;
@@ -788,6 +899,9 @@ export class TaskStore {
             priority: doneResponse.priority ?? normalized.priority,
             due: doneResponse.due ?? normalized.due,
             estimateMinutes: doneResponse.estimateMinutes ?? normalized.estimateMinutes,
+            project: doneResponse.project ?? normalized.project,
+            recurrence: doneResponse.recurrence ?? normalized.recurrence,
+            checklist: doneResponse.checklist ?? normalized.checklist,
           });
         }
 
@@ -811,6 +925,8 @@ export class TaskStore {
       createChange.priority = task.priority;
       createChange.due = task.due;
       createChange.estimateMinutes = task.estimateMinutes;
+      createChange.project = task.project;
+      createChange.recurrence = task.recurrence;
       createChange.checklist = task.checklist;
       this.persistQueue();
       return;
@@ -825,6 +941,8 @@ export class TaskStore {
       updateChange.priority = task.priority;
       updateChange.due = task.due;
       updateChange.estimateMinutes = task.estimateMinutes;
+      updateChange.project = task.project;
+      updateChange.recurrence = task.recurrence;
       updateChange.checklist = task.checklist;
       this.persistQueue();
       return;
@@ -839,8 +957,46 @@ export class TaskStore {
       priority: task.priority,
       due: task.due,
       estimateMinutes: task.estimateMinutes,
+      project: task.project,
+      recurrence: task.recurrence,
       checklist: task.checklist,
       createdAt: new Date().toISOString()
+    });
+  }
+
+  private spawnRecurringNext(completed: Task) {
+    if (!completed.recurrence) return;
+
+    const nextDue = nextRecurrenceDue(completed.recurrence, completed.due, todayIso());
+    const checklist = completed.checklist.map(item => ({ ...item, done: false }));
+
+    const task: Task = {
+      id: this.nextLocalId(),
+      title: completed.title,
+      done: false,
+      pending: true,
+      priority: completed.priority,
+      due: nextDue,
+      estimateMinutes: completed.estimateMinutes,
+      project: completed.project,
+      recurrence: completed.recurrence,
+      checklist,
+    };
+
+    this.setLocalTasks([...this.tasks().map(stripFlags), task]);
+    this.enqueueChange({
+      id: crypto.randomUUID(),
+      type: 'create',
+      taskId: task.id,
+      title: task.title,
+      done: task.done,
+      priority: task.priority,
+      due: task.due,
+      estimateMinutes: task.estimateMinutes,
+      project: task.project,
+      recurrence: task.recurrence,
+      checklist: task.checklist,
+      createdAt: new Date().toISOString(),
     });
   }
 

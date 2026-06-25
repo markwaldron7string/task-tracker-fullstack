@@ -4,6 +4,7 @@ import { App } from './app';
 
 describe('App', () => {
   beforeEach(async () => {
+    localStorage.setItem('ttf-onboarding-complete', '1');
     await TestBed.configureTestingModule({
       imports: [App],
       providers: [provideRouter([])]

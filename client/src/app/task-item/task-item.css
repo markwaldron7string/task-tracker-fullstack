@@ -205,6 +205,29 @@
   box-shadow: var(--pill-glow, none);
 }
 
+.project-chip {
+  flex-shrink: 0;
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: var(--surface-hover);
+  border: 1px solid var(--border-light);
+  border-radius: 999px;
+  padding: 0.15rem 0.45rem;
+}
+
+.recurrence-chip {
+  flex-shrink: 0;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--red-dark);
+  border: 1px solid var(--red-border);
+  border-radius: 999px;
+  background: var(--red-light);
+  padding: 0.1rem 0.4rem;
+  line-height: 1;
+}
+
 .details-chip {
   flex-shrink: 0;
   font-size: 0.7rem;

@@ -8,6 +8,12 @@
   </div>
 
   @if (store.todayFocusTasks().length > 0) {
+    <section class="morning-brief" aria-label="Morning briefing">
+      <p class="morning-brief-text">
+        {{ morningBriefing() }}
+      </p>
+    </section>
+
     <section class="capacity" [class.capacity--over]="store.isOvercommitted()">
       <div class="capacity-head">
         <span class="capacity-title">Today's load</span>
@@ -78,6 +84,37 @@
         </div>
       </section>
     }
+  }
+
+  @if (showDailyReview()) {
+    <section class="daily-review" aria-label="Daily review">
+      <div class="daily-review-head">
+        <h3 class="daily-review-title">Wrap up your day</h3>
+        @if (reviewDismissed()) {
+          <button type="button" class="link-btn" (click)="reopenReview()">Show</button>
+        } @else {
+          <button type="button" class="link-btn" (click)="dismissReview()">Dismiss</button>
+        }
+      </div>
+      @if (!reviewDismissed()) {
+        <ul class="daily-review-stats">
+          <li><strong>{{ store.completedDueTodayCount() }}</strong> completed due today</li>
+          <li><strong>{{ store.incompleteDueTodayCount() }}</strong> still open for today</li>
+          <li><strong>{{ store.overdueTasks().length }}</strong> overdue</li>
+          <li><strong>{{ store.tomorrowTaskCount() }}</strong> scheduled tomorrow</li>
+        </ul>
+        @if (store.incompleteDueTodayCount() > 0) {
+          <p class="daily-review-hint">
+            Not everything got done? That's normal — roll the rest to tomorrow and start fresh.
+          </p>
+          <button type="button" class="btn btn-primary daily-review-action" (click)="wrapUpDay()">
+            Roll {{ store.incompleteDueTodayCount() }} to tomorrow
+          </button>
+        } @else {
+          <p class="daily-review-hint daily-review-hint--ok">You're clear for today. Nice work.</p>
+        }
+      }
+    </section>
   }
 
   @if (store.scheduledCount() === 0) {

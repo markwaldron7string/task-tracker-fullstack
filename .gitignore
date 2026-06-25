@@ -19,3 +19,4 @@ client/node_modules/
 
 # This project uses Yarn via client/yarn.lock.
 client/package-lock.json
+.vercel

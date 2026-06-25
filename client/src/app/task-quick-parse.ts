@@ -1,10 +1,14 @@
 import { Priority } from './task-store';
+import { normalizeProject } from './task-domains';
+import { normalizeRecurrence, RecurrenceRule } from './task-recurrence';
 
 export interface ParsedQuickAdd {
   title: string;
   due: string | null;
   priority: Priority;
   estimateMinutes: number | null;
+  project: string | null;
+  recurrence: RecurrenceRule | null;
 }
 
 const PRIORITY_WORDS: Record<string, Priority> = {
@@ -48,6 +52,30 @@ export function parseQuickAdd(raw: string): ParsedQuickAdd {
   let due: string | null = null;
   let priority: Priority = 'none';
   let estimateMinutes: number | null = null;
+  let project: string | null = null;
+  let recurrence: RecurrenceRule | null = null;
+
+  // Project/domain: #work or @home
+  text = text.replace(/(?:^|\s)[#@]([a-z][a-z0-9_-]*)\b/i, (_, token) => {
+    project = normalizeProject(token);
+    return ' ';
+  });
+
+  // Recurrence phrases
+  const recurrencePatterns: Array<[RegExp, RecurrenceRule]> = [
+    [/\b(?:every\s+)?weekday(?:s)?\b/i, 'weekdays'],
+    [/\b(?:every\s+)?day\b|\bdaily\b/i, 'daily'],
+    [/\b(?:every\s+)?week(?:ly)?\b/i, 'weekly'],
+    [/\b(?:every\s+)?month(?:ly)?\b/i, 'monthly'],
+  ];
+
+  for (const [pattern, rule] of recurrencePatterns) {
+    if (pattern.test(text)) {
+      recurrence = rule;
+      text = text.replace(pattern, ' ');
+      break;
+    }
+  }
 
   // Time estimate: 30m, 1h, 1.5h, 90min
   text = text.replace(/\b(\d+(?:\.\d+)?)\s*h(?:ours?)?\b/gi, (_, n) => {
@@ -100,7 +128,7 @@ export function parseQuickAdd(raw: string): ParsedQuickAdd {
   );
 
   const title = text.replace(/\s{2,}/g, ' ').trim();
-  return { title, due, priority, estimateMinutes };
+  return { title, due, priority, estimateMinutes, project, recurrence };
 }
 
 /** Parse a standalone time estimate string (e.g. "30m", "1.5h", "90"). */

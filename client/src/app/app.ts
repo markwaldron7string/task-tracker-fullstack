@@ -1,5 +1,6 @@
 import { afterNextRender, Component, inject } from '@angular/core';
 import { RouterLink, RouterOutlet, RouterLinkActive } from '@angular/router';
+import { OnboardingWalkthrough } from './onboarding/onboarding-walkthrough';
 import { ProAssistant } from './pro-assistant/pro-assistant';
 import { ProService } from './pro.service';
 import { TaskDatePicker } from './task-date-picker/task-date-picker';
@@ -21,6 +22,7 @@ import { ThemeService } from './theme.service';
     RouterLinkActive,
     ThemePicker,
     ProAssistant,
+    OnboardingWalkthrough,
     TaskEditDialog,
     TaskDetailsDialog,
     TaskDatePicker,

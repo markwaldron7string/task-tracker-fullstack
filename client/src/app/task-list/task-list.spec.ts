@@ -6,6 +6,12 @@ import { TaskStore } from '../task-store';
 const taskStoreStub = {
   tasks: () => [],
   enrichedTasks: () => [],
+  filteredEnrichedTasks: () => [],
+  projectOptions: () => [],
+  searchQuery: () => '',
+  projectFilter: () => null,
+  setSearchQuery: () => {},
+  setProjectFilter: () => {},
   remaining: () => 0,
   pendingChanges: () => 0,
   syncStatus: () => 'synced',
@@ -13,6 +19,7 @@ const taskStoreStub = {
   addTask: () => {},
   toggleTask: () => {},
   editTask: () => {},
+  updateTask: () => {},
   removeTask: () => {},
   clearTasks: () => {}
 };

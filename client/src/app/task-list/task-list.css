@@ -51,6 +51,58 @@ h2 {
   margin-bottom: 1.5rem;
 }
 
+.task-toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  margin-bottom: 1rem;
+}
+
+.search-input {
+  width: 100%;
+  padding: 0.55rem 0.75rem;
+  border: 2px solid var(--border);
+  border-radius: 6px;
+  font-size: 0.9rem;
+  color: var(--text);
+  background: var(--surface);
+}
+
+.search-input:focus {
+  border-color: var(--red);
+  outline: none;
+  box-shadow: var(--focus-ring, none);
+}
+
+.domain-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.domain-chip {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.25rem 0.6rem;
+  cursor: pointer;
+}
+
+.domain-chip--active {
+  border-color: var(--red-border);
+  background: var(--red-light);
+  color: var(--red-dark);
+}
+
+.domain-chip:hover {
+  border-color: var(--red-border);
+  color: var(--red-dark);
+}
+
 .task-input {
   flex: 1;
   padding: 0.6rem 0.75rem;

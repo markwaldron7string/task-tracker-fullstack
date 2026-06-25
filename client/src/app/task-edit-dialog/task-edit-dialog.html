@@ -68,6 +68,46 @@
         </form>
       </fieldset>
 
+      <fieldset class="field">
+        <legend class="field-label">Domain</legend>
+        <div class="priority-row">
+          <button
+            type="button"
+            class="priority-btn"
+            [class.priority-btn--active]="project() === null"
+            (click)="setProject(null)"
+          >None</button>
+          @for (domain of domainOptions; track domain) {
+            <button
+              type="button"
+              class="priority-btn"
+              [class.priority-btn--active]="project() === domain"
+              (click)="setProject(domain)"
+            >{{ projectLabel(domain) }}</button>
+          }
+        </div>
+      </fieldset>
+
+      <fieldset class="field">
+        <legend class="field-label">Repeats</legend>
+        <div class="priority-row">
+          <button
+            type="button"
+            class="priority-btn"
+            [class.priority-btn--active]="recurrence() === null"
+            (click)="setRecurrence(null)"
+          >Never</button>
+          @for (option of recurrenceOptions; track option.value) {
+            <button
+              type="button"
+              class="priority-btn"
+              [class.priority-btn--active]="recurrence() === option.value"
+              (click)="setRecurrence(option.value)"
+            >{{ option.label }}</button>
+          }
+        </div>
+      </fieldset>
+
       <label class="done-row">
         <input type="checkbox" [checked]="done()" (change)="done.set($any($event.target).checked)" />
         <span>Mark as completed</span>

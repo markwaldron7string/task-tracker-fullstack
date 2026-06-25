@@ -58,6 +58,8 @@ describe('TaskStore', () => {
       priority: 'none',
       due: null,
       estimateMinutes: null,
+      project: null,
+      recurrence: null,
       checklist: [],
     }]);
     await settlePromises();
@@ -70,6 +72,8 @@ describe('TaskStore', () => {
       priority: 'none',
       due: null,
       estimateMinutes: null,
+      project: null,
+      recurrence: null,
       checklist: [],
     }]);
   });
@@ -89,6 +93,8 @@ describe('TaskStore', () => {
       priority: 'none',
       due: null,
       estimateMinutes: null,
+      project: null,
+      recurrence: null,
       checklist: [],
     });
     createRequest.flush({
@@ -98,6 +104,8 @@ describe('TaskStore', () => {
       priority: 'none',
       due: null,
       estimateMinutes: null,
+      project: null,
+      recurrence: null,
       checklist: [],
     });
     await settlePromises();
@@ -110,6 +118,8 @@ describe('TaskStore', () => {
         priority: 'none',
         due: null,
         estimateMinutes: null,
+      project: null,
+      recurrence: null,
       checklist: [],
       }
     ]);
@@ -123,6 +133,8 @@ describe('TaskStore', () => {
       priority: 'none',
       due: null,
       estimateMinutes: null,
+      project: null,
+      recurrence: null,
       checklist: [],
     }]);
   });
@@ -138,6 +150,8 @@ describe('TaskStore', () => {
         priority: 'none',
         due: null,
         estimateMinutes: null,
+      project: null,
+      recurrence: null,
       checklist: [],
       }
     ]);
@@ -153,6 +167,8 @@ describe('TaskStore', () => {
       priority: 'none',
       due: null,
       estimateMinutes: null,
+      project: null,
+      recurrence: null,
       checklist: [],
     });
     updateRequest.flush({
@@ -162,6 +178,8 @@ describe('TaskStore', () => {
       priority: 'none',
       due: null,
       estimateMinutes: null,
+      project: null,
+      recurrence: null,
       checklist: [],
     });
     await settlePromises();
@@ -174,6 +192,8 @@ describe('TaskStore', () => {
         priority: 'none',
         due: null,
         estimateMinutes: null,
+      project: null,
+      recurrence: null,
       checklist: [],
       }
     ]);
@@ -187,6 +207,8 @@ describe('TaskStore', () => {
       priority: 'none',
       due: null,
       estimateMinutes: null,
+      project: null,
+      recurrence: null,
       checklist: [],
     }]);
   });
@@ -207,6 +229,8 @@ describe('TaskStore', () => {
         priority: 'none',
         due: null,
         estimateMinutes: null,
+      project: null,
+      recurrence: null,
       checklist: [],
       }
     ]);
@@ -224,6 +248,8 @@ describe('TaskStore', () => {
         priority: 'none',
         due: null,
         estimateMinutes: null,
+      project: null,
+      recurrence: null,
       checklist: [],
       }
     ]));
@@ -251,6 +277,8 @@ describe('TaskStore', () => {
         priority: 'none',
         due: null,
         estimateMinutes: null,
+      project: null,
+      recurrence: null,
       checklist: [],
       }
     ]);

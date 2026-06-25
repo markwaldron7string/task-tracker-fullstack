@@ -14,11 +14,38 @@
     }
   </div>
 
-  <div class="add-task-row">
+  <div class="task-toolbar">
+    <input
+      class="search-input"
+      type="search"
+      placeholder="Search tasks…"
+      [value]="store.searchQuery()"
+      (input)="store.setSearchQuery($any($event.target).value)"
+      aria-label="Search tasks"
+    />
+    <div class="domain-filters" role="group" aria-label="Filter by domain">
+      <button
+        type="button"
+        class="domain-chip"
+        [class.domain-chip--active]="!store.projectFilter()"
+        (click)="store.setProjectFilter(null)"
+      >All</button>
+      @for (domain of domainOptions(); track domain) {
+        <button
+          type="button"
+          class="domain-chip"
+          [class.domain-chip--active]="store.projectFilter() === domain"
+          (click)="store.setProjectFilter(domain)"
+        >{{ domainLabel(domain) }}</button>
+      }
+    </div>
+  </div>
+
+  <div class="add-task-row" data-tour="add-task">
     <input
       #taskInput
       class="task-input"
-      placeholder="Try: Review PR tomorrow 30m high"
+      placeholder="Try: Walk dog daily #health or Review PR tomorrow 30m"
       (keydown.enter)="store.addTask(taskInput.value); taskInput.value = ''"
     />
     <button type="button" class="btn btn-primary" (click)="store.addTask(taskInput.value); taskInput.value = ''">Add</button>
@@ -37,7 +64,7 @@
   }
 
   <div class="task-list" role="list">
-    @for (task of store.enrichedTasks(); track task.id) {
+    @for (task of store.filteredEnrichedTasks(); track task.id) {
       <app-task-item
         role="listitem"
         [task]="task"
@@ -51,7 +78,13 @@
         (estimateChange)="store.setEstimateMinutes($event.id, $event.estimateMinutes)"
       />
     } @empty {
-      <div class="empty-state">No tasks yet.</div>
+      <div class="empty-state">
+        @if (store.searchQuery() || store.projectFilter()) {
+          No tasks match your filters.
+        } @else {
+          No tasks yet.
+        }
+      </div>
     }
   </div>
 </div>

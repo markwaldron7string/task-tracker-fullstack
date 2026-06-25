@@ -315,6 +315,77 @@ h2 {
   color: var(--red-dark);
 }
 
+.morning-brief {
+  margin-bottom: 1rem;
+  padding: 0.75rem 0.85rem;
+  border-radius: 8px;
+  border: 1px solid var(--border-light);
+  background: var(--overlay-surface-muted, var(--surface-hover));
+}
+
+.morning-brief-text {
+  margin: 0;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+.daily-review {
+  margin: 0 0 1.25rem;
+  padding: 1rem;
+  border-radius: 8px;
+  border: 1px solid var(--red-border);
+  background: var(--red-light);
+}
+
+.daily-review-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.65rem;
+}
+
+.daily-review-title {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--red-dark);
+}
+
+.daily-review-stats {
+  list-style: none;
+  margin: 0 0 0.75rem;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.45rem 0.75rem;
+}
+
+.daily-review-stats li {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+
+.daily-review-stats strong {
+  color: var(--text);
+}
+
+.daily-review-hint {
+  margin: 0 0 0.75rem;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: var(--text-muted);
+}
+
+.daily-review-hint--ok {
+  margin-bottom: 0;
+}
+
+.daily-review-action {
+  width: 100%;
+}
+
 @media (max-width: 640px) {
   .card {
     padding: 1rem;

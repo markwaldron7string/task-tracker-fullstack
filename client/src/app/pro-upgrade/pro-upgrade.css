@@ -102,6 +102,14 @@
   color: var(--text-muted);
 }
 
+.upgrade-ai-note {
+  margin: 0.85rem 0 0;
+  max-width: 36rem;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: var(--text-faint);
+}
+
 .upgrade-cta-row {
   display: flex;
   flex-wrap: wrap;

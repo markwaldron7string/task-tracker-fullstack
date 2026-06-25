@@ -10,6 +10,7 @@ const DEFAULT_ACCENT = DEFAULT_ACCENTS[DEFAULT_ACCENTS.length - 1];
 
 @Component({
   selector: 'theme-picker',
+  host: { 'attr.data-tour': 'theme-picker' },
   imports: [ProUpgrade],
   templateUrl: './theme-picker.html',
   styleUrl: './theme-picker.css',

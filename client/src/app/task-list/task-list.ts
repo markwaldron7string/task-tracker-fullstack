@@ -1,6 +1,7 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { TaskItem } from '../task-item/task-item';
 import { TaskSummary } from '../task-summary/task-summary';
+import { TASK_DOMAINS, projectLabel } from '../task-domains';
 import { TaskStore } from '../task-store';
 
 @Component({
@@ -12,6 +13,17 @@ import { TaskStore } from '../task-store';
 export class TaskList {
   store = inject(TaskStore);
   protected confirmClearOpen = signal(false);
+
+  protected domainOptions = computed(() => {
+    const fromTasks = this.store.projectOptions();
+    const known = TASK_DOMAINS.filter(domain => fromTasks.includes(domain));
+    const custom = fromTasks.filter(
+      domain => !(TASK_DOMAINS as readonly string[]).includes(domain)
+    );
+    return [...known, ...custom];
+  });
+
+  protected domainLabel = projectLabel;
 
   protected requestClearAll(): void {
     if (this.store.tasks().length === 0) return;

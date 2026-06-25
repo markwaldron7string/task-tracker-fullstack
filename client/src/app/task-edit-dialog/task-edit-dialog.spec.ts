@@ -18,6 +18,9 @@ describe('TaskEditDialog', () => {
       priority: 'none',
       due: null,
       estimateMinutes: null,
+      project: null,
+      recurrence: null,
+      checklist: [],
     });
     fixture.detectChanges();
     await fixture.whenStable();

@@ -1,6 +1,6 @@
 import { Component, inject, input, output } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { ProFeatureId, PRO_FEATURES, PRO_PRICE_LABEL, PRO_TAGLINE, proFeature } from '../pro-features';
+import { ProFeatureId, PRO_AI_NOTE, PRO_FEATURES, PRO_PRICE_LABEL, PRO_TAGLINE, proFeature } from '../pro-features';
 import { ProService } from '../pro.service';
 
 @Component({
@@ -23,6 +23,7 @@ export class ProUpgrade {
 
   protected readonly price = PRO_PRICE_LABEL;
   protected readonly tagline = PRO_TAGLINE;
+  protected readonly aiNote = PRO_AI_NOTE;
   protected readonly allFeatures = PRO_FEATURES;
 
   protected headline(): string {

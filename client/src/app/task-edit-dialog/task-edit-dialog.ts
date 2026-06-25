@@ -1,7 +1,9 @@
 import { TitleCasePipe } from '@angular/common';
 import { Component, effect, input, output, signal } from '@angular/core';
+import { TASK_DOMAINS, projectLabel } from '../task-domains';
 import { TaskDatePicker } from '../task-date-picker/task-date-picker';
 import { parseEstimateInput } from '../task-quick-parse';
+import { RECURRENCE_OPTIONS, RecurrenceRule } from '../task-recurrence';
 import { EnrichedTask, Priority } from '../task-store';
 
 export interface TaskEditPatch {
@@ -11,6 +13,8 @@ export interface TaskEditPatch {
   due: string | null;
   estimateMinutes: number | null;
   done: boolean;
+  project: string | null;
+  recurrence: RecurrenceRule | null;
 }
 
 const PRIORITIES: Priority[] = ['none', 'low', 'medium', 'high'];
@@ -38,12 +42,17 @@ export class TaskEditDialog {
 
   protected readonly priorities = PRIORITIES;
   protected readonly estimatePresets = ESTIMATE_PRESETS;
+  protected readonly domainOptions = TASK_DOMAINS;
+  protected readonly recurrenceOptions = RECURRENCE_OPTIONS;
+  protected readonly projectLabel = projectLabel;
 
   protected title = signal('');
   protected priority = signal<Priority>('none');
   protected due = signal<string | null>(null);
   protected estimateMinutes = signal<number | null>(null);
   protected done = signal(false);
+  protected project = signal<string | null>(null);
+  protected recurrence = signal<RecurrenceRule | null>(null);
   protected customEstimate = signal('');
 
   constructor() {
@@ -54,6 +63,8 @@ export class TaskEditDialog {
       this.due.set(task.due);
       this.estimateMinutes.set(task.estimateMinutes);
       this.done.set(task.done);
+      this.project.set(task.project);
+      this.recurrence.set(task.recurrence);
       this.customEstimate.set(this.formatEstimate(task.estimateMinutes));
     });
   }
@@ -85,6 +96,14 @@ export class TaskEditDialog {
     this.setEstimate(parsed);
   }
 
+  protected setProject(value: string | null): void {
+    this.project.set(value);
+  }
+
+  protected setRecurrence(value: RecurrenceRule | null): void {
+    this.recurrence.set(value);
+  }
+
   protected saveTask(): void {
     const title = this.title().trim();
     if (!title) return;
@@ -96,6 +115,8 @@ export class TaskEditDialog {
       due: this.due(),
       estimateMinutes: this.estimateMinutes(),
       done: this.done(),
+      project: this.project(),
+      recurrence: this.recurrence(),
     });
   }
 

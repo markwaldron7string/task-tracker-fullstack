@@ -77,6 +77,8 @@ app.MapPost("/api/tasks", async (CreateTaskRequest request, HttpContext ctx, Tas
         Priority = NormalizePriority(request.Priority),
         Due = NormalizeDue(request.Due),
         EstimateMinutes = request.EstimateMinutes,
+        Project = NormalizeProject(request.Project),
+        Recurrence = NormalizeRecurrence(request.Recurrence),
         ChecklistJson = ChecklistHelper.Serialize(ChecklistHelper.Normalize(request.Checklist)),
     };
     db.Tasks.Add(newTask);
@@ -101,6 +103,8 @@ app.MapPut("/api/tasks/{id}", async (int id, UpdateTaskRequest request, HttpCont
     task.Priority = NormalizePriority(request.Priority);
     task.Due = NormalizeDue(request.Due);
     task.EstimateMinutes = request.EstimateMinutes;
+    task.Project = NormalizeProject(request.Project);
+    task.Recurrence = NormalizeRecurrence(request.Recurrence);
     if (request.Checklist is not null)
         task.ChecklistJson = ChecklistHelper.Serialize(ChecklistHelper.Normalize(request.Checklist));
     await db.SaveChangesAsync();
@@ -227,6 +231,24 @@ static string? NormalizeDue(string? due)
     return string.IsNullOrWhiteSpace(trimmed) ? null : trimmed;
 }
 
+static string? NormalizeProject(string? project)
+{
+    var trimmed = project?.Trim().ToLowerInvariant();
+    return string.IsNullOrWhiteSpace(trimmed) ? null : trimmed;
+}
+
+static string? NormalizeRecurrence(string? recurrence)
+{
+    return recurrence?.Trim().ToLowerInvariant() switch
+    {
+        "daily" => "daily",
+        "weekly" => "weekly",
+        "weekdays" => "weekdays",
+        "monthly" => "monthly",
+        _ => null
+    };
+}
+
 static TaskResponse ToTaskResponse(TaskItem task) => new(
     task.Id,
     task.Title,
@@ -234,6 +256,8 @@ static TaskResponse ToTaskResponse(TaskItem task) => new(
     task.Priority,
     task.Due,
     task.EstimateMinutes,
+    task.Project,
+    task.Recurrence,
     ChecklistHelper.Deserialize(task.ChecklistJson));
 
 class TaskItem
@@ -245,6 +269,8 @@ class TaskItem
     public string Priority { get; set; } = "none";
     public string? Due { get; set; }
     public int? EstimateMinutes { get; set; }
+    public string? Project { get; set; }
+    public string? Recurrence { get; set; }
     public string? ChecklistJson { get; set; }
 }
 
@@ -255,6 +281,8 @@ record TaskResponse(
     string Priority,
     string? Due,
     int? EstimateMinutes,
+    string? Project,
+    string? Recurrence,
     List<ChecklistItem> Checklist);
 
 record CreateTaskRequest(
@@ -262,6 +290,8 @@ record CreateTaskRequest(
     string? Due = null,
     string? Priority = null,
     int? EstimateMinutes = null,
+    string? Project = null,
+    string? Recurrence = null,
     List<ChecklistItem>? Checklist = null);
 
 record UpdateTaskRequest(
@@ -270,6 +300,8 @@ record UpdateTaskRequest(
     string? Due = null,
     string? Priority = null,
     int? EstimateMinutes = null,
+    string? Project = null,
+    string? Recurrence = null,
     List<ChecklistItem>? Checklist = null);
 
 // ----- Database -----

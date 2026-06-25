@@ -2,6 +2,8 @@ import { Component, computed, inject, input, output } from '@angular/core';
 import { TaskDetailsOverlayService } from '../task-details-overlay.service';
 import { TaskEditOverlayService } from '../task-edit-overlay.service';
 import { TaskPickerOverlayService } from '../task-picker-overlay.service';
+import { projectLabel } from '../task-domains';
+import { recurrenceLabel } from '../task-recurrence';
 import { EnrichedTask } from '../task-store';
 
 function todayIso(): string {
@@ -13,7 +15,10 @@ function todayIso(): string {
 
 @Component({
   selector: 'app-task-item',
-  host: { class: 'task-item-host' },
+  host: {
+    class: 'task-item-host',
+    '[attr.data-tour]': 'position() === 1 ? "first-task" : null',
+  },
   imports: [],
   templateUrl: './task-item.html',
   styleUrl: './task-item.css',
@@ -25,6 +30,8 @@ export class TaskItem {
 
   task = input.required<EnrichedTask>();
   position = input<number>();
+  protected projectLabel = projectLabel;
+  protected recurrenceLabel = recurrenceLabel;
   toggle = output<number>();
   remove = output<number>();
   edit = output<{ id: number; title: string }>();

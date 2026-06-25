@@ -382,14 +382,41 @@
   cursor: pointer;
 }
 
-@media (max-width: 640px) {
-  .coach-fab,
-  .coach-panel {
-    right: 0.75rem;
-    bottom: 0.75rem;
+@media (max-width: 768px) {
+  .coach-scrim {
+    z-index: 90;
+    background: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
   }
 
   .coach-panel {
-    width: calc(100vw - 1.5rem);
+    z-index: 91;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: auto;
+    width: 100%;
+    max-height: min(92dvh, calc(100dvh - env(safe-area-inset-bottom)));
+    height: auto;
+    border-radius: 0;
+    border-top: none;
+    border-left: none;
+    border-right: none;
+    border-bottom-left-radius: 12px;
+    border-bottom-right-radius: 12px;
+    padding:
+      max(0.85rem, env(safe-area-inset-top))
+      max(1rem, env(safe-area-inset-right))
+      max(1rem, env(safe-area-inset-bottom))
+      max(1rem, env(safe-area-inset-left));
+    box-shadow:
+      var(--shadow),
+      0 16px 48px rgba(0, 0, 0, 0.35);
+  }
+
+  .coach-fab {
+    right: 0.75rem;
+    bottom: 0.75rem;
   }
 }
