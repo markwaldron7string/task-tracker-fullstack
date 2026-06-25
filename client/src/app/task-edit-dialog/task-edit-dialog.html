@@ -1,0 +1,82 @@
+<div class="dialog-backdrop" (click)="onBackdropClick()">
+  <div class="dialog" role="dialog" aria-labelledby="task-edit-title" (click)="onDialogClick($event)">
+    <header class="dialog-head">
+      <h2 id="task-edit-title">Edit task</h2>
+      <button type="button" class="close-btn" (click)="cancel.emit()" aria-label="Close">×</button>
+    </header>
+
+    <div class="dialog-body">
+      <label class="field">
+        <span class="field-label">Title</span>
+        <input
+          class="field-input"
+          type="text"
+          [value]="title()"
+          (input)="title.set($any($event.target).value)"
+          placeholder="What needs doing?"
+        />
+      </label>
+
+      <fieldset class="field">
+        <legend class="field-label">Priority</legend>
+        <div class="priority-row">
+          @for (level of priorities; track level) {
+            <button
+              type="button"
+              class="priority-btn"
+              [class.priority-btn--active]="priority() === level"
+              [attr.data-priority]="level !== 'none' ? level : null"
+              (click)="setPriority(level)"
+            >{{ level === 'none' ? 'None' : (level | titlecase) }}</button>
+          }
+        </div>
+      </fieldset>
+
+      <div class="field">
+        <span class="field-label">Due date</span>
+        <div class="due-field">
+          <app-task-date-picker
+            mode="compact"
+            [value]="due()"
+            (select)="setDue($event)"
+          />
+        </div>
+      </div>
+
+      <fieldset class="field">
+        <legend class="field-label">Time estimate</legend>
+        <div class="estimate-grid">
+          @for (preset of estimatePresets; track preset.label) {
+            <button
+              type="button"
+              class="estimate-btn"
+              [class.estimate-btn--active]="estimateMinutes() === preset.minutes"
+              (click)="setEstimate(preset.minutes)"
+            >{{ preset.label }}</button>
+          }
+        </div>
+        <form class="custom-estimate" (submit)="$event.preventDefault(); applyCustomEstimate(customInput)">
+          <input
+            #customInput
+            class="field-input"
+            type="text"
+            placeholder="Custom: 45m, 1.5h"
+            [value]="customEstimate()"
+            (input)="customEstimate.set($any($event.target).value)"
+          />
+          <button type="submit" class="apply-btn">Apply</button>
+        </form>
+      </fieldset>
+
+      <label class="done-row">
+        <input type="checkbox" [checked]="done()" (change)="done.set($any($event.target).checked)" />
+        <span>Mark as completed</span>
+      </label>
+    </div>
+
+    <footer class="dialog-foot">
+      <button type="button" class="btn btn-ghost" (click)="cancel.emit()">Cancel</button>
+      <button type="button" class="btn btn-primary" (click)="saveTask()">Save changes</button>
+    </footer>
+  </div>
+</div>

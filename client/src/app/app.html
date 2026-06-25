@@ -6,13 +6,64 @@
     </div>
     <nav>
       <a routerLink="/" routerLinkActive="active-link" [routerLinkActiveOptions]="{ exact: true }">All Tasks</a>
+      <a routerLink="/today" routerLinkActive="active-link">Today</a>
+      <a routerLink="/calendar" routerLinkActive="active-link">Calendar</a>
       <a routerLink="/active" routerLinkActive="active-link">Active</a>
       <a routerLink="/completed" routerLinkActive="active-link">Completed</a>
     </nav>
-    <theme-picker />
+    <div class="header-actions">
+      @if (pro.unlocked()) {
+        <span class="pro-badge" aria-label="Pro unlocked">Pro</span>
+      } @else {
+        <a routerLink="/upgrade" class="upgrade-btn">Upgrade</a>
+      }
+      <theme-picker />
+    </div>
   </div>
 </header>
 
 <main>
   <router-outlet />
 </main>
+
+<app-pro-assistant />
+
+@if (pickerOverlay.duePicker() || pickerOverlay.estimatePicker()) {
+  <button
+    type="button"
+    class="picker-scrim"
+    aria-label="Close picker"
+    (click)="pickerOverlay.close()"
+  ></button>
+}
+
+@if (pickerOverlay.duePicker(); as due) {
+  <app-task-date-picker
+    mode="popover"
+    [value]="due.due"
+    (select)="onDueSelect($event)"
+  />
+}
+
+@if (pickerOverlay.estimatePicker(); as estimate) {
+  <app-task-estimate-picker
+    [value]="estimate.estimateMinutes"
+    (select)="onEstimateSelect($event)"
+  />
+}
+
+@if (editOverlay.task(); as task) {
+  <app-task-edit-dialog
+    [task]="task"
+    (save)="onEditSave($event)"
+    (cancel)="editOverlay.close()"
+  />
+}
+
+@if (detailsOverlay.task(); as task) {
+  <app-task-details-dialog
+    [task]="task"
+    (toggleItem)="onToggleChecklistItem($event)"
+    (close)="detailsOverlay.close()"
+  />
+}

@@ -9,6 +9,13 @@ export interface Theme {
   category: ThemeCategory;
 }
 
+export interface CustomTheme {
+  base: ThemeCategory;
+  accent: string;
+}
+
+export const CUSTOM_ID = 'custom';
+
 export const THEMES: Theme[] = [
   // Light
   { id: 'light-red',    name: 'Ruby',    swatch: '#DD0031', category: 'light' },
@@ -44,16 +51,29 @@ const MIGRATIONS: Record<string, string> = {
   'neon-purple': 'neon-galaxy', 'neon-yellow': 'neon-red',
 };
 
+const CUSTOM_VARS = ['--red', '--red-dark', '--red-light', '--red-border', '--red-glow', '--on-primary'];
+
 @Injectable({ providedIn: 'root' })
 export class ThemeService {
   readonly themes = THEMES;
-  readonly active = signal(this.load());
+  readonly active = signal(this.loadActive());
+  readonly custom = signal<CustomTheme | null>(this.loadCustom());
 
   constructor() {
     effect(() => {
       const id = this.active();
-      document.documentElement.setAttribute('data-theme', id);
+      const custom = this.custom();
+      const root = document.documentElement;
+
+      this.clearCustomVars(root);
+      if (id === CUSTOM_ID && custom) {
+        this.applyCustom(root, custom);
+      } else {
+        root.setAttribute('data-theme', id === CUSTOM_ID ? 'light-red' : id);
+      }
+
       localStorage.setItem('theme', id);
+      if (custom) localStorage.setItem('theme-custom', JSON.stringify(custom));
     });
   }
 
@@ -61,9 +81,72 @@ export class ThemeService {
     this.active.set(id);
   }
 
-  private load(): string {
+  setCustom(base: ThemeCategory, accent: string): void {
+    this.custom.set({ base, accent });
+    this.active.set(CUSTOM_ID);
+  }
+
+  private clearCustomVars(root: HTMLElement): void {
+    for (const name of CUSTOM_VARS) root.style.removeProperty(name);
+  }
+
+  private applyCustom(root: HTMLElement, custom: CustomTheme): void {
+    root.setAttribute('data-theme', `${custom.base}-custom`);
+
+    const { r, g, b } = hexToRgb(custom.accent);
+    const accent = custom.accent;
+    root.style.setProperty('--red', accent);
+
+    if (custom.base === 'neon') {
+      // Neon derives --red-light / --red-border from --red-glow (see styles.css).
+      root.style.setProperty('--red-dark', `color-mix(in srgb, ${accent} 65%, #ffffff)`);
+      root.style.setProperty('--red-glow', `${r}, ${g}, ${b}`);
+    } else if (custom.base === 'dark') {
+      root.style.setProperty('--red-dark', `color-mix(in srgb, ${accent} 82%, #000000)`);
+      root.style.setProperty('--red-light', `color-mix(in srgb, ${accent} 14%, #0C0E13)`);
+      root.style.setProperty('--red-border', `color-mix(in srgb, ${accent} 40%, #0C0E13)`);
+    } else {
+      root.style.setProperty('--red-dark', `color-mix(in srgb, ${accent} 85%, #000000)`);
+      root.style.setProperty('--red-light', `color-mix(in srgb, ${accent} 12%, #ffffff)`);
+      root.style.setProperty('--red-border', `color-mix(in srgb, ${accent} 32%, #ffffff)`);
+    }
+
+    // Pick legible text for solid accent surfaces (buttons) based on luminance.
+    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+    root.style.setProperty('--on-primary', luminance > 0.6 ? '#0A0A0A' : '#ffffff');
+  }
+
+  private loadActive(): string {
     const saved = localStorage.getItem('theme') ?? '';
+    if (saved === CUSTOM_ID) return CUSTOM_ID;
     const migrated = MIGRATIONS[saved] ?? saved;
     return THEMES.some(t => t.id === migrated) ? migrated : 'light-red';
   }
+
+  private loadCustom(): CustomTheme | null {
+    try {
+      const raw = localStorage.getItem('theme-custom');
+      if (!raw) return null;
+      const parsed = JSON.parse(raw) as Partial<CustomTheme>;
+      const base = parsed.base;
+      if ((base === 'light' || base === 'dark' || base === 'neon') && typeof parsed.accent === 'string') {
+        return { base, accent: parsed.accent };
+      }
+    } catch {
+      // Ignore malformed custom theme and fall back to presets.
+    }
+    return null;
+  }
+}
+
+function hexToRgb(hex: string): { r: number; g: number; b: number } {
+  let value = hex.replace('#', '').trim();
+  if (value.length === 3) {
+    value = value.split('').map(c => c + c).join('');
+  }
+  const int = parseInt(value, 16);
+  if (value.length !== 6 || Number.isNaN(int)) {
+    return { r: 124, g: 92, b: 255 };
+  }
+  return { r: (int >> 16) & 255, g: (int >> 8) & 255, b: int & 255 };
 }

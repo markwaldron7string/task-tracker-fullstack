@@ -4,7 +4,13 @@ import { Active } from './active';
 import { TaskStore } from '../task-store';
 
 const taskStoreStub = {
-  activeTasks: () => []
+  activeEnrichedTasks: () => [],
+  toggleTask: () => {},
+  removeTask: () => {},
+  editTask: () => {},
+  cyclePriority: () => {},
+  setDue: () => {},
+  cycleEstimate: () => {},
 };
 
 describe('Active', () => {

@@ -21,8 +21,21 @@ namespace TaskTracker.Api.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
+                    b.Property<string>("ChecklistJson")
+                        .HasColumnType("TEXT");
+
                     b.Property<bool>("Done")
                         .HasColumnType("INTEGER");
+
+                    b.Property<string>("Due")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("EstimateMinutes")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Priority")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
 
                     b.Property<string>("Title")
                         .IsRequired()

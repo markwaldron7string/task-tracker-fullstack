@@ -1,0 +1,212 @@
+:host {
+  display: contents;
+}
+
+.picker-panel {
+  position: absolute;
+  top: calc(100% + 0.35rem);
+  left: 0;
+  z-index: 30;
+  width: 16.5rem;
+  padding: 0.75rem;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background-color: var(--overlay-surface, var(--surface));
+  background-image: var(--overlay-sheen, var(--card-overlay));
+  box-shadow: var(--shadow), 0 10px 28px rgba(0, 0, 0, 0.18);
+}
+
+/* Viewport-anchored popover (rendered at app root) */
+.picker-panel--sheet {
+  position: fixed;
+  left: 50%;
+  right: auto;
+  top: auto;
+  bottom: max(0.75rem, env(safe-area-inset-bottom, 0px));
+  transform: translateX(-50%);
+  z-index: 70;
+  width: min(18rem, calc(100vw - 1.5rem));
+  max-height: calc(
+    100dvh - var(--app-header-height, 9rem) - 1.5rem - env(safe-area-inset-bottom, 0px)
+  );
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (min-width: 641px) {
+  .picker-panel--sheet {
+    top: max(
+      calc(var(--app-header-height, 5rem) + 1rem),
+      calc(50% - 12rem)
+    );
+    bottom: auto;
+    max-height: min(
+      24rem,
+      calc(100dvh - var(--app-header-height, 5rem) - 2rem - env(safe-area-inset-bottom, 0px))
+    );
+  }
+}
+
+.picker-panel--compact {
+  position: static;
+  width: 100%;
+  box-shadow: none;
+  padding: 0;
+  border: none;
+  background: transparent;
+  background-image: none;
+  max-height: none;
+  overflow: visible;
+}
+
+.picker-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.35rem;
+  margin-bottom: 0.5rem;
+}
+
+.picker-title {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.nav-btn {
+  width: 1.65rem;
+  height: 1.65rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface-hover);
+  color: var(--text);
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+  margin-bottom: 2px;
+}
+
+.weekday {
+  text-align: center;
+  font-size: 0.58rem;
+  font-weight: 700;
+  color: var(--text-faint);
+}
+
+.day-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+
+.day-grid--sheet .day-btn {
+  aspect-ratio: auto;
+  min-height: 1.45rem;
+  padding: 0.1rem;
+  font-size: 0.66rem;
+}
+
+.day-btn {
+  aspect-ratio: 1;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.day-btn:hover {
+  background: var(--surface-hover);
+}
+
+.day-btn--muted {
+  opacity: 0.35;
+}
+
+.day-btn--today {
+  box-shadow: inset 0 0 0 1px var(--red-border);
+}
+
+.day-btn--selected {
+  background: var(--red);
+  color: var(--on-primary, white);
+}
+
+.quick-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.55rem;
+}
+
+.picker-panel--compact .quick-row {
+  margin-top: 0;
+}
+
+.quick-btn {
+  border: 1px solid var(--red-border);
+  background: var(--red-light);
+  color: var(--red-dark);
+  border-radius: 999px;
+  font-family: inherit;
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 0.25rem 0.55rem;
+  cursor: pointer;
+}
+
+.quick-btn--muted {
+  border-color: var(--border);
+  background: var(--surface-hover);
+  color: var(--text-muted);
+}
+
+.typed-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  margin-top: 0.55rem;
+  padding-top: 0.55rem;
+  border-top: 1px solid var(--border-light);
+}
+
+.typed-row--first {
+  margin-top: 0.65rem;
+  padding-top: 0;
+  border-top: none;
+}
+
+.typed-label {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+.typed-input {
+  width: 100%;
+  border: 2px solid var(--border);
+  border-radius: 6px;
+  padding: 0.4rem 0.5rem;
+  font-family: inherit;
+  font-size: 0.82rem;
+  color: var(--text);
+  background: var(--overlay-surface-muted, var(--surface));
+}
+
+.typed-input:focus {
+  border-color: var(--red);
+  outline: none;
+  box-shadow: var(--focus-ring, none);
+}

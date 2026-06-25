@@ -68,7 +68,8 @@
   flex-direction: column;
   gap: 0.75rem;
   padding: 0.85rem;
-  min-width: 224px;
+  min-width: 264px;
+  max-width: min(264px, calc(100vw - 1.5rem));
   background: var(--surface);
   background-image: var(--card-overlay);
   border: 1px solid var(--border);
@@ -84,8 +85,22 @@
   to { opacity: 1; transform: translateY(0); }
 }
 
+.panel--anchored {
+  position: fixed;
+  top: auto;
+  right: auto;
+  left: auto;
+  animation: panel-in-anchored 0.16s ease;
+}
+
+@keyframes panel-in-anchored {
+  from { opacity: 0; margin-top: -6px; }
+  to { opacity: 1; margin-top: 0; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .panel { animation: none; }
+  .panel--anchored { animation: none; }
 }
 
 .filter-tabs {
@@ -99,13 +114,14 @@
   border: 1px solid transparent;
   color: var(--text-muted);
   font-family: inherit;
-  font-size: 0.64rem;
+  font-size: 0.62rem;
   font-weight: 700;
-  letter-spacing: 0.6px;
+  letter-spacing: 0.3px;
   text-transform: uppercase;
-  padding: 0.4rem 0.5rem;
+  padding: 0.4rem 0.3rem;
   border-radius: 6px;
   cursor: pointer;
+  white-space: nowrap;
   transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
 
@@ -126,6 +142,164 @@
   grid-template-columns: repeat(3, 1fr);
   gap: 0.7rem;
   justify-items: center;
+}
+
+/* ---- Custom theme builder ---- */
+.builder {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+.builder-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.builder-label {
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.mode-pills {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+}
+
+.mode {
+  background: var(--surface-hover);
+  border: 1px solid transparent;
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  padding: 0.35rem 0.4rem;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.mode:hover {
+  color: var(--text);
+  background: var(--red-light);
+  border-color: var(--red-border);
+}
+
+.mode--active {
+  background: var(--red);
+  color: var(--on-primary, white);
+  border-color: var(--red);
+}
+
+.accent-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.accent-swatch {
+  position: relative;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  cursor: pointer;
+  flex-shrink: 0;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.25), 0 1px 3px rgba(0, 0, 0, 0.25);
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.accent-swatch:hover {
+  transform: scale(1.12);
+}
+
+.accent-swatch--active {
+  box-shadow:
+    0 0 0 2px var(--surface),
+    0 0 0 4px var(--red);
+}
+
+.accent-swatch--active:hover {
+  transform: scale(1.06);
+}
+
+.accent-swatch input[type="color"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: none;
+  cursor: pointer;
+}
+
+.accent-swatch input[type="color"]::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+
+.accent-swatch input[type="color"]::-webkit-color-swatch {
+  border: none;
+  border-radius: 50%;
+}
+
+.accent-swatch input[type="color"]::-moz-color-swatch {
+  border: none;
+  border-radius: 50%;
+}
+
+.pro-gate {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  padding: 0.25rem 0;
+}
+
+.pro-title {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.pro-copy {
+  margin: 0;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+.pro-unlock {
+  align-self: flex-start;
+  background: var(--red);
+  color: var(--on-primary, white);
+  border: none;
+  border-radius: 6px;
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 0.55rem 0.85rem;
+  cursor: pointer;
+  box-shadow: var(--btn-glow, none);
+}
+
+.pro-unlock:hover {
+  background: var(--red-dark);
+}
+
+.pro-note {
+  margin: 0;
+  font-size: 0.72rem;
+  color: var(--text-faint);
 }
 
 .swatch {
@@ -162,6 +336,6 @@
   }
 
   .panel {
-    min-width: 200px;
+    min-width: 252px;
   }
 }

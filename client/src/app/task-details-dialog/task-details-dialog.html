@@ -1,0 +1,42 @@
+<div class="dialog-backdrop" (click)="onBackdropClick()">
+  <div class="dialog" role="dialog" aria-labelledby="task-details-title" (click)="onDialogClick($event)">
+    <header class="dialog-head">
+      <div>
+        <h2 id="task-details-title">{{ task().title }}</h2>
+        @if (task().due) {
+          <p class="dialog-subtitle">{{ formatDue(task().due!) }}</p>
+        }
+        @if (progress(); as stats) {
+          <p class="dialog-progress">{{ stats.done }}/{{ stats.total }} complete</p>
+        }
+      </div>
+      <button type="button" class="close-btn" (click)="close.emit()" aria-label="Close">×</button>
+    </header>
+
+    <div class="dialog-body">
+      @if (checklist().length === 0) {
+        <p class="empty-note">No checklist items for this task.</p>
+      } @else {
+        <ul class="checklist" aria-label="Task checklist">
+          @for (item of checklist(); track item.id) {
+            <li class="checklist-item" [class.checklist-item--done]="item.done">
+              <label class="checklist-label">
+                <input
+                  type="checkbox"
+                  class="checklist-checkbox"
+                  [checked]="item.done"
+                  (change)="onToggleItem(item)"
+                />
+                <span class="checklist-text">{{ item.title }}</span>
+              </label>
+            </li>
+          }
+        </ul>
+      }
+    </div>
+
+    <footer class="dialog-foot">
+      <button type="button" class="btn btn-primary" (click)="close.emit()">Done</button>
+    </footer>
+  </div>
+</div>

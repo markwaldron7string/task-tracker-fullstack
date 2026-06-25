@@ -1,0 +1,112 @@
+@if (pro.unlocked()) {
+  @if (open()) {
+    <button type="button" class="coach-scrim" aria-label="Close coach" (click)="minimize()"></button>
+    <section class="coach-panel" aria-label="AI Planning Coach">
+      <header class="coach-head">
+        <div>
+          <p class="coach-eyebrow">Pro</p>
+          <h2>Planning Coach</h2>
+        </div>
+        <div class="coach-head-actions">
+          <button type="button" class="coach-minimize" (click)="minimize()" aria-label="Minimize coach">−</button>
+          <button type="button" class="coach-close" (click)="close()" aria-label="Close coach">×</button>
+        </div>
+      </header>
+
+      <p class="coach-intro">
+        Reads your tasks and suggests what to focus on. Ask anything about today, overdue work, or scheduling — powered by cloud AI when configured, with on-device fallback offline.
+      </p>
+
+      <div class="coach-suggestions" aria-label="Suggestions">
+        @for (item of suggestions(); track item.id) {
+          <article class="coach-card" [attr.data-kind]="item.kind">
+            <h3>{{ item.title }}</h3>
+            <p>{{ item.body }}</p>
+            @if (item.actionLabel && item.actionType) {
+              <button type="button" class="coach-action" (click)="runSuggestion(item)">
+                {{ item.actionLabel }}
+              </button>
+            }
+          </article>
+        }
+      </div>
+
+      <section class="coach-chat" aria-label="Ask the coach">
+        <label class="coach-chat-label" for="coach-question">Ask the coach</label>
+        <div class="coach-quick">
+          <button type="button" (click)="quickAsk('What should I focus on today?', coachInput)">Focus today</button>
+          <button type="button" (click)="quickAsk('Am I overcommitted?', coachInput)">Overcommitted?</button>
+          <button type="button" (click)="quickAsk('Build a schedule for this week', coachInput)">Build schedule</button>
+        </div>
+        <form class="coach-form" (submit)="$event.preventDefault(); askCoach(coachInput)">
+          <input
+            #coachInput
+            id="coach-question"
+            class="coach-input"
+            placeholder="e.g. What should I do first?"
+            [disabled]="thinking()"
+          />
+          <button type="submit" class="coach-send" [disabled]="thinking()">Ask</button>
+        </form>
+        @if (thinking()) {
+          <p class="coach-reply coach-reply--pending">Thinking…</p>
+        } @else if (chatReply()) {
+          <p class="coach-reply">{{ chatReply() }}</p>
+          @if (scheduleProposal(); as schedule) {
+            <div class="coach-schedule" aria-label="Proposed schedule">
+              <p class="coach-schedule-title">Proposed schedule</p>
+              <ul class="coach-schedule-list">
+                @for (item of schedule; track item.due + (item.taskId ?? item.title ?? '')) {
+                  <li class="coach-schedule-item">
+                    <div class="coach-schedule-row">
+                      <span class="coach-schedule-task">{{ item.title ?? ('Task #' + item.taskId) }}</span>
+                      <span class="coach-schedule-date">{{ formatScheduleDue(item.due) }}</span>
+                      @if (item.checklist?.length) {
+                        <button
+                          type="button"
+                          class="coach-schedule-steps"
+                          [class.coach-schedule-steps--open]="isSchedulePreviewOpen(item)"
+                          (click)="toggleSchedulePreview(item)"
+                        >
+                          {{ item.checklist.length }} steps
+                        </button>
+                      }
+                    </div>
+                    @if (isSchedulePreviewOpen(item) && item.checklist?.length) {
+                      <ul class="coach-schedule-preview" [attr.aria-label]="'Plan for ' + (item.title ?? 'task')">
+                        @for (step of item.checklist; track step.title) {
+                          <li>{{ step.title }}</li>
+                        }
+                      </ul>
+                    }
+                  </li>
+                }
+              </ul>
+              <div class="coach-schedule-actions">
+                <button type="button" class="coach-action" (click)="applySchedule()">Apply to calendar</button>
+                <button type="button" class="coach-schedule-dismiss" (click)="dismissSchedule()">Dismiss</button>
+              </div>
+            </div>
+          }
+          @if (chatSource() === 'ai') {
+            <p class="coach-source">Powered by AI</p>
+          } @else if (chatFromClient()) {
+            <p class="coach-source">Answered on-device</p>
+          }
+        }
+      </section>
+    </section>
+  }
+
+  <button
+    type="button"
+    class="coach-fab"
+    [class.coach-fab--open]="open()"
+    (click)="toggleFab()"
+    [attr.aria-expanded]="open()"
+    aria-label="Open AI Planning Coach"
+  >
+    <span class="coach-fab-icon" aria-hidden="true">✦</span>
+    <span class="coach-fab-label">Coach</span>
+  </button>
+}

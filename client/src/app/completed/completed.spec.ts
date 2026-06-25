@@ -4,7 +4,13 @@ import { Completed } from './completed';
 import { TaskStore } from '../task-store';
 
 const taskStoreStub = {
-  completedTasks: () => []
+  completedEnrichedTasks: () => [],
+  toggleTask: () => {},
+  removeTask: () => {},
+  editTask: () => {},
+  cyclePriority: () => {},
+  setDue: () => {},
+  cycleEstimate: () => {},
 };
 
 describe('Completed', () => {

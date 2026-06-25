@@ -51,10 +51,27 @@ describe('TaskStore', () => {
     await flushConfig('https://api.example.test/api/tasks/');
 
     const request = httpTesting.expectOne('https://api.example.test/api/tasks');
-    request.flush([{ id: 1, title: 'Configured API task', done: false }]);
+    request.flush([{
+      id: 1,
+      title: 'Configured API task',
+      done: false,
+      priority: 'none',
+      due: null,
+      estimateMinutes: null,
+      checklist: [],
+    }]);
     await settlePromises();
 
-    expect(service.tasks()).toEqual([{ id: 1, title: 'Configured API task', done: false, pending: false }]);
+    expect(service.tasks()).toEqual([{
+      id: 1,
+      title: 'Configured API task',
+      done: false,
+      pending: false,
+      priority: 'none',
+      due: null,
+      estimateMinutes: null,
+      checklist: [],
+    }]);
   });
 
   it('adds a task through the configured API URL and reloads tasks', async () => {
@@ -67,23 +84,62 @@ describe('TaskStore', () => {
 
     const createRequest = httpTesting.expectOne('https://api.example.test/api/tasks');
     expect(createRequest.request.method).toBe('POST');
-    expect(createRequest.request.body).toEqual({ title: 'Write frontend tests' });
-    createRequest.flush({ id: 4, title: 'Write frontend tests', done: false });
+    expect(createRequest.request.body).toEqual({
+      title: 'Write frontend tests',
+      priority: 'none',
+      due: null,
+      estimateMinutes: null,
+      checklist: [],
+    });
+    createRequest.flush({
+      id: 4,
+      title: 'Write frontend tests',
+      done: false,
+      priority: 'none',
+      due: null,
+      estimateMinutes: null,
+      checklist: [],
+    });
     await settlePromises();
 
     httpTesting.expectOne('https://api.example.test/api/tasks').flush([
-      { id: 4, title: 'Write frontend tests', done: false }
+      {
+        id: 4,
+        title: 'Write frontend tests',
+        done: false,
+        priority: 'none',
+        due: null,
+        estimateMinutes: null,
+      checklist: [],
+      }
     ]);
     await settlePromises();
 
-    expect(service.tasks()).toEqual([{ id: 4, title: 'Write frontend tests', done: false, pending: false }]);
+    expect(service.tasks()).toEqual([{
+      id: 4,
+      title: 'Write frontend tests',
+      done: false,
+      pending: false,
+      priority: 'none',
+      due: null,
+      estimateMinutes: null,
+      checklist: [],
+    }]);
   });
 
   it('edits a task with a trimmed title through the configured API URL', async () => {
     service = createStore();
     await flushConfig('https://api.example.test/api/tasks');
     httpTesting.expectOne('https://api.example.test/api/tasks').flush([
-      { id: 4, title: 'Write frontend tests', done: false }
+      {
+        id: 4,
+        title: 'Write frontend tests',
+        done: false,
+        priority: 'none',
+        due: null,
+        estimateMinutes: null,
+      checklist: [],
+      }
     ]);
     await settlePromises();
 
@@ -91,16 +147,48 @@ describe('TaskStore', () => {
 
     const updateRequest = httpTesting.expectOne('https://api.example.test/api/tasks/4');
     expect(updateRequest.request.method).toBe('PUT');
-    expect(updateRequest.request.body).toEqual({ title: 'Ship frontend tests', done: false });
-    updateRequest.flush({ id: 4, title: 'Ship frontend tests', done: false });
+    expect(updateRequest.request.body).toEqual({
+      title: 'Ship frontend tests',
+      done: false,
+      priority: 'none',
+      due: null,
+      estimateMinutes: null,
+      checklist: [],
+    });
+    updateRequest.flush({
+      id: 4,
+      title: 'Ship frontend tests',
+      done: false,
+      priority: 'none',
+      due: null,
+      estimateMinutes: null,
+      checklist: [],
+    });
     await settlePromises();
 
     httpTesting.expectOne('https://api.example.test/api/tasks').flush([
-      { id: 4, title: 'Ship frontend tests', done: false }
+      {
+        id: 4,
+        title: 'Ship frontend tests',
+        done: false,
+        priority: 'none',
+        due: null,
+        estimateMinutes: null,
+      checklist: [],
+      }
     ]);
     await settlePromises();
 
-    expect(service.tasks()).toEqual([{ id: 4, title: 'Ship frontend tests', done: false, pending: false }]);
+    expect(service.tasks()).toEqual([{
+      id: 4,
+      title: 'Ship frontend tests',
+      done: false,
+      pending: false,
+      priority: 'none',
+      due: null,
+      estimateMinutes: null,
+      checklist: [],
+    }]);
   });
 
   it('saves new tasks locally when offline and queues them for sync', async () => {
@@ -111,7 +199,16 @@ describe('TaskStore', () => {
     service.addTask(' Offline task ');
 
     expect(service.tasks()).toEqual([
-      { id: -1, title: 'Offline task', done: false, pending: true }
+      {
+        id: -1,
+        title: 'Offline task',
+        done: false,
+        pending: true,
+        priority: 'none',
+        due: null,
+        estimateMinutes: null,
+      checklist: [],
+      }
     ]);
     expect(service.pendingChanges()).toBe(1);
     expect(service.syncStatus()).toBe('offline');
@@ -120,7 +217,15 @@ describe('TaskStore', () => {
 
   it('restores locally saved tasks before syncing', async () => {
     storage.setItem('ttf-offline-tasks-v1', JSON.stringify([
-      { id: -1, title: 'Saved offline', done: false }
+      {
+        id: -1,
+        title: 'Saved offline',
+        done: false,
+        priority: 'none',
+        due: null,
+        estimateMinutes: null,
+      checklist: [],
+      }
     ]));
     storage.setItem('ttf-sync-queue-v1', JSON.stringify([
       {
@@ -138,7 +243,16 @@ describe('TaskStore', () => {
     await flushConfig('https://api.example.test/api/tasks');
 
     expect(service.tasks()).toEqual([
-      { id: -1, title: 'Saved offline', done: false, pending: true }
+      {
+        id: -1,
+        title: 'Saved offline',
+        done: false,
+        pending: true,
+        priority: 'none',
+        due: null,
+        estimateMinutes: null,
+      checklist: [],
+      }
     ]);
     expect(service.pendingChanges()).toBe(1);
   });

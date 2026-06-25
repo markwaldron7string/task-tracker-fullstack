@@ -17,7 +17,14 @@
   <body>
     <script>
       const t = localStorage.getItem('theme');
-      if (t) document.documentElement.setAttribute('data-theme', t);
+      if (t === 'custom') {
+        try {
+          const c = JSON.parse(localStorage.getItem('theme-custom') || 'null');
+          if (c && c.base) document.documentElement.setAttribute('data-theme', c.base + '-custom');
+        } catch (e) {}
+      } else if (t) {
+        document.documentElement.setAttribute('data-theme', t);
+      }
     </script>
     <app-root></app-root>
     <noscript>Please enable JavaScript to continue using this application.</noscript>

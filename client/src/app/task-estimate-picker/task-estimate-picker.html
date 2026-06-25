@@ -1,0 +1,28 @@
+<div class="picker-panel picker-panel--sheet" role="dialog" aria-label="Choose time estimate" (click)="onPanelClick($event)">
+  <p class="picker-title">Time estimate</p>
+  <div class="preset-grid">
+    @for (preset of presets; track preset.label) {
+      <button
+        type="button"
+        class="preset-btn"
+        [class.preset-btn--active]="value() === preset.minutes"
+        (click)="pickPreset(preset.minutes)"
+      >{{ preset.label }}</button>
+    }
+  </div>
+  <div class="custom-row">
+    <span class="custom-label">Custom</span>
+    <form class="custom-field" (submit)="$event.preventDefault(); applyCustom(customInput)">
+      <input
+        #customInput
+        class="custom-input"
+        type="text"
+        placeholder="45m, 1.5h"
+        [value]="customValue"
+        (input)="customValue = $any($event.target).value"
+      />
+      <button type="submit" class="apply-btn">Apply</button>
+    </form>
+    <p class="custom-hint">Examples: 45m, 1.5h, 90</p>
+  </div>
+</div>

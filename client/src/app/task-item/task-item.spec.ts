@@ -12,7 +12,14 @@ describe('TaskItem', () => {
     }).compileComponents();
 
     fixture = TestBed.createComponent(TaskItem);
-    fixture.componentRef.setInput('task', { id: 1, title: 'Test task', done: false });
+    fixture.componentRef.setInput('task', {
+      id: 1,
+      title: 'Test task',
+      done: false,
+      priority: 'none',
+      due: null,
+      estimateMinutes: null,
+    });
     component = fixture.componentInstance;
     fixture.detectChanges();
     await fixture.whenStable();

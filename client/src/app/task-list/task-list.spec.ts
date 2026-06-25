@@ -5,6 +5,7 @@ import { TaskStore } from '../task-store';
 
 const taskStoreStub = {
   tasks: () => [],
+  enrichedTasks: () => [],
   remaining: () => 0,
   pendingChanges: () => 0,
   syncStatus: () => 'synced',

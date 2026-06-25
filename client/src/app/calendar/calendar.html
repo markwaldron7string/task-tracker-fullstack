@@ -1,0 +1,157 @@
+@if (pro.unlocked()) {
+<div class="card">
+  <div class="cal-header">
+    <div class="cal-nav">
+      <button type="button" class="nav-btn" (click)="prevPeriod()" [attr.aria-label]="viewMode() === 'week' ? 'Previous week' : 'Previous month'">&#8249;</button>
+      <h2>{{ periodLabel() }}</h2>
+      <button type="button" class="nav-btn" (click)="nextPeriod()" [attr.aria-label]="viewMode() === 'week' ? 'Next week' : 'Next month'">&#8250;</button>
+    </div>
+    <div class="cal-actions">
+      <div class="view-toggle" role="group" aria-label="Calendar view">
+        <button
+          type="button"
+          class="view-btn"
+          [class.view-btn--active]="viewMode() === 'month'"
+          (click)="setViewMode('month')"
+        >Month</button>
+        <button
+          type="button"
+          class="view-btn"
+          [class.view-btn--active]="viewMode() === 'week'"
+          (click)="setViewMode('week')"
+        >Week</button>
+      </div>
+      <button type="button" class="today-btn" (click)="goToday()">Today</button>
+    </div>
+  </div>
+
+  <div class="weekdays" aria-hidden="true">
+    @for (label of weekdays; track label) {
+      <span class="weekday">{{ label }}</span>
+    }
+  </div>
+
+  <div
+    class="month-grid"
+    [class.month-grid--week]="viewMode() === 'week'"
+    role="grid"
+    [attr.aria-label]="viewMode() === 'week' ? 'Week calendar' : 'Month calendar'"
+  >
+    @for (cell of gridCells(); track cell.iso) {
+      <button
+        type="button"
+        class="day-cell"
+        role="gridcell"
+        [class.day-cell--muted]="!cell.inMonth"
+        [class.day-cell--today]="cell.isToday"
+        [class.day-cell--selected]="cell.iso === selectedDay()"
+        [class.day-cell--busy]="cell.openCount > 0"
+        [class.day-cell--has-plan]="hasDetailsTask(cell.tasks)"
+        [class.day-cell--drop]="dragOverDay() === cell.iso"
+        [attr.aria-label]="cell.day + ', ' + cell.openCount + ' open tasks'"
+        [attr.aria-selected]="cell.iso === selectedDay()"
+        (click)="onDayCellClick(cell.iso, cell.tasks)"
+        (dragover)="onDragOver($event, cell.iso)"
+        (dragleave)="onDragLeave(cell.iso)"
+        (drop)="onDrop($event, cell.iso)"
+      >
+        <span class="day-num">{{ cell.day }}</span>
+        @if (cell.tasks.length) {
+          <div class="day-tasks">
+            @for (task of cell.tasks.slice(0, viewMode() === 'week' ? 5 : 2); track task.id) {
+              <span
+                class="day-task"
+                [class.day-task--clickable]="task.checklist.length > 0"
+                draggable="true"
+                [class.day-task--done]="task.done"
+                [attr.data-priority]="task.priority !== 'none' ? task.priority : null"
+                (click)="openTaskFromCalendar($event, task)"
+                (dragstart)="onDragStart($event, task.id)"
+              >{{ task.title }}</span>
+            }
+            @if (cell.tasks.length > (viewMode() === 'week' ? 5 : 2)) {
+              <span class="day-more">+{{ cell.tasks.length - (viewMode() === 'week' ? 5 : 2) }} more</span>
+            }
+          </div>
+        }
+        @if (cell.openCount) {
+          <span class="day-badge">{{ cell.openCount }}</span>
+        }
+      </button>
+    }
+  </div>
+
+  @if (selectedDay()) {
+    <section class="day-panel">
+      <div class="day-panel-head">
+        <h3>{{ selectedLabel() }}</h3>
+        <span class="day-panel-count">{{ selectedTasks().length }} task(s)</span>
+      </div>
+
+      <div class="add-row">
+        <input
+          #dayInput
+          class="day-input"
+          placeholder="Add for this day..."
+          (keydown.enter)="addOnSelected(dayInput)"
+        />
+        <button type="button" class="btn btn-primary" (click)="addOnSelected(dayInput)">Add</button>
+      </div>
+
+      <div class="task-list" role="list">
+        @for (task of selectedTasks(); track task.id) {
+          <div
+            class="draggable-task"
+            draggable="true"
+            (dragstart)="onDragStart($event, task.id)"
+          >
+            <app-task-item
+              role="listitem"
+              [task]="task"
+              (toggle)="store.toggleTask($event)"
+              (remove)="store.removeTask($event)"
+              (edit)="store.editTask($event.id, $event.title)"
+              (update)="store.updateTask($event.id, $event)"
+              (cyclePriority)="store.cyclePriority($event)"
+              (dueChange)="store.setDue($event.id, $event.due)"
+              (estimateChange)="store.setEstimateMinutes($event.id, $event.estimateMinutes)"
+            />
+          </div>
+        } @empty {
+          <div class="empty-state">Nothing scheduled — add a task above or drag a task here.</div>
+        }
+      </div>
+    </section>
+  }
+
+  @if (store.unscheduledActiveTasks().length) {
+    <section class="unscheduled">
+      <div class="unscheduled-head">
+        <h3>Unscheduled</h3>
+        <span class="unscheduled-hint">Drag onto a day, or select a day and schedule</span>
+      </div>
+      <ul class="unscheduled-list">
+        @for (task of store.unscheduledActiveTasks(); track task.id) {
+          <li
+            class="unscheduled-row"
+            draggable="true"
+            (dragstart)="onDragStart($event, task.id)"
+          >
+            <span class="unscheduled-title">{{ task.title }}</span>
+            <button
+              type="button"
+              class="schedule-btn"
+              [disabled]="!selectedDay()"
+              (click)="scheduleTask(task.id)"
+            >Schedule</button>
+          </li>
+        }
+      </ul>
+    </section>
+  }
+</div>
+} @else {
+<div class="card pro-gate-card">
+  <app-pro-upgrade feature="calendar" />
+</div>
+}

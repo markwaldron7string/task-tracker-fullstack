@@ -18,15 +18,26 @@
     <input
       #taskInput
       class="task-input"
-      placeholder="Add a new task..."
+      placeholder="Try: Review PR tomorrow 30m high"
       (keydown.enter)="store.addTask(taskInput.value); taskInput.value = ''"
     />
     <button type="button" class="btn btn-primary" (click)="store.addTask(taskInput.value); taskInput.value = ''">Add</button>
-    <button type="button" class="btn btn-ghost" (click)="store.clearTasks()">Clear all</button>
+    <button type="button" class="btn btn-ghost" (click)="requestClearAll()">Clear all</button>
   </div>
 
+  @if (confirmClearOpen()) {
+    <div class="confirm-dialog" role="alertdialog" aria-labelledby="clear-all-title" aria-describedby="clear-all-desc">
+      <h3 id="clear-all-title">Clear all tasks?</h3>
+      <p id="clear-all-desc">This will permanently remove every task. You can't undo this action.</p>
+      <div class="confirm-actions">
+        <button type="button" class="btn btn-ghost" (click)="cancelClearAll()">Cancel</button>
+        <button type="button" class="btn btn-danger" (click)="confirmClearAll()">Clear all</button>
+      </div>
+    </div>
+  }
+
   <div class="task-list" role="list">
-    @for (task of store.tasks(); track task.id) {
+    @for (task of store.enrichedTasks(); track task.id) {
       <app-task-item
         role="listitem"
         [task]="task"
@@ -34,6 +45,10 @@
         (toggle)="store.toggleTask($event)"
         (remove)="store.removeTask($event)"
         (edit)="store.editTask($event.id, $event.title)"
+        (update)="store.updateTask($event.id, $event)"
+        (cyclePriority)="store.cyclePriority($event)"
+        (dueChange)="store.setDue($event.id, $event.due)"
+        (estimateChange)="store.setEstimateMinutes($event.id, $event.estimateMinutes)"
       />
     } @empty {
       <div class="empty-state">No tasks yet.</div>

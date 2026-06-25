@@ -107,6 +107,46 @@ h2 {
   border-color: var(--red-border);
 }
 
+.btn-danger {
+  background: #EF4444;
+  color: #fff;
+  border: 1px solid #EF4444;
+}
+
+.btn-danger:hover {
+  background: #DC2626;
+}
+
+.confirm-dialog {
+  width: 100%;
+  margin: -0.5rem 0 1.25rem;
+  padding: 1rem 1.25rem;
+  border-radius: 10px;
+  border: 1px solid var(--red-border);
+  background-color: var(--overlay-surface, var(--surface));
+  box-shadow: var(--shadow), 0 8px 24px rgba(0, 0, 0, 0.18);
+}
+
+.confirm-dialog h3 {
+  margin: 0 0 0.5rem;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.confirm-dialog p {
+  margin: 0 0 1rem;
+  font-size: 0.9rem;
+  line-height: 1.45;
+  color: var(--text-muted);
+}
+
+.confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
 .task-list {
   display: flex;
   flex-direction: column;

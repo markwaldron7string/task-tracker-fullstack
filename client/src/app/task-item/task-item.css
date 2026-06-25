@@ -1,7 +1,8 @@
 :host {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 1rem;
+  position: relative;
   padding: 0.7rem 0.5rem;
   border-bottom: 1px solid var(--border-light);
   border-radius: 4px;
@@ -16,6 +17,61 @@
   background: var(--surface-hover);
 }
 
+.task-head {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.task-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  flex-shrink: 0;
+}
+
+.task-chips {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-shrink: 0;
+}
+
+.priority-flag {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.95rem;
+  line-height: 1;
+  padding: 0.1rem;
+  color: var(--text-faint);
+  opacity: 0.45;
+  transition: opacity 0.15s, transform 0.1s, color 0.15s;
+}
+
+.priority-flag:hover {
+  opacity: 1;
+  transform: scale(1.15);
+}
+
+.priority-flag[data-priority="low"] {
+  color: #3B82F6;
+  opacity: 1;
+}
+
+.priority-flag[data-priority="medium"] {
+  color: #F59E0B;
+  opacity: 1;
+}
+
+.priority-flag[data-priority="high"] {
+  color: #EF4444;
+  opacity: 1;
+}
+
 .task-label {
   display: flex;
   align-items: center;
@@ -23,6 +79,89 @@
   flex: 1;
   cursor: pointer;
   min-width: 0;
+}
+
+.due-chip {
+  flex-shrink: 0;
+  font-size: 0.7rem;
+  font-weight: 600;
+  line-height: 1;
+  padding: 0.25rem 0.45rem;
+  border-radius: 999px;
+  background: var(--surface-hover);
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color 0.12s, background 0.12s, color 0.12s;
+}
+
+.due-chip:hover,
+.due-chip--open {
+  border-color: var(--red-border);
+  background: var(--red-light);
+  color: var(--red-dark);
+}
+
+.due-chip--empty {
+  color: var(--text-faint);
+  font-style: italic;
+  font-weight: 500;
+}
+
+.due-chip--today {
+  background: var(--red-light);
+  color: var(--red-dark);
+  border-color: var(--red-border);
+}
+
+.due-chip--overdue {
+  background: #EF4444;
+  color: #ffffff;
+  border-color: #EF4444;
+}
+
+.estimate-chip {
+  flex-shrink: 0;
+  font-size: 0.7rem;
+  font-weight: 700;
+  line-height: 1;
+  padding: 0.25rem 0.45rem;
+  border-radius: 999px;
+  background: var(--red-light);
+  color: var(--red-dark);
+  border: 1px solid var(--red-border);
+  font-family: inherit;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  transition: border-color 0.12s, background 0.12s;
+}
+
+.estimate-chip--empty {
+  background: var(--surface-hover);
+  color: var(--text-faint);
+  border-color: var(--border);
+  font-style: italic;
+  font-weight: 500;
+}
+
+.estimate-chip:hover,
+.estimate-chip--open {
+  border-color: var(--red);
+  box-shadow: var(--focus-ring, none);
+}
+
+.chip-wrap {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.chip-wrap--due {
+  z-index: 2;
+}
+
+.chip-wrap--estimate {
+  z-index: 1;
 }
 
 .task-checkbox {
@@ -66,6 +205,27 @@
   box-shadow: var(--pill-glow, none);
 }
 
+.details-chip {
+  flex-shrink: 0;
+  font-size: 0.7rem;
+  font-weight: 700;
+  line-height: 1;
+  padding: 0.25rem 0.55rem;
+  border-radius: 999px;
+  background: var(--surface-hover);
+  color: var(--text);
+  border: 1px solid var(--border);
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color 0.12s, background 0.12s, color 0.12s;
+}
+
+.details-chip:hover {
+  border-color: var(--red-border);
+  background: var(--red-light);
+  color: var(--red-dark);
+}
+
 .task-actions {
   display: flex;
   gap: 0.25rem;
@@ -100,35 +260,6 @@
   background: var(--red-light);
 }
 
-/* Edit mode */
-.edit-row {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  width: 100%;
-}
-
-.edit-input {
-  flex: 1;
-  padding: 0.4rem 0.6rem;
-  border: 2px solid var(--red);
-  border-radius: 4px;
-  font-size: 0.95rem;
-  outline: none;
-  color: var(--text);
-  background: var(--surface);
-}
-
-.save-btn {
-  background: var(--red);
-  color: var(--on-primary, white);
-}
-
-.save-btn:hover {
-  background: var(--red-dark);
-  color: var(--on-primary, white);
-}
-
 @media (hover: none) {
   .task-actions {
     opacity: 1;
@@ -137,13 +268,19 @@
 
 @media (max-width: 640px) {
   :host {
-    align-items: flex-start;
-    gap: 0.75rem;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.55rem;
     padding: 0.85rem 0;
   }
 
   :host:hover {
     background: transparent;
+  }
+
+  .task-head {
+    align-items: flex-start;
+    width: 100%;
   }
 
   .task-label {
@@ -154,39 +291,38 @@
     margin-top: 0.15rem;
   }
 
+  .priority-flag {
+    margin-top: 0.15rem;
+  }
+
   .task-title {
-    flex: 1;
-    min-width: 0;
+    white-space: normal;
     overflow: visible;
     text-overflow: clip;
-    white-space: normal;
-    overflow-wrap: anywhere;
-    line-height: 1.4;
+    overflow-wrap: break-word;
+    word-break: normal;
+    line-height: 1.45;
+  }
+
+  .task-controls {
+    flex-wrap: wrap;
+    align-items: center;
+    width: 100%;
+    gap: 0.35rem;
+    padding-left: 1.65rem;
+  }
+
+  .task-chips {
+    flex-wrap: wrap;
   }
 
   .task-actions {
     opacity: 1;
-    flex-shrink: 0;
+    margin-left: auto;
   }
 
   .action-btn {
     border: 1px solid var(--border);
     padding: 0.45rem 0.7rem;
-  }
-
-  .edit-row {
-    align-items: stretch;
-    flex-wrap: wrap;
-  }
-
-  .edit-input {
-    flex-basis: 100%;
-    min-height: 44px;
-  }
-
-  .save-btn,
-  .edit-row .action-btn {
-    flex: 1;
-    min-height: 40px;
   }
 }

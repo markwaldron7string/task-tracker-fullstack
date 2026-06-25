@@ -1,9 +1,15 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Data.Sqlite;
+using TaskTracker;
+using TaskTracker.Coach;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddOpenApi();
+builder.Services.Configure<CoachOptions>(builder.Configuration.GetSection("Coach"));
+builder.Services.AddHttpClient<OpenAiCoachProvider>();
+builder.Services.AddSingleton<StubCoachProvider>();
+builder.Services.AddSingleton<CoachService>();
 
 var connectionString = ResolveTasksConnectionString(builder.Configuration);
 EnsureSqliteDirectoryExists(connectionString);
@@ -42,7 +48,8 @@ app.MapGet("/api/tasks", async (HttpContext ctx, TaskDbContext db) =>
 {
     var userId = ctx.Request.Headers["X-User-ID"].FirstOrDefault();
     if (string.IsNullOrWhiteSpace(userId)) return Results.BadRequest("X-User-ID header is required.");
-    return Results.Ok(await db.Tasks.Where(t => t.UserId == userId).OrderBy(t => t.Id).ToListAsync());
+    var tasks = await db.Tasks.Where(t => t.UserId == userId).OrderBy(t => t.Id).ToListAsync();
+    return Results.Ok(tasks.Select(ToTaskResponse));
 });
 
 app.MapGet("/api/tasks/{id}", async (int id, HttpContext ctx, TaskDbContext db) =>
@@ -50,7 +57,7 @@ app.MapGet("/api/tasks/{id}", async (int id, HttpContext ctx, TaskDbContext db) 
     var userId = ctx.Request.Headers["X-User-ID"].FirstOrDefault();
     if (string.IsNullOrWhiteSpace(userId)) return Results.BadRequest("X-User-ID header is required.");
     var task = await db.Tasks.FirstOrDefaultAsync(t => t.Id == id && t.UserId == userId);
-    return task is null ? Results.NotFound() : Results.Ok(task);
+    return task is null ? Results.NotFound() : Results.Ok(ToTaskResponse(task));
 });
 
 app.MapPost("/api/tasks", async (CreateTaskRequest request, HttpContext ctx, TaskDbContext db) =>
@@ -62,10 +69,19 @@ app.MapPost("/api/tasks", async (CreateTaskRequest request, HttpContext ctx, Tas
     if (string.IsNullOrWhiteSpace(title))
         return Results.BadRequest("Title is required.");
 
-    var newTask = new TaskItem { UserId = userId, Title = title, Done = false };
+    var newTask = new TaskItem
+    {
+        UserId = userId,
+        Title = title,
+        Done = false,
+        Priority = NormalizePriority(request.Priority),
+        Due = NormalizeDue(request.Due),
+        EstimateMinutes = request.EstimateMinutes,
+        ChecklistJson = ChecklistHelper.Serialize(ChecklistHelper.Normalize(request.Checklist)),
+    };
     db.Tasks.Add(newTask);
     await db.SaveChangesAsync();
-    return Results.Created($"/api/tasks/{newTask.Id}", newTask);
+    return Results.Created($"/api/tasks/{newTask.Id}", ToTaskResponse(newTask));
 });
 
 app.MapPut("/api/tasks/{id}", async (int id, UpdateTaskRequest request, HttpContext ctx, TaskDbContext db) =>
@@ -82,8 +98,13 @@ app.MapPut("/api/tasks/{id}", async (int id, UpdateTaskRequest request, HttpCont
 
     task.Title = title;
     task.Done = request.Done;
+    task.Priority = NormalizePriority(request.Priority);
+    task.Due = NormalizeDue(request.Due);
+    task.EstimateMinutes = request.EstimateMinutes;
+    if (request.Checklist is not null)
+        task.ChecklistJson = ChecklistHelper.Serialize(ChecklistHelper.Normalize(request.Checklist));
     await db.SaveChangesAsync();
-    return Results.Ok(task);
+    return Results.Ok(ToTaskResponse(task));
 });
 
 app.MapDelete("/api/tasks/{id}", async (int id, HttpContext ctx, TaskDbContext db) =>
@@ -108,6 +129,29 @@ app.MapDelete("/api/tasks", async (HttpContext ctx, TaskDbContext db) =>
     db.Tasks.RemoveRange(userTasks);
     await db.SaveChangesAsync();
     return Results.NoContent();
+});
+
+app.MapPost("/api/coach/chat", async (CoachChatRequest request, HttpContext ctx, CoachService coach, TaskDbContext db, CancellationToken cancellationToken) =>
+{
+    var userId = ctx.Request.Headers["X-User-ID"].FirstOrDefault();
+    if (string.IsNullOrWhiteSpace(userId)) return Results.BadRequest("X-User-ID header is required.");
+
+    if (request.Snapshot is null)
+        return Results.BadRequest("Snapshot is required.");
+
+    var tasks = await db.Tasks
+        .Where(task => task.UserId == userId && !task.Done)
+        .OrderBy(task => task.Id)
+        .Select(task => new CoachTaskItem(
+            task.Id,
+            task.Title,
+            task.Due,
+            task.Priority,
+            task.EstimateMinutes))
+        .ToListAsync(cancellationToken);
+
+    var reply = await coach.ChatAsync(request.Question, request.Snapshot, tasks, request.History, cancellationToken);
+    return Results.Ok(reply);
 });
 
 app.Run();
@@ -166,16 +210,67 @@ static void EnsureSqliteDirectoryExists(string connectionString)
     }
 }
 
+static string NormalizePriority(string? priority)
+{
+    return priority?.Trim().ToLowerInvariant() switch
+    {
+        "low" => "low",
+        "medium" => "medium",
+        "high" => "high",
+        _ => "none"
+    };
+}
+
+static string? NormalizeDue(string? due)
+{
+    var trimmed = due?.Trim();
+    return string.IsNullOrWhiteSpace(trimmed) ? null : trimmed;
+}
+
+static TaskResponse ToTaskResponse(TaskItem task) => new(
+    task.Id,
+    task.Title,
+    task.Done,
+    task.Priority,
+    task.Due,
+    task.EstimateMinutes,
+    ChecklistHelper.Deserialize(task.ChecklistJson));
+
 class TaskItem
 {
     public int Id { get; set; }
     public string UserId { get; set; } = "";
     public string Title { get; set; } = "";
     public bool Done { get; set; }
+    public string Priority { get; set; } = "none";
+    public string? Due { get; set; }
+    public int? EstimateMinutes { get; set; }
+    public string? ChecklistJson { get; set; }
 }
 
-record CreateTaskRequest(string? Title);
-record UpdateTaskRequest(string? Title, bool Done);
+record TaskResponse(
+    int Id,
+    string Title,
+    bool Done,
+    string Priority,
+    string? Due,
+    int? EstimateMinutes,
+    List<ChecklistItem> Checklist);
+
+record CreateTaskRequest(
+    string? Title,
+    string? Due = null,
+    string? Priority = null,
+    int? EstimateMinutes = null,
+    List<ChecklistItem>? Checklist = null);
+
+record UpdateTaskRequest(
+    string? Title,
+    bool Done,
+    string? Due = null,
+    string? Priority = null,
+    int? EstimateMinutes = null,
+    List<ChecklistItem>? Checklist = null);
 
 // ----- Database -----
 

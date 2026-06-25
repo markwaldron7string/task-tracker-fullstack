@@ -1,12 +1,72 @@
 import { Injectable, signal, computed, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { catchError, firstValueFrom, of } from 'rxjs';
+import { parseQuickAdd } from './task-quick-parse';
+
+export type Priority = 'none' | 'low' | 'medium' | 'high';
+
+export interface ChecklistItem {
+  id: string;
+  title: string;
+  done: boolean;
+}
 
 export interface Task {
   id: number;
   title: string;
   done: boolean;
   pending?: boolean;
+  priority: Priority;
+  due: string | null;
+  estimateMinutes: number | null;
+  checklist: ChecklistItem[];
+}
+
+/** @deprecated Use Task — planning fields now live on the task itself. */
+export type EnrichedTask = Task;
+
+interface LegacyTaskMeta {
+  priority: Priority;
+  due: string | null;
+  estimateMinutes: number | null;
+}
+
+const ESTIMATE_CYCLE = [null, 15, 30, 60, 120] as const;
+const DEFAULT_ESTIMATE_WHEN_SCHEDULED = 15;
+const DEFAULT_DAY_CAPACITY_MINUTES = 480;
+
+const PRIORITY_CYCLE: Priority[] = ['none', 'low', 'medium', 'high'];
+
+function priorityRank(priority: Priority): number {
+  return PRIORITY_CYCLE.indexOf(priority);
+}
+
+function todayIso(): string {
+  return dateToIso(new Date());
+}
+
+export function dateToIso(date: Date): string {
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${date.getFullYear()}-${month}-${day}`;
+}
+
+export function offsetDateIso(days: number): string {
+  const date = new Date();
+  date.setDate(date.getDate() + days);
+  return dateToIso(date);
+}
+
+export function tomorrowIso(): string {
+  return offsetDateIso(1);
+}
+
+export interface WeekGlanceDay {
+  iso: string;
+  weekday: string;
+  day: number;
+  count: number;
+  isToday: boolean;
 }
 
 interface AppConfig {
@@ -21,6 +81,10 @@ interface QueuedTaskChange {
   taskId: number;
   title?: string;
   done?: boolean;
+  priority?: Priority;
+  due?: string | null;
+  estimateMinutes?: number | null;
+  checklist?: ChecklistItem[];
   createdAt: string;
 }
 
@@ -28,6 +92,8 @@ const LOCAL_TASKS_API_URL = 'http://localhost:5226/api/tasks';
 const SAME_ORIGIN_TASKS_API_URL = '/api/tasks';
 const LOCAL_TASKS_STORAGE_KEY = 'ttf-offline-tasks-v1';
 const SYNC_QUEUE_STORAGE_KEY = 'ttf-sync-queue-v1';
+const TASK_META_STORAGE_KEY = 'ttf-task-meta-v1';
+const DAY_CAPACITY_STORAGE_KEY = 'ttf-day-capacity-v1';
 
 function defaultTasksApiUrl() {
   return window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
@@ -40,8 +106,37 @@ function normalizeTasksApiUrl(tasksApiUrl?: string) {
   return trimmedUrl ? trimmedUrl.replace(/\/+$/, '') : defaultTasksApiUrl();
 }
 
-function stripPending(task: Task): Task {
-  return { id: task.id, title: task.title, done: task.done };
+function normalizePriority(value: unknown): Priority {
+  if (value === 'low' || value === 'medium' || value === 'high') return value;
+  return 'none';
+}
+
+function normalizeChecklist(raw: unknown): ChecklistItem[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .filter((item): item is Partial<ChecklistItem> => !!item && typeof item === 'object')
+    .map(item => ({
+      id: typeof item.id === 'string' && item.id.trim() ? item.id.trim() : crypto.randomUUID(),
+      title: typeof item.title === 'string' ? item.title.trim() : '',
+      done: !!item.done,
+    }))
+    .filter(item => item.title.length > 0);
+}
+
+function normalizeTask(raw: Partial<Task> & Pick<Task, 'id' | 'title' | 'done'>): Task {
+  return {
+    id: raw.id,
+    title: raw.title,
+    done: raw.done,
+    priority: normalizePriority(raw.priority),
+    due: raw.due ?? null,
+    estimateMinutes: raw.estimateMinutes ?? null,
+    checklist: normalizeChecklist(raw.checklist),
+  };
+}
+
+function stripFlags(task: Task): Task {
+  return normalizeTask(task);
 }
 
 function readStoredJson<T>(key: string, fallback: T): T {
@@ -61,6 +156,17 @@ function writeStoredJson(key: string, value: unknown) {
   }
 }
 
+function taskPayload(task: Task) {
+  return {
+    title: task.title,
+    done: task.done,
+    priority: task.priority,
+    due: task.due,
+    estimateMinutes: task.estimateMinutes,
+    checklist: task.checklist,
+  };
+}
+
 @Injectable({ providedIn: 'root' })
 export class TaskStore {
   private http = inject(HttpClient);
@@ -70,12 +176,101 @@ export class TaskStore {
   private syncRequested = false;
 
   tasks = signal<Task[]>([]);
+  dayCapacityMinutes = signal(readStoredJson<number>(DAY_CAPACITY_STORAGE_KEY, DEFAULT_DAY_CAPACITY_MINUTES));
   syncStatus = signal<SyncStatus>('loading');
   pendingChanges = signal(0);
 
   remaining = computed(() => this.tasks().filter(task => !task.done).length);
   completedTasks = computed(() => this.tasks().filter(task => task.done));
   activeTasks = computed(() => this.tasks().filter(task => !task.done));
+  activeEnrichedTasks = computed(() => this.enrichedTasks().filter(task => !task.done));
+  completedEnrichedTasks = computed(() => this.enrichedTasks().filter(task => task.done));
+
+  /** Tasks ordered by status, priority, then due date. */
+  enrichedTasks = computed<Task[]>(() =>
+    this.tasks()
+      .map(stripFlags)
+      .sort((a, b) => {
+        if (a.done !== b.done) return a.done ? 1 : -1;
+        const byPriority = priorityRank(b.priority) - priorityRank(a.priority);
+        if (byPriority !== 0) return byPriority;
+        if (a.due && b.due && a.due !== b.due) return a.due < b.due ? -1 : 1;
+        if (a.due && !b.due) return -1;
+        if (!a.due && b.due) return 1;
+        return a.id - b.id;
+      })
+  );
+
+  overdueTasks = computed(() => {
+    const today = todayIso();
+    return this.enrichedTasks().filter(task => !task.done && task.due !== null && task.due < today);
+  });
+
+  dueTodayTasks = computed(() => {
+    const today = todayIso();
+    return this.enrichedTasks().filter(task => !task.done && task.due === today);
+  });
+
+  upcomingTasks = computed(() => {
+    const today = todayIso();
+    return this.enrichedTasks().filter(task => !task.done && task.due !== null && task.due > today);
+  });
+
+  scheduledCount = computed(() =>
+    this.overdueTasks().length + this.dueTodayTasks().length + this.upcomingTasks().length
+  );
+
+  todayFocusTasks = computed(() => [...this.overdueTasks(), ...this.dueTodayTasks()]);
+
+  todayEstimatedMinutes = computed(() =>
+    this.todayFocusTasks().reduce((sum, task) => sum + this.effectiveEstimate(task), 0)
+  );
+
+  todayCapacityPercent = computed(() => {
+    const cap = this.dayCapacityMinutes();
+    if (cap <= 0) return 0;
+    return Math.min(100, Math.round((this.todayEstimatedMinutes() / cap) * 100));
+  });
+
+  isOvercommitted = computed(() => this.todayEstimatedMinutes() > this.dayCapacityMinutes());
+
+  todayEstimatedLabel = computed(() => formatMinutes(this.todayEstimatedMinutes()));
+
+  dayCapacityLabel = computed(() => formatMinutes(this.dayCapacityMinutes()));
+
+  tasksByDueDate = computed(() => {
+    const map: Record<string, Task[]> = {};
+    for (const task of this.enrichedTasks()) {
+      if (!task.due) continue;
+      (map[task.due] ??= []).push(task);
+    }
+    return map;
+  });
+
+  unscheduledActiveTasks = computed(() =>
+    this.enrichedTasks().filter(task => !task.done && !task.due)
+  );
+
+  weekGlance = computed<WeekGlanceDay[]>(() => {
+    const today = todayIso();
+    const byDate = this.tasksByDueDate();
+    const days: WeekGlanceDay[] = [];
+
+    for (let offset = 0; offset < 7; offset++) {
+      const iso = offsetDateIso(offset);
+      const date = new Date(iso + 'T00:00:00');
+      days.push({
+        iso,
+        weekday: date.toLocaleDateString(undefined, { weekday: 'short' }),
+        day: date.getDate(),
+        count: (byDate[iso] ?? []).filter(task => !task.done).length,
+        isToday: iso === today,
+      });
+    }
+
+    return days;
+  });
+
   syncMessage = computed(() => {
     const pendingCount = this.pendingChanges();
 
@@ -104,34 +299,95 @@ export class TaskStore {
     void this.syncNow();
   }
 
-  addTask(title: string) {
-    const trimmedTitle = title.trim();
-    if (trimmedTitle === '') return;
+  addTask(raw: string) {
+    const parsed = parseQuickAdd(raw);
+    if (parsed.title === '') return;
 
     const task: Task = {
       id: this.nextLocalId(),
-      title: trimmedTitle,
+      title: parsed.title,
       done: false,
-      pending: true
+      pending: true,
+      priority: parsed.priority,
+      due: parsed.due,
+      estimateMinutes: parsed.estimateMinutes,
+      checklist: [],
     };
 
-    this.setLocalTasks([...this.tasks().map(stripPending), task]);
+    this.setLocalTasks([...this.tasks().map(stripFlags), task]);
     this.enqueueChange({
       id: crypto.randomUUID(),
       type: 'create',
       taskId: task.id,
       title: task.title,
       done: task.done,
+      priority: task.priority,
+      due: task.due,
+      estimateMinutes: task.estimateMinutes,
+      checklist: task.checklist,
       createdAt: new Date().toISOString()
     });
     void this.syncNow();
+  }
+
+  addTaskOnDate(raw: string, dueIso: string) {
+    const parsed = parseQuickAdd(raw);
+    if (parsed.title === '') return;
+
+    const task: Task = {
+      id: this.nextLocalId(),
+      title: parsed.title,
+      done: false,
+      pending: true,
+      priority: parsed.priority,
+      due: dueIso,
+      estimateMinutes: parsed.estimateMinutes,
+      checklist: [],
+    };
+
+    this.setLocalTasks([...this.tasks().map(stripFlags), task]);
+    this.enqueueChange({
+      id: crypto.randomUUID(),
+      type: 'create',
+      taskId: task.id,
+      title: task.title,
+      done: task.done,
+      priority: task.priority,
+      due: task.due,
+      estimateMinutes: task.estimateMinutes,
+      checklist: task.checklist,
+      createdAt: new Date().toISOString()
+    });
+    void this.syncNow();
+  }
+
+  scheduleToDay(id: number, dueIso: string) {
+    this.setDue(id, dueIso);
   }
 
   toggleTask(id: number) {
     const task = this.tasks().find(t => t.id === id);
     if (!task) return;
 
-    const updatedTask = { ...stripPending(task), done: !task.done };
+    const nextDone = !task.done;
+    const checklist = task.checklist.length
+      ? task.checklist.map(item => ({ ...item, done: nextDone }))
+      : task.checklist;
+    const updatedTask = normalizeTask({ ...stripFlags(task), done: nextDone, checklist });
+    this.updateLocalTask(updatedTask);
+    this.queueTaskUpdate(updatedTask);
+    void this.syncNow();
+  }
+
+  toggleChecklistItem(taskId: number, itemId: string) {
+    const task = this.tasks().find(t => t.id === taskId);
+    if (!task || task.checklist.length === 0) return;
+
+    const checklist = task.checklist.map(item =>
+      item.id === itemId ? { ...item, done: !item.done } : item
+    );
+    const allDone = checklist.every(item => item.done);
+    const updatedTask = normalizeTask({ ...stripFlags(task), checklist, done: allDone });
     this.updateLocalTask(updatedTask);
     this.queueTaskUpdate(updatedTask);
     void this.syncNow();
@@ -142,7 +398,7 @@ export class TaskStore {
     const trimmedTitle = newTitle.trim();
     if (!task || trimmedTitle === '') return;
 
-    const updatedTask = { ...stripPending(task), title: trimmedTitle };
+    const updatedTask = { ...stripFlags(task), title: trimmedTitle };
     this.updateLocalTask(updatedTask);
     this.queueTaskUpdate(updatedTask);
     void this.syncNow();
@@ -152,16 +408,177 @@ export class TaskStore {
     const task = this.tasks().find(t => t.id === id);
     if (!task) return;
 
-    this.setLocalTasks(this.tasks().filter(t => t.id !== id).map(stripPending));
-    this.queueTaskDelete(stripPending(task));
+    this.setLocalTasks(this.tasks().filter(t => t.id !== id).map(stripFlags));
+    this.queueTaskDelete(stripFlags(task));
     void this.syncNow();
   }
 
   clearTasks() {
-    const currentTasks = this.tasks().map(stripPending);
+    const currentTasks = this.tasks().map(stripFlags);
     this.setLocalTasks([]);
     this.queueTaskDeletes(currentTasks);
     void this.syncNow();
+  }
+
+  cyclePriority(id: number) {
+    const task = this.tasks().find(t => t.id === id);
+    if (!task) return;
+    const next = PRIORITY_CYCLE[(priorityRank(task.priority) + 1) % PRIORITY_CYCLE.length];
+    this.updatePlanningFields(id, { priority: next });
+  }
+
+  setPriority(id: number, priority: Priority) {
+    this.updatePlanningFields(id, { priority });
+  }
+
+  setDue(id: number, due: string | null) {
+    this.updatePlanningFields(id, { due: due || null });
+  }
+
+  cycleEstimate(id: number) {
+    const task = this.tasks().find(t => t.id === id);
+    if (!task) return;
+    const idx = ESTIMATE_CYCLE.indexOf(task.estimateMinutes as typeof ESTIMATE_CYCLE[number]);
+    const next = ESTIMATE_CYCLE[(idx + 1) % ESTIMATE_CYCLE.length];
+    this.updatePlanningFields(id, { estimateMinutes: next });
+  }
+
+  setEstimateMinutes(id: number, estimateMinutes: number | null) {
+    this.updatePlanningFields(id, { estimateMinutes });
+  }
+
+  updateTask(id: number, patch: Partial<Pick<Task, 'title' | 'priority' | 'due' | 'estimateMinutes' | 'done' | 'checklist'>>) {
+    const task = this.tasks().find(t => t.id === id);
+    if (!task) return;
+
+    if (patch.title !== undefined && patch.title.trim() === '') return;
+
+    const updatedTask = normalizeTask({
+      ...stripFlags(task),
+      ...patch,
+      ...(patch.title !== undefined ? { title: patch.title.trim() } : {}),
+    });
+
+    this.updateLocalTask(updatedTask);
+    this.queueTaskUpdate(updatedTask);
+    void this.syncNow();
+  }
+
+  setDayCapacityHours(hours: number) {
+    const minutes = Math.max(1, Math.round(hours * 60));
+    this.dayCapacityMinutes.set(minutes);
+    writeStoredJson(DAY_CAPACITY_STORAGE_KEY, minutes);
+  }
+
+  postponeToTomorrow(id: number) {
+    this.setDue(id, tomorrowIso());
+  }
+
+  /** Move lowest-priority due-today tasks to tomorrow until the day fits capacity. */
+  lightenToday(): number {
+    let moved = 0;
+
+    while (this.isOvercommitted()) {
+      const candidates = this.dueTodayTasks()
+        .filter(task => !task.done)
+        .sort((a, b) => {
+          const byPriority = priorityRank(a.priority) - priorityRank(b.priority);
+          if (byPriority !== 0) return byPriority;
+          return (b.estimateMinutes ?? 0) - (a.estimateMinutes ?? 0);
+        });
+
+      const task = candidates[0];
+      if (!task) break;
+
+      this.setDue(task.id, tomorrowIso());
+      moved++;
+    }
+
+    return moved;
+  }
+
+  rollOverdueToToday() {
+    const today = todayIso();
+    for (const task of this.overdueTasks()) {
+      this.setDue(task.id, today);
+    }
+  }
+
+  applySchedule(
+    assignments: Array<{
+      taskId?: number | null;
+      due: string;
+      title?: string;
+      estimateMinutes?: number | null;
+      checklist?: Array<{ id?: string; title: string; done?: boolean }>;
+    }>
+  ): number {
+    let applied = 0;
+    for (const assignment of assignments) {
+      const checklist = normalizeChecklist(assignment.checklist);
+
+      if (assignment.taskId != null) {
+        const task = this.tasks().find(item => item.id === assignment.taskId);
+        if (!task || task.done) continue;
+        const updatedTask = normalizeTask({
+          ...stripFlags(task),
+          due: assignment.due,
+          ...(checklist.length > 0 ? { checklist } : {}),
+        });
+        this.updateLocalTask(updatedTask);
+        this.queueTaskUpdate(updatedTask);
+        applied++;
+        continue;
+      }
+
+      const title = assignment.title?.trim();
+      if (!title) continue;
+
+      const task: Task = {
+        id: this.nextLocalId(),
+        title,
+        done: false,
+        pending: true,
+        priority: 'none',
+        due: assignment.due,
+        estimateMinutes: assignment.estimateMinutes ?? null,
+        checklist,
+      };
+
+      this.setLocalTasks([...this.tasks().map(stripFlags), task]);
+      this.enqueueChange({
+        id: crypto.randomUUID(),
+        type: 'create',
+        taskId: task.id,
+        title: task.title,
+        done: task.done,
+        priority: task.priority,
+        due: task.due,
+        estimateMinutes: task.estimateMinutes,
+        checklist: task.checklist,
+        createdAt: new Date().toISOString(),
+      });
+      applied++;
+    }
+
+    if (applied > 0) void this.syncNow();
+    return applied;
+  }
+
+  private updatePlanningFields(id: number, patch: Partial<Pick<Task, 'priority' | 'due' | 'estimateMinutes'>>) {
+    const task = this.tasks().find(t => t.id === id);
+    if (!task) return;
+
+    const updatedTask = { ...stripFlags(task), ...patch };
+    this.updateLocalTask(updatedTask);
+    this.queueTaskUpdate(updatedTask);
+    void this.syncNow();
+  }
+
+  private effectiveEstimate(task: Task): number {
+    if (task.estimateMinutes !== null) return task.estimateMinutes;
+    if (task.due) return DEFAULT_ESTIMATE_WHEN_SCHEDULED;
+    return 0;
   }
 
   private loadConfig() {
@@ -176,8 +593,49 @@ export class TaskStore {
   private restoreLocalState() {
     this.queuedChanges = readStoredJson<QueuedTaskChange[]>(SYNC_QUEUE_STORAGE_KEY, []);
     this.pendingChanges.set(this.queuedChanges.length);
-    this.tasks.set(this.withPendingFlags(readStoredJson<Task[]>(LOCAL_TASKS_STORAGE_KEY, [])));
+    const stored = readStoredJson<Partial<Task>[]>(LOCAL_TASKS_STORAGE_KEY, []);
+    this.tasks.set(this.withPendingFlags(stored.map(task => normalizeTask({
+      id: task.id!,
+      title: task.title ?? '',
+      done: task.done ?? false,
+      priority: task.priority,
+      due: task.due,
+      estimateMinutes: task.estimateMinutes,
+      checklist: task.checklist,
+    }))));
+    this.migrateLegacyMeta();
     this.syncStatus.set(this.isOnline() ? 'loading' : 'offline');
+  }
+
+  private migrateLegacyMeta() {
+    const legacy = readStoredJson<Record<string, LegacyTaskMeta>>(TASK_META_STORAGE_KEY, {});
+    if (Object.keys(legacy).length === 0) return;
+
+    let changed = false;
+    const updated = this.tasks().map(task => {
+      const meta = legacy[String(task.id)];
+      if (!meta) return stripFlags(task);
+      changed = true;
+      return normalizeTask({
+        ...stripFlags(task),
+        priority: meta.priority,
+        due: meta.due,
+        estimateMinutes: meta.estimateMinutes,
+      });
+    });
+
+    if (!changed) {
+      writeStoredJson(TASK_META_STORAGE_KEY, {});
+      return;
+    }
+
+    this.setLocalTasks(updated);
+    for (const task of updated) {
+      if (legacy[String(task.id)] && task.id > 0) {
+        this.queueTaskUpdate(task);
+      }
+    }
+    writeStoredJson(TASK_META_STORAGE_KEY, {});
   }
 
   private registerConnectivityHandlers() {
@@ -206,10 +664,18 @@ export class TaskStore {
         await this.flushQueuedChanges();
 
         if (this.queuedChanges.length === 0) {
-          const remoteTasks = await firstValueFrom(this.http.get<Task[]>(this.tasksApiUrl));
+          const remoteTasks = await firstValueFrom(this.http.get<Partial<Task>[]>(this.tasksApiUrl));
 
           if (this.queuedChanges.length === 0) {
-            this.setLocalTasks(remoteTasks.map(stripPending));
+            this.setLocalTasks(remoteTasks.map(task => normalizeTask({
+              id: task.id!,
+              title: task.title ?? '',
+              done: task.done ?? false,
+              priority: task.priority,
+              due: task.due,
+              estimateMinutes: task.estimateMinutes,
+              checklist: task.checklist,
+            })));
           }
         }
 
@@ -233,37 +699,99 @@ export class TaskStore {
 
   private async syncChange(change: QueuedTaskChange) {
     if (change.type === 'create') {
-      const createdTask = await firstValueFrom(this.http.post<Task>(this.tasksApiUrl, { title: change.title }));
-      const syncedTask = change.done
-        ? await firstValueFrom(this.http.put<Task>(`${this.tasksApiUrl}/${createdTask.id}`, {
-          title: createdTask.title,
-          done: true
-        }))
-        : createdTask;
+      const createdTask = await firstValueFrom(this.http.post<Partial<Task>>(this.tasksApiUrl, {
+        title: change.title,
+        priority: change.priority ?? 'none',
+        due: change.due ?? null,
+        estimateMinutes: change.estimateMinutes ?? null,
+        checklist: change.checklist ?? [],
+      }));
+      const normalized = normalizeTask({
+        id: createdTask.id!,
+        title: createdTask.title ?? change.title ?? '',
+        done: createdTask.done ?? false,
+        priority: createdTask.priority ?? change.priority,
+        due: createdTask.due ?? change.due ?? null,
+        estimateMinutes: createdTask.estimateMinutes ?? change.estimateMinutes ?? null,
+        checklist: createdTask.checklist ?? change.checklist,
+      });
 
-      this.replaceLocalTaskId(change.taskId, stripPending(syncedTask));
+      let syncedTask = normalized;
+      if (change.done) {
+        const doneResponse = await firstValueFrom(this.http.put<Partial<Task>>(`${this.tasksApiUrl}/${normalized.id}`, {
+          ...taskPayload({ ...normalized, done: true }),
+        }));
+        syncedTask = normalizeTask({
+          id: doneResponse.id ?? normalized.id,
+          title: doneResponse.title ?? normalized.title,
+          done: doneResponse.done ?? true,
+          priority: doneResponse.priority ?? normalized.priority,
+          due: doneResponse.due ?? normalized.due,
+          estimateMinutes: doneResponse.estimateMinutes ?? normalized.estimateMinutes,
+          checklist: doneResponse.checklist ?? normalized.checklist,
+        });
+      }
+
+      this.replaceLocalTaskId(change.taskId, syncedTask);
       return;
     }
 
     if (change.type === 'update') {
+      const payload = {
+        title: change.title,
+        done: change.done,
+        priority: change.priority ?? 'none',
+        due: change.due ?? null,
+        estimateMinutes: change.estimateMinutes ?? null,
+        checklist: change.checklist ?? [],
+      };
+
       try {
-        const updatedTask = await firstValueFrom(this.http.put<Task>(`${this.tasksApiUrl}/${change.taskId}`, {
-          title: change.title,
-          done: change.done
+        const updatedTask = await firstValueFrom(this.http.put<Partial<Task>>(`${this.tasksApiUrl}/${change.taskId}`, payload));
+        this.updateLocalTask(normalizeTask({
+          id: updatedTask.id ?? change.taskId,
+          title: updatedTask.title ?? change.title ?? '',
+          done: updatedTask.done ?? change.done ?? false,
+          priority: updatedTask.priority ?? change.priority,
+          due: updatedTask.due ?? change.due ?? null,
+          estimateMinutes: updatedTask.estimateMinutes ?? change.estimateMinutes ?? null,
+          checklist: updatedTask.checklist ?? change.checklist,
         }));
-        this.updateLocalTask(stripPending(updatedTask));
       } catch (error) {
         if (!this.isNotFound(error)) throw error;
 
-        const recreatedTask = await firstValueFrom(this.http.post<Task>(this.tasksApiUrl, { title: change.title }));
-        const syncedTask = change.done
-          ? await firstValueFrom(this.http.put<Task>(`${this.tasksApiUrl}/${recreatedTask.id}`, {
-            title: recreatedTask.title,
-            done: true
-          }))
-          : recreatedTask;
+        const recreatedTask = await firstValueFrom(this.http.post<Partial<Task>>(this.tasksApiUrl, {
+          title: change.title,
+          priority: change.priority ?? 'none',
+          due: change.due ?? null,
+          estimateMinutes: change.estimateMinutes ?? null,
+          checklist: change.checklist ?? [],
+        }));
+        const normalized = normalizeTask({
+          id: recreatedTask.id!,
+          title: recreatedTask.title ?? change.title ?? '',
+          done: recreatedTask.done ?? false,
+          priority: recreatedTask.priority ?? change.priority,
+          due: recreatedTask.due ?? change.due ?? null,
+          estimateMinutes: recreatedTask.estimateMinutes ?? change.estimateMinutes ?? null,
+          checklist: recreatedTask.checklist ?? change.checklist,
+        });
+        let syncedTask = normalized;
+        if (change.done) {
+          const doneResponse = await firstValueFrom(this.http.put<Partial<Task>>(`${this.tasksApiUrl}/${normalized.id}`, {
+            ...taskPayload({ ...normalized, done: true }),
+          }));
+          syncedTask = normalizeTask({
+            id: doneResponse.id ?? normalized.id,
+            title: doneResponse.title ?? normalized.title,
+            done: doneResponse.done ?? true,
+            priority: doneResponse.priority ?? normalized.priority,
+            due: doneResponse.due ?? normalized.due,
+            estimateMinutes: doneResponse.estimateMinutes ?? normalized.estimateMinutes,
+          });
+        }
 
-        this.replaceLocalTaskId(change.taskId, stripPending(syncedTask));
+        this.replaceLocalTaskId(change.taskId, syncedTask);
       }
       return;
     }
@@ -280,6 +808,10 @@ export class TaskStore {
     if (createChange) {
       createChange.title = task.title;
       createChange.done = task.done;
+      createChange.priority = task.priority;
+      createChange.due = task.due;
+      createChange.estimateMinutes = task.estimateMinutes;
+      createChange.checklist = task.checklist;
       this.persistQueue();
       return;
     }
@@ -290,6 +822,10 @@ export class TaskStore {
     if (updateChange) {
       updateChange.title = task.title;
       updateChange.done = task.done;
+      updateChange.priority = task.priority;
+      updateChange.due = task.due;
+      updateChange.estimateMinutes = task.estimateMinutes;
+      updateChange.checklist = task.checklist;
       this.persistQueue();
       return;
     }
@@ -300,6 +836,10 @@ export class TaskStore {
       taskId: task.id,
       title: task.title,
       done: task.done,
+      priority: task.priority,
+      due: task.due,
+      estimateMinutes: task.estimateMinutes,
+      checklist: task.checklist,
       createdAt: new Date().toISOString()
     });
   }
@@ -357,19 +897,19 @@ export class TaskStore {
 
   private updateLocalTask(task: Task) {
     this.setLocalTasks(this.tasks().map(currentTask =>
-      currentTask.id === task.id ? task : stripPending(currentTask)
+      currentTask.id === task.id ? task : stripFlags(currentTask)
     ));
   }
 
   private replaceLocalTaskId(localId: number, serverTask: Task) {
     this.setLocalTasks(this.tasks().map(task =>
-      task.id === localId ? serverTask : stripPending(task)
+      task.id === localId ? serverTask : stripFlags(task)
     ));
   }
 
   private setLocalTasks(tasks: Task[]) {
     const sortedTasks = tasks
-      .map(stripPending)
+      .map(stripFlags)
       .sort((a, b) => a.id - b.id);
 
     this.tasks.set(this.withPendingFlags(sortedTasks));
@@ -379,12 +919,12 @@ export class TaskStore {
   private persistQueue() {
     this.pendingChanges.set(this.queuedChanges.length);
     writeStoredJson(SYNC_QUEUE_STORAGE_KEY, this.queuedChanges);
-    this.tasks.set(this.withPendingFlags(this.tasks().map(stripPending)));
+    this.tasks.set(this.withPendingFlags(this.tasks().map(stripFlags)));
   }
 
   private withPendingFlags(tasks: Task[]) {
     const pendingTaskIds = new Set(this.queuedChanges.map(change => change.taskId));
-    return tasks.map(task => ({ ...stripPending(task), pending: pendingTaskIds.has(task.id) }));
+    return tasks.map(task => ({ ...stripFlags(task), pending: pendingTaskIds.has(task.id) }));
   }
 
   private nextLocalId() {
@@ -399,4 +939,12 @@ export class TaskStore {
   private isNotFound(error: unknown) {
     return typeof error === 'object' && error !== null && 'status' in error && error.status === 404;
   }
+}
+
+function formatMinutes(total: number): string {
+  const h = Math.floor(total / 60);
+  const m = total % 60;
+  if (h === 0) return `${m}m`;
+  if (m === 0) return `${h}h`;
+  return `${h}h ${m}m`;
 }

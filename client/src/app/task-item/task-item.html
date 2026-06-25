@@ -1,20 +1,61 @@
-@if (isEditing()) {
-  <div class="edit-row">
-    <input #editInput class="edit-input" [value]="task().title" title="Edit task title" placeholder="Enter task title" />
-    <button type="button" class="action-btn save-btn" (click)="saveEdit(editInput.value)">Save</button>
-    <button type="button" class="action-btn" (click)="cancelEditing()">Cancel</button>
-  </div>
-} @else {
+<div class="task-head">
+  <button
+    type="button"
+    class="priority-flag"
+    [attr.data-priority]="priority()"
+    (click)="onCyclePriority()"
+    [title]="'Priority: ' + priority() + ' (click to change)'"
+    [attr.aria-label]="'Priority: ' + priority()"
+  >&#9873;</button>
   <label class="task-label">
     <input class="task-checkbox" type="checkbox" [checked]="task().done" (change)="onToggle()" />
-    <span class="task-number">{{ position() }}.</span>
+    @if (position(); as num) {
+      <span class="task-number">{{ num }}.</span>
+    }
     <span class="task-title" [class.done]="task().done">{{ task().title }}</span>
+  </label>
+</div>
+
+<div class="task-controls">
+  <div class="task-chips">
+    <div class="chip-wrap chip-wrap--due">
+      <button
+        type="button"
+        class="due-chip"
+        [class.due-chip--empty]="!task().due"
+        [class.due-chip--overdue]="isOverdue()"
+        [class.due-chip--today]="isToday()"
+        [class.due-chip--open]="duePickerOpen()"
+        (click)="openDuePicker($event)"
+        [attr.aria-expanded]="duePickerOpen()"
+        aria-haspopup="dialog"
+      >{{ dueLabel() }}</button>
+    </div>
+
+    <div class="chip-wrap chip-wrap--estimate">
+      <button
+        type="button"
+        class="estimate-chip"
+        [class.estimate-chip--empty]="task().estimateMinutes === null"
+        [class.estimate-chip--open]="estimatePickerOpen()"
+        (click)="openEstimatePicker($event)"
+        [attr.aria-expanded]="estimatePickerOpen()"
+        aria-haspopup="dialog"
+      >{{ estimateLabel() }}</button>
+    </div>
+
     @if (task().pending) {
       <span class="pending-pill">Pending</span>
     }
-  </label>
+    @if (hasChecklist()) {
+      <button type="button" class="details-chip" (click)="openDetailsDialog($event)">
+        Details {{ checklistProgress() }}
+      </button>
+    }
+  </div>
+
   <div class="task-actions">
-    <button type="button" class="action-btn" (click)="startEditing()">Edit</button>
+    <button type="button" class="action-btn" (click)="openEditDialog($event)">Edit</button>
     <button type="button" class="action-btn delete-btn" (click)="onRemove()">Delete</button>
   </div>
-}
+</div>

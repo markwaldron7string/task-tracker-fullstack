@@ -1,0 +1,53 @@
+<div
+  class="picker-panel"
+  [class.picker-panel--compact]="mode() === 'compact'"
+  [class.picker-panel--sheet]="mode() === 'popover'"
+  role="dialog"
+  aria-label="Choose due date"
+  (click)="onPanelClick($event)"
+>
+  @if (mode() === 'popover') {
+    <div class="picker-head">
+      <button type="button" class="nav-btn" (click)="prevMonth()" aria-label="Previous month">&#8249;</button>
+      <span class="picker-title">{{ monthLabel() }}</span>
+      <button type="button" class="nav-btn" (click)="nextMonth()" aria-label="Next month">&#8250;</button>
+    </div>
+
+    <div class="weekdays" aria-hidden="true">
+      @for (label of ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa']; track label) {
+        <span class="weekday">{{ label }}</span>
+      }
+    </div>
+
+    <div class="day-grid day-grid--sheet" role="grid">
+      @for (cell of cells(); track cell.iso) {
+        <button
+          type="button"
+          class="day-btn"
+          role="gridcell"
+          [class.day-btn--muted]="!cell.inMonth"
+          [class.day-btn--today]="cell.isToday"
+          [class.day-btn--selected]="cell.isSelected"
+          (click)="pickDay(cell.iso)"
+        >{{ cell.day }}</button>
+      }
+    </div>
+  }
+
+  <div class="quick-row">
+    <button type="button" class="quick-btn" (click)="pickQuick(todayIso())">Today</button>
+    <button type="button" class="quick-btn" (click)="pickQuick(tomorrowIso())">Tomorrow</button>
+    <button type="button" class="quick-btn quick-btn--muted" (click)="clearDate()">Clear</button>
+  </div>
+
+  <label class="typed-row" [class.typed-row--first]="mode() === 'compact'">
+    <span class="typed-label">{{ mode() === 'compact' ? 'Due date' : 'Or type a date' }}</span>
+    <input
+      type="date"
+      class="typed-input"
+      [value]="value() ?? ''"
+      (change)="onDateInput($event)"
+      aria-label="Type due date"
+    />
+  </label>
+</div>

@@ -1,8 +1,18 @@
 <div class="card">
   <h2>Completed Tasks</h2>
-  <div class="task-list">
-    @for (task of store.completedTasks(); track task.id) {
-      <div class="task-row">{{ task.title }}</div>
+  <div class="task-list" role="list">
+    @for (task of store.completedEnrichedTasks(); track task.id) {
+      <app-task-item
+        role="listitem"
+        [task]="task"
+        (toggle)="store.toggleTask($event)"
+        (remove)="store.removeTask($event)"
+        (edit)="store.editTask($event.id, $event.title)"
+        (update)="store.updateTask($event.id, $event)"
+        (cyclePriority)="store.cyclePriority($event)"
+        (dueChange)="store.setDue($event.id, $event.due)"
+        (estimateChange)="store.setEstimateMinutes($event.id, $event.estimateMinutes)"
+      />
     } @empty {
       <div class="empty-state">Nothing completed yet — keep going!</div>
     }

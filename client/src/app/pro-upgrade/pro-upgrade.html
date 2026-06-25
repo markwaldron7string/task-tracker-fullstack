@@ -1,0 +1,48 @@
+@if (variant() === 'page') {
+  <div class="upgrade-page">
+    <header class="upgrade-hero">
+      <p class="upgrade-eyebrow">Task Tracker Pro</p>
+      <h2>Plan smarter. Stress less.</h2>
+      <p class="upgrade-lead">
+        One-time unlock for calendar planning, custom themes, and an AI coach that helps you manage your tasks — not just list them.
+      </p>
+      <div class="upgrade-cta-row">
+        @if (pro.unlocked()) {
+          <span class="upgrade-owned">You're on Pro</span>
+        } @else {
+          <button type="button" class="upgrade-btn upgrade-btn--primary" (click)="unlock()">
+            Unlock Pro — {{ price }}
+          </button>
+        }
+        <span class="upgrade-tagline">{{ tagline }}</span>
+      </div>
+    </header>
+
+    <section class="feature-grid" aria-label="Pro features">
+      @for (item of allFeatures; track item.id) {
+        <article class="feature-card" [class.feature-card--highlight]="item.highlight">
+          <h3>{{ item.title }}</h3>
+          <p>{{ item.description }}</p>
+        </article>
+      }
+    </section>
+
+    @if (!pro.unlocked()) {
+      <footer class="upgrade-footer">
+        <p class="upgrade-demo">Demo: tap unlock above to try everything instantly while we're building payments.</p>
+      </footer>
+    }
+  </div>
+} @else {
+  <div class="pro-gate">
+    <p class="pro-title">{{ headline() }}</p>
+    <p class="pro-copy">{{ copy() }}</p>
+    <div class="pro-actions">
+      <button type="button" class="pro-unlock" (click)="unlock()">Unlock Pro — {{ price }}</button>
+      @if (showLearnMore()) {
+        <a routerLink="/upgrade" class="pro-learn">See all Pro features</a>
+      }
+    </div>
+    <p class="pro-note">Demo: tap to unlock instantly while we're building.</p>
+  </div>
+}

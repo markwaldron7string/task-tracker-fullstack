@@ -8,32 +8,79 @@
     [attr.aria-expanded]="open()"
     aria-label="Change theme"
   >
-    <span class="trigger-dot" [style.--swatch-color]="activeTheme()?.swatch"></span>
-    <span class="trigger-label">{{ activeTheme()?.name }}</span>
+    <span class="trigger-dot" [style.--swatch-color]="triggerSwatch()"></span>
+    <span class="trigger-label">{{ triggerLabel() }}</span>
     <span class="chevron" aria-hidden="true">&#9662;</span>
   </button>
 
   @if (open()) {
-    <div class="panel" role="group" aria-label="Theme settings">
+    <div
+      class="panel"
+      [class.panel--anchored]="useAnchoredPanel()"
+      [style.top]="panelTop()"
+      [style.left]="panelLeft()"
+      role="group"
+      aria-label="Theme settings"
+    >
       <div class="filter-tabs" role="group" aria-label="Theme category">
-        <button type="button" class="tab" [class.tab--active]="category() === 'light'" (click)="switchCategory('light')">Light</button>
-        <button type="button" class="tab" [class.tab--active]="category() === 'dark'" (click)="switchCategory('dark')">Dark</button>
-        <button type="button" class="tab" [class.tab--active]="category() === 'neon'" (click)="switchCategory('neon')">Neon</button>
+        <button type="button" class="tab" [class.tab--active]="tab() === 'light'" (click)="switchTab('light')">Light</button>
+        <button type="button" class="tab" [class.tab--active]="tab() === 'dark'" (click)="switchTab('dark')">Dark</button>
+        <button type="button" class="tab" [class.tab--active]="tab() === 'neon'" (click)="switchTab('neon')">Neon</button>
+        <button type="button" class="tab" [class.tab--active]="tab() === 'custom'" (click)="switchTab('custom')">Custom</button>
       </div>
-      <div class="swatches" role="group" aria-label="Choose color theme">
-        @for (t of filteredThemes(); track t.id) {
-          <button
-            type="button"
-            class="swatch"
-            [class.swatch--active]="theme.active() === t.id"
-            [style.--swatch-color]="t.swatch"
-            [title]="t.name"
-            [attr.aria-label]="t.name"
-            [attr.aria-pressed]="theme.active() === t.id"
-            (click)="select(t.id)"
-          ></button>
+
+      @if (tab() === 'custom') {
+        @if (pro.unlocked()) {
+        <div class="builder">
+          <div class="builder-group">
+            <span class="builder-label">Base</span>
+            <div class="mode-pills" role="group" aria-label="Base palette">
+              <button type="button" class="mode" [class.mode--active]="customBase() === 'light'" (click)="setBase('light')">Light</button>
+              <button type="button" class="mode" [class.mode--active]="customBase() === 'dark'" (click)="setBase('dark')">Dark</button>
+              <button type="button" class="mode" [class.mode--active]="customBase() === 'neon'" (click)="setBase('neon')">Neon</button>
+            </div>
+          </div>
+
+          <div class="builder-group">
+            <span class="builder-label">Accent</span>
+            <div class="accent-row" role="group" aria-label="Accent color">
+              @for (color of accents(); track $index) {
+                <label
+                  class="accent-swatch"
+                  [class.accent-swatch--active]="customAccent().toLowerCase() === color.toLowerCase()"
+                  [title]="'Click to apply, or pick a custom shade'"
+                >
+                  <input
+                    type="color"
+                    [value]="color"
+                    (click)="setAccent(color)"
+                    (input)="pickAccent($index, $any($event.target).value)"
+                    [attr.aria-label]="'Accent color ' + color"
+                  />
+                </label>
+              }
+            </div>
+          </div>
+        </div>
+        } @else {
+          <app-pro-upgrade feature="custom-themes" (unlocked)="onProUnlocked()" />
         }
-      </div>
+      } @else {
+        <div class="swatches" role="group" aria-label="Choose color theme">
+          @for (t of filteredThemes(); track t.id) {
+            <button
+              type="button"
+              class="swatch"
+              [class.swatch--active]="theme.active() === t.id"
+              [style.--swatch-color]="t.swatch"
+              [title]="t.name"
+              [attr.aria-label]="t.name"
+              [attr.aria-pressed]="theme.active() === t.id"
+              (click)="select(t.id)"
+            ></button>
+          }
+        </div>
+      }
     </div>
   }
 </div>

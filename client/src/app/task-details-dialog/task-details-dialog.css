@@ -1,0 +1,168 @@
+.dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  width: 100vw;
+  height: 100dvh;
+  padding: 0;
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.dialog {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-height: min(88dvh, calc(100dvh - env(safe-area-inset-top, 0px) - 0.5rem));
+  overflow: hidden;
+  border-radius: 12px 12px 0 0;
+  border: 1px solid var(--border);
+  border-bottom: none;
+  background-color: var(--overlay-surface, var(--surface));
+  background-image: var(--overlay-sheen, var(--card-overlay));
+  box-shadow: var(--shadow), 0 -8px 40px rgba(0, 0, 0, 0.2);
+}
+
+@media (min-width: 641px) {
+  .dialog-backdrop {
+    justify-content: center;
+    align-items: center;
+    padding: max(0.75rem, env(safe-area-inset-top, 0px)) 1rem max(0.75rem, env(safe-area-inset-bottom, 0px));
+  }
+
+  .dialog {
+    width: min(28rem, 100%);
+    max-height: min(85dvh, calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 1.5rem));
+    border-radius: 12px;
+    border-bottom: 1px solid var(--border);
+    box-shadow: var(--shadow), 0 20px 50px rgba(0, 0, 0, 0.25);
+  }
+}
+
+.dialog-head {
+  flex-shrink: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 1rem 1rem 0.75rem;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.dialog-head h2 {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.35;
+}
+
+.dialog-subtitle {
+  margin: 0.25rem 0 0;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.dialog-progress {
+  margin: 0.35rem 0 0;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--red-dark);
+}
+
+.close-btn {
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+}
+
+.dialog-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  padding: 0.75rem 1rem 1rem;
+}
+
+.empty-note {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.checklist {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.checklist-item {
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  background: var(--surface-hover);
+}
+
+.checklist-item--done {
+  opacity: 0.72;
+}
+
+.checklist-label {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  padding: 0.65rem 0.75rem;
+  cursor: pointer;
+}
+
+.checklist-checkbox {
+  width: 1rem;
+  height: 1rem;
+  margin-top: 0.1rem;
+  accent-color: var(--red);
+  flex-shrink: 0;
+}
+
+.checklist-text {
+  font-size: 0.92rem;
+  line-height: 1.45;
+  color: var(--text);
+}
+
+.checklist-item--done .checklist-text {
+  text-decoration: line-through;
+  color: var(--text-faint);
+}
+
+.dialog-foot {
+  flex-shrink: 0;
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem calc(0.75rem + env(safe-area-inset-bottom, 0px));
+  border-top: 1px solid var(--border-light);
+}
+
+.btn {
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  padding: 0.55rem 1rem;
+  cursor: pointer;
+}
+
+.btn-primary {
+  border: 1px solid var(--red-border);
+  background: var(--red);
+  color: #fff;
+}
