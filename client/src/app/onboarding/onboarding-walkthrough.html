@@ -25,9 +25,9 @@
       <h2 class="tour-title">{{ current.title }}</h2>
       <p class="tour-body">{{ current.body }}</p>
       <div class="tour-actions">
-        <button type="button" class="tour-skip" (click)="onboarding.skip()">Skip tour</button>
+        <button type="button" class="tour-skip" (click)="onboarding.skip()">{{ skipLabel() }}</button>
         <button type="button" class="tour-next" (click)="onboarding.next()">
-          {{ isLastStep() ? 'Get started' : 'Next' }}
+          {{ isLastStep() ? finishLabel() : 'Next' }}
         </button>
       </div>
     </article>

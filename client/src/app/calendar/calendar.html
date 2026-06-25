@@ -1,5 +1,5 @@
 @if (pro.unlocked()) {
-<div class="card">
+<div class="card" data-tour="calendar-view">
   <div class="cal-header">
     <div class="cal-nav">
       <button type="button" class="nav-btn" (click)="prevPeriod()" [attr.aria-label]="viewMode() === 'week' ? 'Previous week' : 'Previous month'">&#8249;</button>

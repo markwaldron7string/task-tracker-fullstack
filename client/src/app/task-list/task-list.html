@@ -23,22 +23,18 @@
       (input)="store.setSearchQuery($any($event.target).value)"
       aria-label="Search tasks"
     />
+    @if (domainOptions().length > 0) {
     <div class="domain-filters" role="group" aria-label="Filter by domain">
-      <button
-        type="button"
-        class="domain-chip"
-        [class.domain-chip--active]="!store.projectFilter()"
-        (click)="store.setProjectFilter(null)"
-      >All</button>
       @for (domain of domainOptions(); track domain) {
         <button
           type="button"
           class="domain-chip"
           [class.domain-chip--active]="store.projectFilter() === domain"
-          (click)="store.setProjectFilter(domain)"
+          (click)="toggleDomain(domain)"
         >{{ domainLabel(domain) }}</button>
       }
     </div>
+    }
   </div>
 
   <div class="add-task-row" data-tour="add-task">

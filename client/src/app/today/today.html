@@ -14,7 +14,7 @@
       </p>
     </section>
 
-    <section class="capacity" [class.capacity--over]="store.isOvercommitted()">
+    <section class="capacity" data-tour="today-planning" [class.capacity--over]="store.isOvercommitted()">
       <div class="capacity-head">
         <span class="capacity-title">Today's load</span>
         <span class="capacity-stats">{{ store.todayEstimatedLabel() }} / {{ store.dayCapacityLabel() }}</span>

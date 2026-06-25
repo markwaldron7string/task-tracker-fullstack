@@ -25,6 +25,10 @@ export class TaskList {
 
   protected domainLabel = projectLabel;
 
+  protected toggleDomain(domain: string): void {
+    this.store.setProjectFilter(this.store.projectFilter() === domain ? null : domain);
+  }
+
   protected requestClearAll(): void {
     if (this.store.tasks().length === 0) return;
     this.confirmClearOpen.set(true);

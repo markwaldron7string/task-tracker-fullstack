@@ -52,13 +52,23 @@ export class OnboardingWalkthrough {
     return this.onboarding.stepIndex() >= steps.length - 1;
   });
 
+  protected skipLabel = computed(() =>
+    this.onboarding.isProTour() ? 'Skip Pro tour' : 'Skip tour'
+  );
+
+  protected finishLabel = computed(() =>
+    this.onboarding.isProTour() ? 'Start using Pro' : 'Get started'
+  );
+
   private lastStepId: string | null = null;
   private layoutAttempts = 0;
 
   constructor() {
     afterNextRender(() => {
-      if (this.onboarding.shouldShow()) {
-        this.onboarding.start();
+      if (this.onboarding.shouldShowIntro()) {
+        this.onboarding.startIntro();
+      } else if (this.onboarding.shouldShowPro()) {
+        this.onboarding.startPro();
       }
     });
 

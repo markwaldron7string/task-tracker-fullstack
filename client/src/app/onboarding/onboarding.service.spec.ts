@@ -1,37 +1,43 @@
 import { TestBed } from '@angular/core/testing';
+import { signal } from '@angular/core';
 import { OnboardingService } from './onboarding.service';
+import { ProService } from '../pro.service';
 
 describe('OnboardingService', () => {
   let service: OnboardingService;
   let storage: Storage;
+  let proUnlocked: ReturnType<typeof signal<boolean>>;
 
   beforeEach(() => {
     storage = createStorage();
+    proUnlocked = signal(false);
     Object.defineProperty(window, 'localStorage', {
       configurable: true,
       value: storage,
     });
     storage.clear();
 
-    TestBed.configureTestingModule({});
+    TestBed.configureTestingModule({
+      providers: [{ provide: ProService, useValue: { unlocked: proUnlocked } }],
+    });
     service = TestBed.inject(OnboardingService);
   });
 
-  it('should start when onboarding has not completed', () => {
-    expect(service.shouldShow()).toBe(true);
-    service.start();
+  it('should start intro when onboarding has not completed', () => {
+    expect(service.shouldShowIntro()).toBe(true);
+    service.startIntro();
     expect(service.active()).toBe(true);
     expect(service.currentStep()?.id).toBe('welcome');
   });
 
-  it('should not start after completion', () => {
+  it('should not start intro after completion', () => {
     storage.setItem('ttf-onboarding-complete', '1');
-    service.start();
+    service.startIntro();
     expect(service.active()).toBe(false);
   });
 
-  it('should advance and complete the tour', () => {
-    service.start();
+  it('should advance and complete the intro tour', () => {
+    service.startIntro();
     const total = service.steps().length;
     for (let i = 0; i < total - 1; i += 1) {
       service.next();
@@ -41,15 +47,27 @@ describe('OnboardingService', () => {
     expect(storage.getItem('ttf-onboarding-complete')).toBe('1');
   });
 
-  it('should skip and mark complete', () => {
-    service.start();
-    service.skip();
-    expect(service.active()).toBe(false);
-    expect(storage.getItem('ttf-onboarding-complete')).toBe('1');
+  it('should start pro tour when unlocked and not yet seen', () => {
+    proUnlocked.set(true);
+    storage.setItem('ttf-onboarding-complete', '1');
+
+    service.startPro();
+    expect(service.active()).toBe(true);
+    expect(service.isProTour()).toBe(true);
+    expect(service.currentStep()?.id).toBe('pro-welcome');
   });
 
-  it('should omit coach step when Pro is locked', () => {
-    expect(service.steps().some(step => step.id === 'coach')).toBe(false);
+  it('should mark pro tour complete separately from intro', () => {
+    proUnlocked.set(true);
+    storage.setItem('ttf-onboarding-complete', '1');
+    service.startPro();
+    service.skip();
+
+    expect(storage.getItem('ttf-pro-onboarding-complete')).toBe('1');
+    expect(service.shouldShowPro()).toBe(false);
+  });
+
+  it('should omit upgrade step when Pro is locked', () => {
     expect(service.steps().some(step => step.id === 'upgrade')).toBe(true);
   });
 });

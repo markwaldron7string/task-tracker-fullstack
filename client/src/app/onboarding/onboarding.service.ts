@@ -2,6 +2,7 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { ProService } from '../pro.service';
 
 export type TourPlacement = 'top' | 'bottom' | 'left' | 'right' | 'center';
+export type TourKind = 'intro' | 'pro';
 
 export interface TourStep {
   id: string;
@@ -12,9 +13,10 @@ export interface TourStep {
   route?: string;
 }
 
-const STORAGE_KEY = 'ttf-onboarding-complete';
+const INTRO_STORAGE_KEY = 'ttf-onboarding-complete';
+const PRO_TOUR_STORAGE_KEY = 'ttf-pro-onboarding-complete';
 
-const TOUR_STEPS: TourStep[] = [
+const INTRO_TOUR_STEPS: TourStep[] = [
   {
     id: 'welcome',
     title: 'Welcome to Task Tracker',
@@ -55,15 +57,73 @@ const TOUR_STEPS: TourStep[] = [
     id: 'upgrade',
     target: 'upgrade',
     title: 'Unlock Pro features',
-    body: 'Upgrade for Calendar planning, the AI Planning Coach, and smart schedules with checklists.',
+    body: 'Upgrade for calendar planning, recurring tasks, the AI Planning Coach, and a full Pro walkthrough when you unlock.',
     placement: 'bottom',
   },
+];
+
+const PRO_TOUR_STEPS: TourStep[] = [
   {
-    id: 'coach',
+    id: 'pro-welcome',
+    title: 'Welcome to Pro',
+    body: 'You unlocked the full planning suite. This quick tour shows where everything lives.',
+    placement: 'center',
+  },
+  {
+    id: 'pro-calendar-nav',
+    target: 'nav-calendar',
+    title: 'Calendar planning',
+    body: 'Month and week views let you drag tasks between days and schedule your week visually.',
+    placement: 'bottom',
+    route: '/calendar',
+  },
+  {
+    id: 'pro-calendar',
+    target: 'calendar-view',
+    title: 'Plan on the calendar',
+    body: 'Drop unscheduled tasks onto days, switch between month and week, and open task details from any chip.',
+    placement: 'bottom',
+    route: '/calendar',
+  },
+  {
+    id: 'pro-today-nav',
+    target: 'nav-today',
+    title: 'Today view',
+    body: 'Your daily command center — overdue, due today, and what’s coming next.',
+    placement: 'bottom',
+    route: '/today',
+  },
+  {
+    id: 'pro-today-planning',
+    target: 'today-planning',
+    title: 'Realistic day planning',
+    body: 'Set your workday length, see today’s load at a glance, and use “Lighten today” when you’re overcommitted. After 4pm, wrap up rolls unfinished tasks to tomorrow.',
+    placement: 'bottom',
+    route: '/today',
+  },
+  {
+    id: 'pro-coach',
     target: 'coach-fab',
-    title: 'Meet your Planning Coach',
-    body: 'Tap Coach to ask what to focus on, check if you’re overcommitted, or build a weekly schedule.',
+    title: 'AI Planning Coach',
+    body: 'Ask what to focus on, check if you’re overcommitted, or build a multi-day schedule with checklists — then apply it to your calendar.',
     placement: 'top',
+    route: '/',
+  },
+  {
+    id: 'pro-themes',
+    target: 'theme-picker',
+    title: 'Custom themes',
+    body: 'Pro unlocks custom accent colors on top of every built-in theme.',
+    placement: 'bottom',
+    route: '/',
+  },
+  {
+    id: 'pro-domains',
+    target: 'add-task',
+    title: 'Domains & recurring tasks',
+    body: 'Tag tasks with #work or #health, set repeats like “daily” or “every week” in quick-add or Edit, and use search to find anything fast.',
+    placement: 'bottom',
+    route: '/',
   },
 ];
 
@@ -72,15 +132,25 @@ export class OnboardingService {
   private pro = inject(ProService);
 
   readonly active = signal(false);
+  readonly kind = signal<TourKind>('intro');
   readonly stepIndex = signal(0);
   readonly layoutRevision = signal(0);
+  readonly pendingProTour = signal(false);
+
+  readonly isProTour = computed(() => this.kind() === 'pro');
 
   readonly steps = computed(() => {
     this.layoutRevision();
-    return TOUR_STEPS.filter(step => {
+    const source = this.kind() === 'pro' ? PRO_TOUR_STEPS : INTRO_TOUR_STEPS;
+    return source.filter(step => {
       if (step.id === 'upgrade' && this.pro.unlocked()) return false;
-      if (step.id === 'coach' && !this.pro.unlocked()) return false;
       if (step.id === 'task-controls' && !document.querySelector('[data-tour="first-task"]')) {
+        return false;
+      }
+      if (step.id === 'pro-calendar' && !document.querySelector('[data-tour="calendar-view"]')) {
+        return false;
+      }
+      if (step.id === 'pro-today-planning' && !document.querySelector('[data-tour="today-planning"]')) {
         return false;
       }
       return true;
@@ -92,18 +162,45 @@ export class OnboardingService {
   readonly progressLabel = computed(() => {
     const total = this.steps().length;
     if (!total) return '';
-    return `${this.stepIndex() + 1} of ${total}`;
+    const prefix = this.kind() === 'pro' ? 'Pro tour' : 'Tour';
+    return `${prefix} · ${this.stepIndex() + 1} of ${total}`;
   });
 
-  shouldShow(): boolean {
+  shouldShowIntro(): boolean {
     if (typeof localStorage === 'undefined') return false;
-    return localStorage.getItem(STORAGE_KEY) !== '1';
+    return localStorage.getItem(INTRO_STORAGE_KEY) !== '1';
   }
 
-  start(): void {
-    if (!this.shouldShow()) return;
+  shouldShowPro(): boolean {
+    if (typeof localStorage === 'undefined') return false;
+    if (!this.pro.unlocked()) return false;
+    return localStorage.getItem(PRO_TOUR_STORAGE_KEY) !== '1';
+  }
+
+  /** @deprecated Use shouldShowIntro */
+  shouldShow(): boolean {
+    return this.shouldShowIntro();
+  }
+
+  startIntro(): void {
+    if (!this.shouldShowIntro()) return;
+    this.kind.set('intro');
     this.stepIndex.set(0);
     this.active.set(true);
+  }
+
+  startPro(): void {
+    if (!this.shouldShowPro()) return;
+    if (this.active() && this.kind() === 'intro') {
+      this.pendingProTour.set(true);
+      return;
+    }
+    this.beginProTour();
+  }
+
+  /** @deprecated Use startIntro */
+  start(): void {
+    this.startIntro();
   }
 
   next(): void {
@@ -127,18 +224,35 @@ export class OnboardingService {
   }
 
   complete(): void {
+    const storageKey = this.kind() === 'pro' ? PRO_TOUR_STORAGE_KEY : INTRO_STORAGE_KEY;
     this.active.set(false);
-    localStorage.setItem(STORAGE_KEY, '1');
+    localStorage.setItem(storageKey, '1');
+
+    if (this.pendingProTour()) {
+      this.pendingProTour.set(false);
+      if (this.shouldShowPro()) {
+        queueMicrotask(() => this.beginProTour());
+      }
+    }
   }
 
   reset(): void {
-    localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(INTRO_STORAGE_KEY);
+    localStorage.removeItem(PRO_TOUR_STORAGE_KEY);
+    this.pendingProTour.set(false);
+    this.kind.set('intro');
     this.stepIndex.set(0);
     this.active.set(true);
   }
 
   refreshLayout(): void {
     this.layoutRevision.update(n => n + 1);
+  }
+
+  private beginProTour(): void {
+    this.kind.set('pro');
+    this.stepIndex.set(0);
+    this.active.set(true);
   }
 
   private isStepReachable(step: TourStep): boolean {

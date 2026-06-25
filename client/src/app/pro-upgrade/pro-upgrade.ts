@@ -1,6 +1,7 @@
 import { Component, inject, input, output } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { ProFeatureId, PRO_AI_NOTE, PRO_FEATURES, PRO_PRICE_LABEL, PRO_TAGLINE, proFeature } from '../pro-features';
+import { OnboardingService } from '../onboarding/onboarding.service';
 import { ProService } from '../pro.service';
 
 @Component({
@@ -11,6 +12,7 @@ import { ProService } from '../pro.service';
 })
 export class ProUpgrade {
   protected pro = inject(ProService);
+  private onboarding = inject(OnboardingService);
 
   /** Which feature triggered this gate — customizes the headline. */
   feature = input<ProFeatureId | null>(null);
@@ -39,6 +41,7 @@ export class ProUpgrade {
 
   protected unlock(): void {
     this.pro.unlock();
+    this.onboarding.startPro();
     this.unlocked.emit();
   }
 }
