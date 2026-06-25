@@ -1,5 +1,6 @@
 .card {
   background: var(--surface);
+  background-image: var(--card-overlay);
   border-radius: 8px;
   box-shadow: var(--shadow);
   padding: 1.75rem;
@@ -19,6 +20,7 @@ h2 {
   font-size: 1.25rem;
   font-weight: 600;
   color: var(--text);
+  text-shadow: var(--heading-glow, none);
 }
 
 .task-stats {
@@ -64,6 +66,7 @@ h2 {
 
 .task-input:focus {
   border-color: var(--red);
+  box-shadow: var(--focus-ring, none);
 }
 
 .btn {
@@ -83,11 +86,13 @@ h2 {
 
 .btn-primary {
   background: var(--red);
-  color: white;
+  color: var(--on-primary, white);
+  box-shadow: var(--btn-glow, none);
 }
 
 .btn-primary:hover {
   background: var(--red-dark);
+  box-shadow: var(--btn-glow-hover, none);
 }
 
 .btn-ghost {

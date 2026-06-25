@@ -2,21 +2,295 @@
   box-sizing: border-box;
 }
 
+/* ============================================================
+   DEFAULT / LIGHT-RED (Ruby)
+   ============================================================ */
 :root {
   --red: #DD0031;
   --red-dark: #C3002F;
   --red-light: #FFEBEE;
   --red-border: #FFCDD2;
+
   --bg: #F5F5F5;
   --surface: #FFFFFF;
+  --surface-hover: rgba(0, 0, 0, 0.03);
   --text: #212121;
   --text-muted: #757575;
   --text-faint: #BDBDBD;
   --border: #E0E0E0;
   --border-light: #F0F0F0;
   --shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+
+  --on-primary: #FFFFFF;
+  --card-overlay: none;
+  --focus-ring: none;
+  --header-border: none;
+  --header-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
+  --header-gradient: linear-gradient(135deg, var(--red) 0%, var(--red-dark) 100%);
+
+  /* Theme-driven decoration hooks (no-op for light themes) */
+  --heading-glow: none;
+  --logo-glow: none;
+  --btn-glow: none;
+  --btn-glow-hover: none;
+  --pill-glow: none;
+  --nav-active-glow: none;
+  --accent-underline: var(--red-border);
 }
 
+/* ============================================================
+   LIGHT THEMES
+   ============================================================ */
+[data-theme="light-ocean"] {
+  --red: #0288D1;
+  --red-dark: #0277BD;
+  --red-light: #E1F5FE;
+  --red-border: #B3E5FC;
+}
+
+[data-theme="light-forest"] {
+  --red: #43A047;
+  --red-dark: #388E3C;
+  --red-light: #E8F5E9;
+  --red-border: #C8E6C9;
+}
+
+[data-theme="light-sunset"] {
+  --red: #F4511E;
+  --red-dark: #E64A19;
+  --red-light: #FBE9E7;
+  --red-border: #FFCCBC;
+}
+
+[data-theme="light-sakura"] {
+  --red: #E91E63;
+  --red-dark: #C2185B;
+  --red-light: #FCE4EC;
+  --red-border: #F48FB1;
+}
+
+[data-theme="light-galaxy"] {
+  --red: #8E24AA;
+  --red-dark: #7B1FA2;
+  --red-light: #F3E5F5;
+  --red-border: #CE93D8;
+}
+
+/* ============================================================
+   DARK THEMES — shared palette
+   Deep slate canvas with layered elevation and a whisper of
+   accent color mixed into surfaces, borders and shadows.
+   ============================================================ */
+[data-theme^="dark-"] {
+  --bg: #0C0E13;
+  --surface: #14171F;
+  --surface-hover: color-mix(in srgb, var(--red) 9%, transparent);
+  --text: #E7EAF0;
+  --text-muted: #9AA3B2;
+  --text-faint: #5A6273;
+  --border: #262B36;
+  --border-light: #1C212B;
+
+  /* Layered elevation: hairline top highlight + soft drop shadow */
+  --shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 1px 2px rgba(0, 0, 0, 0.5),
+    0 12px 32px -10px rgba(0, 0, 0, 0.7);
+
+  /* Surfaces pick up a faint diagonal wash of the active accent */
+  --card-overlay: linear-gradient(
+    160deg,
+    color-mix(in srgb, var(--red) 7%, transparent) 0%,
+    transparent 42%
+  );
+
+  --focus-ring: 0 0 0 3px color-mix(in srgb, var(--red) 35%, transparent);
+
+  --accent-underline: color-mix(in srgb, var(--red) 55%, transparent);
+
+  /* Header: accent-tinted corner fading into the canvas */
+  --header-gradient: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--red) 32%, #11141B) 0%,
+    #0C0E13 72%
+  );
+  --header-border: 1px solid color-mix(in srgb, var(--red) 22%, var(--border));
+  --header-shadow:
+    inset 0 -1px 0 color-mix(in srgb, var(--red) 18%, transparent),
+    0 8px 28px -10px rgba(0, 0, 0, 0.8);
+}
+
+/* Dark: soft accent wash bleeding down from the top of the page */
+[data-theme^="dark-"] body {
+  background:
+    radial-gradient(
+      130% 80% at 50% -10%,
+      color-mix(in srgb, var(--red) 10%, transparent) 0%,
+      transparent 55%
+    ),
+    var(--bg);
+  background-attachment: fixed;
+}
+
+[data-theme="dark-red"] {
+  --red: #FF5C77;
+  --red-dark: #FF3D5E;
+  --red-light: #2D0C14;
+  --red-border: #5A1825;
+}
+
+[data-theme="dark-ocean"] {
+  --red: #4FB0FF;
+  --red-dark: #2C99F5;
+  --red-light: #0A2038;
+  --red-border: #1E4366;
+}
+
+[data-theme="dark-forest"] {
+  --red: #5FD16C;
+  --red-dark: #3FBF52;
+  --red-light: #0B2210;
+  --red-border: #1E4828;
+}
+
+[data-theme="dark-sunset"] {
+  --red: #FF8052;
+  --red-dark: #FF5E2B;
+  --red-light: #2E1405;
+  --red-border: #5A2810;
+}
+
+[data-theme="dark-sakura"] {
+  --red: #FF6FA3;
+  --red-dark: #FF3D85;
+  --red-light: #2E0C1D;
+  --red-border: #581A38;
+}
+
+[data-theme="dark-galaxy"] {
+  --red: #C679E0;
+  --red-dark: #B14BD6;
+  --red-light: #1E0C2E;
+  --red-border: #401C58;
+}
+
+/* ============================================================
+   NEON THEMES — shared palette
+   A blue-black night city where every accent is a light source.
+   Each theme sets --red (the accent) and --red-glow (its rgb,
+   used to build glows); everything else is derived from those.
+   ============================================================ */
+[data-theme^="neon-"] {
+  --bg: #04060E;
+  /* Glassy panels so the glow reads through them */
+  --surface: rgba(11, 16, 30, 0.72);
+  --surface-hover: rgba(var(--red-glow), 0.1);
+  --text: #EAF1FF;
+  --text-muted: #94A3C4;
+  --text-faint: #4C5878;
+  --border: rgba(var(--red-glow), 0.4);
+  --border-light: rgba(255, 255, 255, 0.05);
+
+  --red-light: rgba(var(--red-glow), 0.1);
+  --red-border: rgba(var(--red-glow), 0.45);
+
+  --header-gradient: linear-gradient(
+    180deg,
+    rgba(var(--red-glow), 0.16) 0%,
+    rgba(4, 6, 14, 0.95) 70%,
+    #04060E 100%
+  );
+  --header-border: 1px solid var(--red);
+
+  /* Cards: crisp neon edge + layered bloom floating over black */
+  --shadow:
+    inset 0 0 0 1px rgba(var(--red-glow), 0.5),
+    inset 0 0 26px rgba(var(--red-glow), 0.06),
+    0 0 22px rgba(var(--red-glow), 0.32),
+    0 0 70px -14px rgba(var(--red-glow), 0.55),
+    0 24px 60px -24px #000;
+
+  /* Diagonal sheen sweeping across each panel */
+  --card-overlay: linear-gradient(
+    150deg,
+    rgba(var(--red-glow), 0.16) 0%,
+    transparent 50%
+  );
+
+  /* Focus ring: solid edge + wide diffuse halo */
+  --focus-ring:
+    0 0 0 1px var(--red),
+    0 0 14px rgba(var(--red-glow), 0.7),
+    0 0 38px rgba(var(--red-glow), 0.45);
+
+  /* Header light bar bleeding down into the page */
+  --header-shadow:
+    inset 0 -1px 0 var(--red),
+    0 0 24px rgba(var(--red-glow), 0.45),
+    0 14px 50px -12px rgba(var(--red-glow), 0.5),
+    0 4px 24px rgba(0, 0, 0, 0.8);
+
+  /* Decoration hooks */
+  --heading-glow:
+    0 0 10px rgba(var(--red-glow), 0.7),
+    0 0 26px rgba(var(--red-glow), 0.45);
+  --logo-glow:
+    0 0 10px rgba(var(--red-glow), 0.9),
+    0 0 24px rgba(var(--red-glow), 0.6);
+  --btn-glow:
+    0 0 16px rgba(var(--red-glow), 0.55),
+    0 0 4px rgba(var(--red-glow), 0.8);
+  --btn-glow-hover:
+    0 0 24px rgba(var(--red-glow), 0.8),
+    0 0 8px rgba(var(--red-glow), 1);
+  --pill-glow: 0 0 12px rgba(var(--red-glow), 0.55);
+  --nav-active-glow: 0 0 16px rgba(var(--red-glow), 0.5);
+  --accent-underline: var(--red);
+}
+
+/* Neon accents: --red is the visible color, --red-glow its RGB triplet */
+[data-theme="neon-red"] {
+  --red: #FF2D55;
+  --red-dark: #FF577A;
+  --red-glow: 255, 45, 85;
+}
+
+[data-theme="neon-ocean"] {
+  --red: #22E6FF;
+  --red-dark: #5EEEFF;
+  --red-glow: 34, 230, 255;
+  --on-primary: #03070E;
+}
+
+[data-theme="neon-forest"] {
+  --red: #2BFF9E;
+  --red-dark: #6BFFBC;
+  --red-glow: 43, 255, 158;
+  --on-primary: #03070E;
+}
+
+[data-theme="neon-sunset"] {
+  --red: #FF8A1E;
+  --red-dark: #FFA84D;
+  --red-glow: 255, 138, 30;
+  --on-primary: #110700;
+}
+
+[data-theme="neon-sakura"] {
+  --red: #FF3DA1;
+  --red-dark: #FF6FBC;
+  --red-glow: 255, 61, 161;
+}
+
+[data-theme="neon-galaxy"] {
+  --red: #C95BFF;
+  --red-dark: #DA8AFF;
+  --red-glow: 201, 91, 255;
+}
+
+/* ============================================================
+   BASE STYLES
+   ============================================================ */
 body {
   font-family: 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   background: var(--bg);
@@ -25,6 +299,55 @@ body {
   padding: 0;
   line-height: 1.5;
   min-width: 0;
+}
+
+/* Neon: glowing grid floor over a deep blue-black void */
+[data-theme^="neon-"] body {
+  position: relative;
+  background:
+    linear-gradient(
+      rgba(var(--red-glow), 0.05) 1px,
+      transparent 1px
+    ) 0 0 / 100% 44px,
+    linear-gradient(
+      90deg,
+      rgba(var(--red-glow), 0.05) 1px,
+      transparent 1px
+    ) 0 0 / 44px 100%,
+    radial-gradient(120% 70% at 50% 0%, #0A1024 0%, var(--bg) 60%);
+  background-attachment: fixed;
+}
+
+/* Animated ambient bloom that breathes from the top of the page */
+[data-theme^="neon-"] body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: radial-gradient(
+    90% 50% at 50% -8%,
+    rgba(var(--red-glow), 0.32) 0%,
+    transparent 62%
+  );
+  animation: neon-breathe 7s ease-in-out infinite;
+}
+
+@keyframes neon-breathe {
+  0%, 100% { opacity: 0.65; }
+  50% { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-theme^="neon-"] body::before {
+    animation: none;
+  }
+}
+
+/* Neon: frosted-glass panels so the grid & bloom read through them */
+[data-theme^="neon-"] .card {
+  backdrop-filter: blur(7px);
+  -webkit-backdrop-filter: blur(7px);
 }
 
 button {

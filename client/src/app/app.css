@@ -4,10 +4,11 @@
 }
 
 header {
-  background: linear-gradient(135deg, #DD0031 0%, #C3002F 100%);
+  background: var(--header-gradient);
+  border-bottom: var(--header-border, none);
   color: white;
   padding: 0 2rem;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
+  box-shadow: var(--header-shadow, 0 2px 10px rgba(0, 0, 0, 0.25));
 }
 
 .header-content {
@@ -31,6 +32,7 @@ header {
   font-size: 1.8rem;
   line-height: 1;
   opacity: 0.9;
+  text-shadow: var(--logo-glow, none);
 }
 
 h1 {
@@ -38,6 +40,7 @@ h1 {
   font-size: 1.4rem;
   font-weight: 600;
   letter-spacing: 0.3px;
+  text-shadow: var(--logo-glow, none);
 }
 
 nav {
@@ -64,6 +67,7 @@ nav a.active-link {
   background: rgba(255, 255, 255, 0.2);
   color: white;
   font-weight: 700;
+  box-shadow: var(--nav-active-glow, none);
 }
 
 main {
@@ -109,6 +113,11 @@ main {
     padding: 0.55rem 0.35rem;
     text-align: center;
     font-size: 0.8rem;
+  }
+
+  theme-picker {
+    width: 100%;
+    justify-content: center;
   }
 
   main {

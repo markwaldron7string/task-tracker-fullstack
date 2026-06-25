@@ -13,7 +13,7 @@
 }
 
 :host:hover {
-  background: #FAFAFA;
+  background: var(--surface-hover);
 }
 
 .task-label {
@@ -63,6 +63,7 @@
   font-weight: 700;
   line-height: 1;
   padding: 0.25rem 0.45rem;
+  box-shadow: var(--pill-glow, none);
 }
 
 .task-actions {
@@ -120,12 +121,12 @@
 
 .save-btn {
   background: var(--red);
-  color: white;
+  color: var(--on-primary, white);
 }
 
 .save-btn:hover {
   background: var(--red-dark);
-  color: white;
+  color: var(--on-primary, white);
 }
 
 @media (hover: none) {
