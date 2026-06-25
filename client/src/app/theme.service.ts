@@ -74,7 +74,17 @@ export class ThemeService {
 
       localStorage.setItem('theme', id);
       if (custom) localStorage.setItem('theme-custom', JSON.stringify(custom));
+      requestAnimationFrame(() => this.syncOnPrimary(root));
     });
+  }
+
+  private syncOnPrimary(root: HTMLElement): void {
+    const accent = getComputedStyle(root).getPropertyValue('--red').trim();
+    const rgb = parseCssColor(accent);
+    if (!rgb) return;
+    const { r, g, b } = rgb;
+    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+    root.style.setProperty('--on-primary', luminance > 0.6 ? '#0A0A0A' : '#ffffff');
   }
 
   set(id: string): void {
@@ -112,8 +122,7 @@ export class ThemeService {
     }
 
     // Pick legible text for solid accent surfaces (buttons) based on luminance.
-    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-    root.style.setProperty('--on-primary', luminance > 0.6 ? '#0A0A0A' : '#ffffff');
+    this.syncOnPrimary(root);
   }
 
   private loadActive(): string {
@@ -137,6 +146,17 @@ export class ThemeService {
     }
     return null;
   }
+}
+
+function parseCssColor(color: string): { r: number; g: number; b: number } | null {
+  const trimmed = color.trim();
+  if (!trimmed) return null;
+  if (trimmed.startsWith('#')) return hexToRgb(trimmed);
+  const match = trimmed.match(/^rgba?\(\s*([\d.]+)[,\s]+([\d.]+)[,\s]+([\d.]+)/);
+  if (match) {
+    return { r: Number(match[1]), g: Number(match[2]), b: Number(match[3]) };
+  }
+  return hexToRgb(trimmed);
 }
 
 function hexToRgb(hex: string): { r: number; g: number; b: number } {

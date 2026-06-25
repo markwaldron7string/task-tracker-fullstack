@@ -1,6 +1,8 @@
-import { Component, computed, input, output } from '@angular/core';
+import { Component, computed, inject, input, output } from '@angular/core';
 import { formatScheduleDue } from '../pro-coach';
-import { ChecklistItem, EnrichedTask } from '../task-store';
+import { buildDayTaskGroups, formatDayLabel } from '../task-day-groups';
+import { DetailsView } from '../task-details-overlay.service';
+import { ChecklistItem, TaskStore, countOpenDayTasks } from '../task-store';
 
 @Component({
   selector: 'app-task-details-dialog',
@@ -9,12 +11,61 @@ import { ChecklistItem, EnrichedTask } from '../task-store';
   styleUrl: './task-details-dialog.css',
 })
 export class TaskDetailsDialog {
-  task = input.required<EnrichedTask>();
+  private store = inject(TaskStore);
+
+  view = input.required<DetailsView>();
 
   toggleItem = output<{ taskId: number; itemId: string }>();
   close = output<void>();
+  planFilterChange = output<string>();
 
-  protected checklist = computed(() => this.task().checklist ?? []);
+  protected formatDue = formatScheduleDue;
+
+  protected isDayView = computed(() => this.view().kind === 'day');
+
+  protected task = computed(() => {
+    const current = this.view();
+    return current.kind === 'task' ? current.task : null;
+  });
+
+  protected dayIso = computed(() => {
+    const current = this.view();
+    return current.kind === 'day' ? current.iso : null;
+  });
+
+  protected planFilter = computed(() => {
+    const current = this.view();
+    return current.kind === 'day' ? current.planFilter : '__all__';
+  });
+
+  protected dayTasks = computed(() => {
+    const iso = this.dayIso();
+    if (!iso) return [];
+    return this.store.tasksByDueDate()[iso] ?? [];
+  });
+
+  protected dayLabel = computed(() => {
+    const iso = this.dayIso();
+    return iso ? formatDayLabel(iso) : '';
+  });
+
+  protected dayItemCount = computed(() => countOpenDayTasks(this.dayTasks()));
+
+  protected planGroups = computed(() => buildDayTaskGroups(this.dayTasks()));
+
+  protected showPlanFilters = computed(() =>
+    this.planGroups().some(group => group.key !== '__other__' && group.label)
+  );
+
+  protected visibleGroups = computed(() => {
+    const filter = this.planFilter();
+    const groups = this.planGroups();
+    if (filter === '__all__') return groups;
+    return groups.filter(group => group.key === filter);
+  });
+
+  protected checklist = computed(() => this.task()?.checklist ?? []);
+
   protected progress = computed(() => {
     const items = this.checklist();
     if (items.length === 0) return null;
@@ -22,7 +73,11 @@ export class TaskDetailsDialog {
     return { done, total: items.length };
   });
 
-  protected formatDue = formatScheduleDue;
+  protected taskProgress(task: { checklist: ChecklistItem[] }): { done: number; total: number } | null {
+    if (task.checklist.length === 0) return null;
+    const done = task.checklist.filter(item => item.done).length;
+    return { done, total: task.checklist.length };
+  }
 
   protected onBackdropClick(): void {
     this.close.emit();
@@ -32,7 +87,11 @@ export class TaskDetailsDialog {
     event.stopPropagation();
   }
 
-  protected onToggleItem(item: ChecklistItem): void {
-    this.toggleItem.emit({ taskId: this.task().id, itemId: item.id });
+  protected onToggleItem(item: ChecklistItem, taskId: number): void {
+    this.toggleItem.emit({ taskId, itemId: item.id });
+  }
+
+  protected selectPlanFilter(filter: string): void {
+    this.planFilterChange.emit(filter);
   }
 }

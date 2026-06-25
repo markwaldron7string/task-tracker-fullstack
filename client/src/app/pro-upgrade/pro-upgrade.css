@@ -60,7 +60,7 @@
 .upgrade-demo {
   margin: 0;
   font-size: 0.72rem;
-  color: var(--text-faint);
+  color: var(--text-muted);
 }
 
 .upgrade-page {
@@ -107,7 +107,7 @@
   max-width: 36rem;
   font-size: 0.78rem;
   line-height: 1.45;
-  color: var(--text-faint);
+  color: var(--text-muted);
 }
 
 .upgrade-cta-row {
@@ -119,7 +119,7 @@
 
 .upgrade-tagline {
   font-size: 0.8rem;
-  color: var(--text-faint);
+  color: var(--text-muted);
 }
 
 .upgrade-owned {

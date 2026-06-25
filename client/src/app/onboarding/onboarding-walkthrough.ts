@@ -11,14 +11,12 @@ import {
 import { NavigationEnd, Router } from '@angular/router';
 import { filter } from 'rxjs';
 import { TaskStore } from '../task-store';
+import {
+  buildSpotlightBox,
+  resolveTourTarget,
+  SpotlightBox,
+} from './onboarding-layout';
 import { OnboardingService, TourPlacement, TourStep } from './onboarding.service';
-
-interface Box {
-  top: number;
-  left: number;
-  width: number;
-  height: number;
-}
 
 interface FlagPosition {
   top: number;
@@ -26,7 +24,6 @@ interface FlagPosition {
   arrowX: number;
 }
 
-const SPOTLIGHT_PAD = 8;
 const FLAG_GAP = 14;
 const FLAG_WIDTH = 320;
 const FLAG_HEIGHT_EST = 190;
@@ -43,7 +40,7 @@ export class OnboardingWalkthrough {
   private store = inject(TaskStore);
 
   protected step = this.onboarding.currentStep;
-  protected spotlight = signal<Box | null>(null);
+  protected spotlight = signal<SpotlightBox | null>(null);
   protected flagPos = signal<FlagPosition | null>(null);
   protected flagPlacement = signal<TourPlacement>('bottom');
 
@@ -157,22 +154,17 @@ export class OnboardingWalkthrough {
     }
 
     this.layoutAttempts = 0;
-    el.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'auto' });
+    const target = resolveTourTarget(el, step.target!);
+    target.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'auto' });
 
-    const rect = el.getBoundingClientRect();
-    const box: Box = {
-      top: Math.max(VIEWPORT_PAD, rect.top - SPOTLIGHT_PAD),
-      left: Math.max(VIEWPORT_PAD, rect.left - SPOTLIGHT_PAD),
-      width: rect.width + SPOTLIGHT_PAD * 2,
-      height: rect.height + SPOTLIGHT_PAD * 2,
-    };
+    const box = buildSpotlightBox(step, target, VIEWPORT_PAD);
 
     this.spotlight.set(box);
     this.flagPlacement.set(step.placement);
     this.flagPos.set(this.computeFlagPosition(box, step.placement));
   }
 
-  private computeFlagPosition(box: Box, placement: TourPlacement): FlagPosition {
+  private computeFlagPosition(box: SpotlightBox, placement: TourPlacement): FlagPosition {
     const vw = window.innerWidth;
     const vh = window.innerHeight;
     const flagW = Math.min(FLAG_WIDTH, vw - VIEWPORT_PAD * 2);

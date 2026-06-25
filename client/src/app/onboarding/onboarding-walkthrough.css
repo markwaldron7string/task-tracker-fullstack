@@ -18,7 +18,6 @@
 
 .tour-spotlight {
   position: fixed;
-  border-radius: 10px;
   box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.62);
   pointer-events: none;
   z-index: 1;
@@ -27,23 +26,21 @@
 .tour-spotlight--pulse::after {
   content: '';
   position: absolute;
-  inset: -5px;
-  border: 2px solid var(--red);
+  inset: -1px;
+  border: 1.5px solid var(--red);
   border-radius: inherit;
   animation: tour-pulse 1.6s ease-in-out infinite;
-  box-shadow: 0 0 18px color-mix(in srgb, var(--red) 55%, transparent);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--red) 45%, transparent);
 }
 
 @keyframes tour-pulse {
   0%,
   100% {
-    opacity: 0.45;
-    transform: scale(1);
+    opacity: 0.55;
   }
 
   50% {
     opacity: 1;
-    transform: scale(1.02);
   }
 }
 

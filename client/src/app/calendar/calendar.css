@@ -112,7 +112,7 @@ h2 {
   font-weight: 700;
   letter-spacing: 0.5px;
   text-transform: uppercase;
-  color: var(--text-faint);
+  color: var(--text-muted);
 }
 
 .month-grid {
@@ -142,8 +142,13 @@ h2 {
   background: var(--surface-hover);
 }
 
-.day-cell--muted {
-  opacity: 0.45;
+.day-cell--muted .day-num {
+  color: var(--text-faint);
+}
+
+.day-cell--muted .day-task,
+.day-cell--muted .day-more {
+  color: var(--text-faint);
 }
 
 .day-cell--today {
@@ -304,17 +309,17 @@ h2 {
 .pro-note {
   margin: 0.75rem 0 0;
   font-size: 0.75rem;
-  color: var(--text-faint);
+  color: var(--text-muted);
 }
 
 .day-task--done {
-  opacity: 0.5;
+  color: var(--text-faint);
   text-decoration: line-through;
 }
 
 .day-task[data-priority="high"] {
-  background: #FEE2E2;
-  color: #B91C1C;
+  background: var(--danger-surface);
+  color: var(--danger-text);
 }
 
 .day-more {
@@ -346,6 +351,21 @@ h3 {
 .day-panel-count {
   font-size: 0.8rem;
   color: var(--text-muted);
+}
+
+.plan-section-title {
+  margin: 0.85rem 0 0.45rem;
+  padding-bottom: 0.35rem;
+  border-bottom: 1px solid var(--border-light);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--red-dark);
+}
+
+.task-list .plan-section-title:first-child {
+  margin-top: 0;
 }
 
 .add-row {
@@ -400,7 +420,7 @@ h3 {
 
 .empty-state {
   text-align: center;
-  color: var(--text-faint);
+  color: var(--text-muted);
   padding: 1.5rem 1rem;
   font-size: 0.9rem;
   font-style: italic;
@@ -422,7 +442,7 @@ h3 {
 
 .unscheduled-hint {
   font-size: 0.75rem;
-  color: var(--text-faint);
+  color: var(--text-muted);
 }
 
 .unscheduled-list {
@@ -466,7 +486,9 @@ h3 {
 }
 
 .schedule-btn:disabled {
-  opacity: 0.4;
+  color: var(--text-faint);
+  background: var(--surface-hover);
+  border-color: var(--border);
   cursor: not-allowed;
 }
 

@@ -34,7 +34,7 @@ h2 {
 
 .empty-state {
   text-align: center;
-  color: var(--text-faint);
+  color: var(--text-muted);
   padding: 2.5rem 1rem;
   font-size: 0.925rem;
   font-style: italic;

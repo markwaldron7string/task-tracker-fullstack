@@ -4,7 +4,7 @@
       <h2>Today</h2>
       <span class="date">{{ longDate }}</span>
     </div>
-    <span class="day-count">{{ store.dueTodayTasks().length }} due today</span>
+    <span class="day-count">{{ store.openDueTodayCount() }} due today</span>
   </div>
 
   @if (store.todayFocusTasks().length > 0) {
@@ -73,7 +73,7 @@
               class="week-day"
               [class.week-day--today]="day.isToday"
               [class.week-day--busy]="day.count > 0"
-              [attr.aria-label]="day.weekday + ' ' + day.day + ', ' + day.count + ' open tasks'"
+              [attr.aria-label]="day.weekday + ' ' + day.day + ', ' + day.count + ' open items'"
               (click)="openCalendarDay(day.iso)"
             >
               <span class="week-day-label">{{ day.weekday }}</span>
@@ -98,17 +98,17 @@
       </div>
       @if (!reviewDismissed()) {
         <ul class="daily-review-stats">
-          <li><strong>{{ store.completedDueTodayCount() }}</strong> completed due today</li>
+          <li><strong>{{ store.completedDueTodayCount() }}</strong> completed today</li>
           <li><strong>{{ store.incompleteDueTodayCount() }}</strong> still open for today</li>
           <li><strong>{{ store.overdueTasks().length }}</strong> overdue</li>
           <li><strong>{{ store.tomorrowTaskCount() }}</strong> scheduled tomorrow</li>
         </ul>
         @if (store.incompleteDueTodayCount() > 0) {
           <p class="daily-review-hint">
-            Not everything got done? That's normal — roll the rest to tomorrow and start fresh.
+            Not everything got done? Pick a new date for today's open items and start fresh.
           </p>
-          <button type="button" class="btn btn-primary daily-review-action" (click)="wrapUpDay()">
-            Roll {{ store.incompleteDueTodayCount() }} to tomorrow
+          <button type="button" class="btn btn-primary daily-review-action" (click)="openReschedulePicker()">
+            Move tasks to later date
           </button>
         } @else {
           <p class="daily-review-hint daily-review-hint--ok">You're clear for today. Nice work.</p>
@@ -145,7 +145,7 @@
     }
 
     <section class="group">
-      <h3 class="group-title">Due today ({{ store.dueTodayTasks().length }})</h3>
+      <h3 class="group-title">Due today ({{ store.openDueTodayCount() }})</h3>
       <div class="task-list" role="list">
         @for (task of store.dueTodayTasks(); track task.id) {
           <app-task-item

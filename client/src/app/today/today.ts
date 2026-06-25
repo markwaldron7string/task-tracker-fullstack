@@ -2,6 +2,7 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { ProService } from '../pro.service';
 import { TaskItem } from '../task-item/task-item';
+import { TaskPickerOverlayService } from '../task-picker-overlay.service';
 import { TaskStore } from '../task-store';
 
 const REVIEW_DISMISS_KEY = 'ttf-daily-review-dismissed';
@@ -15,6 +16,7 @@ const REVIEW_DISMISS_KEY = 'ttf-daily-review-dismissed';
 export class Today {
   store = inject(TaskStore);
   private router = inject(Router);
+  private pickerOverlay = inject(TaskPickerOverlayService);
   protected pro = inject(ProService);
 
   protected readonly capacityPresets = [4, 6, 8, 10];
@@ -44,7 +46,7 @@ export class Today {
   });
 
   protected morningBriefing = computed(() => {
-    const dueToday = this.store.dueTodayTasks().length;
+    const dueToday = this.store.openDueTodayCount();
     const overdue = this.store.overdueTasks().length;
     const planned = this.store.todayEstimatedLabel();
     const capacity = this.store.dayCapacityLabel();
@@ -71,8 +73,9 @@ export class Today {
     this.store.lightenToday();
   }
 
-  protected wrapUpDay(): void {
-    this.store.wrapUpDay();
+  protected openReschedulePicker(): void {
+    const taskIds = this.store.dueTodayTasks().map(task => task.id);
+    this.pickerOverlay.openBulkReschedule(taskIds);
   }
 
   protected dismissReview(): void {

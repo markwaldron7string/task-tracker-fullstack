@@ -10,6 +10,7 @@ import { TaskStore } from '../task-store';
 const taskStoreStub = {
   overdueTasks: () => [],
   dueTodayTasks: () => [{ title: 'Focus task' }],
+  openDueTodayCount: () => 1,
   upcomingTasks: () => [],
   unscheduledActiveTasks: () => [],
   activeEnrichedTasks: () => [],
@@ -53,6 +54,8 @@ describe('ProAssistant', () => {
       text: 'Start with Focus task.',
       source: 'ai',
       schedule: [],
+      overview: null,
+      awaitingReply: false,
     });
 
     const input = document.createElement('input');
@@ -76,5 +79,49 @@ describe('ProAssistant', () => {
 
     expect(fixture.componentInstance['chatReply']()).toContain('due today');
     expect(fixture.componentInstance['chatFromClient']()).toBe(true);
+  });
+
+  it('shows a reply arrow when the coach asks a follow-up question', async () => {
+    coachApi.chat.mockResolvedValue({
+      text: "I'll create a 7-day keto diet plan for you. Just let me know if you're ready for me to add it to your calendar!",
+      source: 'ai',
+      schedule: [],
+      overview: null,
+      awaitingReply: false,
+    });
+
+    fixture.componentInstance['open'].set(true);
+    const input = document.createElement('input');
+    input.value = 'keto diet plan';
+
+    await fixture.componentInstance['askCoach'](input);
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance['awaitingReply']()).toBe(true);
+    const sendButton = fixture.nativeElement.querySelector('.coach-send') as HTMLButtonElement;
+    expect(sendButton.getAttribute('aria-label')).toBe('Send reply');
+    expect(sendButton.querySelector('.coach-send-arrow svg')).toBeTruthy();
+  });
+
+  it('blocks schedules for fresh vague asks even when the API returns one', async () => {
+    coachApi.chat.mockResolvedValue({
+      text: 'Here is your personalized task plan for the next 7 days.',
+      source: 'ai',
+      schedule: [{ due: '2026-06-25', title: 'Day 1 – Lower body workout', checklist: [] }],
+      overview: 'A workout plan.',
+      awaitingReply: false,
+    });
+
+    fixture.componentInstance['open'].set(true);
+    const input = document.createElement('input');
+    input.value = 'make a plan';
+
+    await fixture.componentInstance['askCoach'](input);
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance['scheduleProposal']()).toBeNull();
+    expect(fixture.componentInstance['awaitingReply']()).toBe(true);
+    expect(fixture.componentInstance['chatReply']()).toContain('?');
+    expect(coachApi.chat).toHaveBeenCalledWith('make a plan', expect.anything(), []);
   });
 });

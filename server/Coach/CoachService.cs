@@ -23,10 +23,13 @@ public sealed class CoachService
         CoachTaskSnapshot snapshot,
         IReadOnlyList<CoachTaskItem> tasks,
         IReadOnlyList<CoachChatMessage>? history,
+        IReadOnlyList<ScheduleAssignment>? currentSchedule,
+        bool reviseSchedule,
         CancellationToken cancellationToken)
     {
         var normalizedQuestion = question?.Trim() ?? "";
         var normalizedHistory = NormalizeHistory(history);
+        var normalizedSchedule = NormalizeCurrentSchedule(currentSchedule, tasks);
         var provider = ResolveProvider();
 
         try
@@ -36,6 +39,8 @@ public sealed class CoachService
                 snapshot,
                 tasks,
                 normalizedHistory,
+                normalizedSchedule,
+                reviseSchedule,
                 cancellationToken);
 
             var schedule = result.Assignments.Count > 0
@@ -47,7 +52,9 @@ public sealed class CoachService
             return new CoachChatResponse(
                 result.Text,
                 provider.Name,
-                schedule.Count > 0 ? schedule : null);
+                schedule.Count > 0 ? schedule : null,
+                result.Overview,
+                result.AwaitingReply);
         }
         catch when (provider != stubProvider)
         {
@@ -56,10 +63,29 @@ public sealed class CoachService
                 snapshot,
                 tasks,
                 normalizedHistory,
+                normalizedSchedule,
+                reviseSchedule,
                 cancellationToken);
             var schedule = fallback.Assignments.Count > 0 ? fallback.Assignments : null;
-            return new CoachChatResponse(fallback.Text, stubProvider.Name, schedule);
+            return new CoachChatResponse(
+                fallback.Text,
+                stubProvider.Name,
+                schedule,
+                fallback.Overview,
+                fallback.AwaitingReply);
         }
+    }
+
+    private static IReadOnlyList<ScheduleAssignment>? NormalizeCurrentSchedule(
+        IReadOnlyList<ScheduleAssignment>? currentSchedule,
+        IReadOnlyList<CoachTaskItem> tasks)
+    {
+        if (currentSchedule is null || currentSchedule.Count == 0)
+            return null;
+
+        return CoachScheduleHelper.EnrichWithTitles(
+            CoachScheduleHelper.NormalizeAssignments(currentSchedule, tasks),
+            tasks);
     }
 
     private static IReadOnlyList<CoachChatMessage> NormalizeHistory(IReadOnlyList<CoachChatMessage>? history)

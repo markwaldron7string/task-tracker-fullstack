@@ -1,9 +1,16 @@
 import {
   buildCoachSuggestions,
   answerCoachQuestion,
+  buildLocalOverview,
   buildLocalSchedule,
+  buildLocalWellnessPlan,
   buildLocalWorkoutPlan,
+  buildPlanSummaryTag,
+  buildClarifyingReply,
+  isCoachAwaitingReply,
   isScheduleRequest,
+  isVagueCoachInput,
+  reviseLocalSchedule,
   CoachTaskSnapshot,
   CoachChatTurn,
 } from './pro-coach';
@@ -61,6 +68,20 @@ describe('pro-coach', () => {
     expect(isScheduleRequest('Build a schedule for this week')).toBe(true);
     expect(isScheduleRequest('30 day workout plan')).toBe(true);
     expect(isScheduleRequest('What should I focus on today?')).toBe(false);
+    expect(isScheduleRequest('make a plan')).toBe(false);
+  });
+
+  it('asks clarifying questions for vague input', () => {
+    expect(isVagueCoachInput('help me')).toBe(true);
+    expect(isVagueCoachInput('make a plan')).toBe(true);
+    expect(buildClarifyingReply('make a plan')).toContain('?');
+    expect(isCoachAwaitingReply(buildClarifyingReply('make a plan'))).toBe(true);
+    expect(isCoachAwaitingReply("Just let me know if you're ready for me to add it to your calendar!")).toBe(true);
+    expect(isVagueCoachInput('30 day mental health plan')).toBe(false);
+    expect(isScheduleRequest('make a plan', [
+      { role: 'user', content: '30 day workout plan' },
+      { role: 'assistant', content: '30-day workout plan with daily checklists.' },
+    ])).toBe(false);
   });
 
   it('treats confirmation as schedule when history mentions a plan', () => {
@@ -88,5 +109,19 @@ describe('pro-coach', () => {
     ]);
     expect(schedule).toHaveLength(2);
     expect(schedule.map(item => item.taskId)).toEqual([1, 3]);
+  });
+
+  it('builds a local wellness plan with overview copy', () => {
+    const schedule = buildLocalWellnessPlan('30 day mental health plan');
+    expect(schedule).toHaveLength(30);
+    expect(schedule[0].title).toContain('Morning Mindfulness');
+    expect(buildPlanSummaryTag(schedule, '30 day mental health plan')).toContain('mental health');
+    expect(buildLocalOverview(schedule, '30 day mental health plan')).toContain('mindfulness');
+  });
+
+  it('revises a local schedule when asked to shorten tasks', () => {
+    const schedule = buildLocalWellnessPlan('5 day mental health plan');
+    const revised = reviseLocalSchedule('Shorten daily tasks', schedule);
+    expect(revised[0].checklist?.length).toBeLessThan(schedule[0].checklist!.length);
   });
 });

@@ -3,8 +3,9 @@ import { ActivatedRoute } from '@angular/router';
 import { ProUpgrade } from '../pro-upgrade/pro-upgrade';
 import { ProService } from '../pro.service';
 import { TaskDetailsOverlayService } from '../task-details-overlay.service';
+import { buildDayTaskGroups, dayHasChecklistTasks } from '../task-day-groups';
 import { TaskItem } from '../task-item/task-item';
-import { dateToIso, Task, TaskStore } from '../task-store';
+import { dateToIso, Task, TaskStore, countOpenDayTasks } from '../task-store';
 
 export interface CalendarCell {
   iso: string;
@@ -13,6 +14,7 @@ export interface CalendarCell {
   isToday: boolean;
   tasks: Task[];
   openCount: number;
+  itemCount: number;
 }
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -61,6 +63,7 @@ function makeCell(date: Date, inMonth: boolean, today: string, byDate: Record<st
     isToday: iso === today,
     tasks,
     openCount: tasks.filter(t => !t.done).length,
+    itemCount: countOpenDayTasks(tasks),
   };
 }
 
@@ -134,6 +137,10 @@ export class Calendar {
     return day ? (this.store.tasksByDueDate()[day] ?? []) : [];
   });
 
+  protected selectedDayItemCount = computed(() => countOpenDayTasks(this.selectedTasks()));
+
+  protected selectedTaskGroups = computed(() => buildDayTaskGroups(this.selectedTasks()));
+
   protected selectedLabel = computed(() => {
     const day = this.selectedDay();
     if (!day) return '';
@@ -199,6 +206,11 @@ export class Calendar {
 
   protected onDayCellClick(iso: string, tasks: Task[]): void {
     this.selectDay(iso);
+    if (!dayHasChecklistTasks(tasks)) return;
+    if (this.isMobileViewport()) {
+      this.detailsOverlay.openDay(iso);
+      return;
+    }
     const detailTask = this.pickDetailsTask(tasks);
     if (detailTask) {
       this.detailsOverlay.open(detailTask);
@@ -206,7 +218,7 @@ export class Calendar {
   }
 
   protected hasDetailsTask(tasks: Task[]): boolean {
-    return tasks.some(task => task.checklist.length > 0);
+    return dayHasChecklistTasks(tasks);
   }
 
   protected openTaskFromCalendar(event: Event, task: Task): void {
@@ -215,6 +227,10 @@ export class Calendar {
     if (task.checklist.length > 0) {
       this.detailsOverlay.open(task);
     }
+  }
+
+  private isMobileViewport(): boolean {
+    return typeof window !== 'undefined' && window.matchMedia('(max-width: 640px)').matches;
   }
 
   private pickDetailsTask(tasks: Task[]): Task | null {

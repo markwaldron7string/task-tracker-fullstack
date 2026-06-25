@@ -191,6 +191,42 @@ public sealed class CoachApiTests : IClassFixture<TaskApiFactory>
   }
 
   [Fact]
+  public async Task Coach_chat_asks_clarifying_question_for_vague_input()
+  {
+    var response = await client.PostAsJsonAsync("/api/coach/chat", new
+    {
+      question = "make a plan",
+      snapshot = SampleSnapshot()
+    });
+
+    response.EnsureSuccessStatusCode();
+    var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+    Assert.True(body.GetProperty("awaitingReply").GetBoolean());
+    Assert.EndsWith("?", body.GetProperty("text").GetString());
+  }
+
+  [Fact]
+  public async Task Coach_chat_clarifies_vague_input_despite_prior_plan_history()
+  {
+    var response = await client.PostAsJsonAsync("/api/coach/chat", new
+    {
+      question = "make a plan",
+      snapshot = SampleSnapshot(),
+      history = new[]
+      {
+        new { role = "user", content = "30 day workout plan" },
+        new { role = "assistant", content = "30-day workout plan with daily checklists." }
+      }
+    });
+
+    response.EnsureSuccessStatusCode();
+    var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+    Assert.True(body.GetProperty("awaitingReply").GetBoolean());
+    Assert.EndsWith("?", body.GetProperty("text").GetString());
+    Assert.False(body.TryGetProperty("schedule", out var schedule) && schedule.ValueKind == JsonValueKind.Array && schedule.GetArrayLength() > 0);
+  }
+
+  [Fact]
   public async Task Coach_chat_can_propose_workout_plan_after_confirmation()
   {
     var response = await client.PostAsJsonAsync("/api/coach/chat", new

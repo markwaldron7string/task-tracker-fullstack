@@ -130,7 +130,7 @@
 }
 
 .day-btn--muted {
-  opacity: 0.35;
+  color: var(--text-faint);
 }
 
 .day-btn--today {

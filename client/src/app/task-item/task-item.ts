@@ -2,7 +2,7 @@ import { Component, computed, inject, input, output } from '@angular/core';
 import { TaskDetailsOverlayService } from '../task-details-overlay.service';
 import { TaskEditOverlayService } from '../task-edit-overlay.service';
 import { TaskPickerOverlayService } from '../task-picker-overlay.service';
-import { projectLabel } from '../task-domains';
+import { projectLabel, isCoachPlan } from '../task-domains';
 import { recurrenceLabel } from '../task-recurrence';
 import { EnrichedTask } from '../task-store';
 
@@ -31,6 +31,7 @@ export class TaskItem {
   task = input.required<EnrichedTask>();
   position = input<number>();
   protected projectLabel = projectLabel;
+  protected isCoachPlan = isCoachPlan;
   protected recurrenceLabel = recurrenceLabel;
   toggle = output<number>();
   remove = output<number>();

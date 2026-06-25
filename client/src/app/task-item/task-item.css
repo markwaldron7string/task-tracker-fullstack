@@ -48,28 +48,24 @@
   line-height: 1;
   padding: 0.1rem;
   color: var(--text-faint);
-  opacity: 0.45;
   transition: opacity 0.15s, transform 0.1s, color 0.15s;
 }
 
 .priority-flag:hover {
-  opacity: 1;
+  color: var(--text-muted);
   transform: scale(1.15);
 }
 
 .priority-flag[data-priority="low"] {
-  color: #3B82F6;
-  opacity: 1;
+  color: var(--priority-low);
 }
 
 .priority-flag[data-priority="medium"] {
-  color: #F59E0B;
-  opacity: 1;
+  color: var(--priority-medium);
 }
 
 .priority-flag[data-priority="high"] {
-  color: #EF4444;
-  opacity: 1;
+  color: var(--priority-high);
 }
 
 .task-label {
@@ -116,9 +112,9 @@
 }
 
 .due-chip--overdue {
-  background: #EF4444;
-  color: #ffffff;
-  border-color: #EF4444;
+  background: var(--danger);
+  color: var(--danger-fg);
+  border-color: var(--danger);
 }
 
 .estimate-chip {
@@ -264,7 +260,7 @@
 .action-btn {
   background: none;
   border: none;
-  color: var(--text-faint);
+  color: var(--text-muted);
   cursor: pointer;
   font-size: 0.8rem;
   padding: 0.3rem 0.5rem;

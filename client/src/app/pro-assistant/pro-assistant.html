@@ -14,7 +14,7 @@
       </header>
 
       <p class="coach-intro">
-        Reads your tasks and suggests what to focus on. Ask anything about today, overdue work, or scheduling — powered by cloud AI when configured, with on-device fallback offline.
+        Reads your tasks and suggests what to focus on. Ask anything about today, overdue work, or scheduling. Powered by cloud AI when configured, with on-device fallback offline.
       </p>
 
       <div class="coach-suggestions" aria-label="Suggestions">
@@ -36,7 +36,6 @@
         <div class="coach-quick">
           <button type="button" (click)="quickAsk('What should I focus on today?', coachInput)">Focus today</button>
           <button type="button" (click)="quickAsk('Am I overcommitted?', coachInput)">Overcommitted?</button>
-          <button type="button" (click)="quickAsk('Build a schedule for this week', coachInput)">Build schedule</button>
         </div>
         <form class="coach-form" (submit)="$event.preventDefault(); askCoach(coachInput)">
           <input
@@ -46,15 +45,59 @@
             placeholder="e.g. What should I do first?"
             [disabled]="thinking()"
           />
-          <button type="submit" class="coach-send" [disabled]="thinking()">Ask</button>
+          <button
+            type="submit"
+            class="coach-send"
+            [class.coach-send--reply]="awaitingReply()"
+            [disabled]="thinking()"
+            [attr.aria-label]="awaitingReply() ? 'Send reply' : 'Ask'"
+          >
+            @if (awaitingReply()) {
+              <span class="coach-send-arrow" aria-hidden="true">
+                <svg viewBox="0 0 22 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path
+                    d="M1.75 5.75H12.25V2.75L19.75 7L12.25 11.25V8.25H1.75Z"
+                    fill="currentColor"
+                  />
+                </svg>
+              </span>
+            } @else {
+              Ask
+            }
+          </button>
         </form>
         @if (thinking()) {
           <p class="coach-reply coach-reply--pending">Thinking…</p>
         } @else if (chatReply()) {
-          <p class="coach-reply">{{ chatReply() }}</p>
+          <div class="coach-summary">
+            <p class="coach-reply">{{ chatReply() }}</p>
+            @if (scheduleProposal() && scheduleOverview()) {
+              <button
+                type="button"
+                class="coach-overview-btn"
+                [class.coach-overview-btn--open]="overviewOpen()"
+                (click)="toggleOverview()"
+                [attr.aria-expanded]="overviewOpen()"
+              >
+                Overview
+              </button>
+            }
+          </div>
+          @if (overviewOpen() && scheduleOverview(); as overview) {
+            <div class="coach-overview" aria-label="Plan overview">
+              @for (paragraph of overview.split('\n\n'); track $index) {
+                <p>{{ paragraph }}</p>
+              }
+            </div>
+          }
           @if (scheduleProposal(); as schedule) {
             <div class="coach-schedule" aria-label="Proposed schedule">
-              <p class="coach-schedule-title">Proposed schedule</p>
+              <div class="coach-schedule-header">
+                <p class="coach-schedule-title">Proposed schedule</p>
+                <button type="button" class="coach-schedule-btn coach-schedule-btn--primary" (click)="applySchedule()">
+                  Build schedule
+                </button>
+              </div>
               <ul class="coach-schedule-list">
                 @for (item of schedule; track item.due + (item.taskId ?? item.title ?? '')) {
                   <li class="coach-schedule-item">
@@ -68,7 +111,7 @@
                           [class.coach-schedule-steps--open]="isSchedulePreviewOpen(item)"
                           (click)="toggleSchedulePreview(item)"
                         >
-                          {{ item.checklist.length }} steps
+                          {{ item.checklist.length }} {{ item.checklist.length === 1 ? 'task' : 'tasks' }}
                         </button>
                       }
                     </div>
@@ -83,10 +126,32 @@
                 }
               </ul>
               <div class="coach-schedule-actions">
-                <button type="button" class="coach-action" (click)="applySchedule()">Apply to calendar</button>
-                <button type="button" class="coach-schedule-dismiss" (click)="dismissSchedule()">Dismiss</button>
+                <button type="button" class="coach-schedule-btn coach-schedule-btn--primary" (click)="applySchedule()">
+                  Apply to calendar
+                </button>
+                <button type="button" class="coach-schedule-btn coach-schedule-btn--secondary" (click)="dismissSchedule()">
+                  Dismiss
+                </button>
               </div>
             </div>
+
+            <section class="coach-follow-up" aria-label="Adjust the plan">
+              <p class="coach-follow-up-label">Adjust this plan</p>
+              <div class="coach-quick">
+                @for (chip of followUpChips; track chip) {
+                  <button type="button" (click)="quickFollowUp(chip, followUpInput)">{{ chip }}</button>
+                }
+              </div>
+              <form class="coach-form" (submit)="$event.preventDefault(); askFollowUp(followUpInput)">
+                <input
+                  #followUpInput
+                  class="coach-input"
+                  placeholder="e.g. Swap Day 3 for a rest day"
+                  [disabled]="thinking()"
+                />
+                <button type="submit" class="coach-send" [disabled]="thinking()">Send</button>
+              </form>
+            </section>
           }
           @if (chatSource() === 'ai') {
             <p class="coach-source">Powered by AI</p>

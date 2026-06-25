@@ -21,7 +21,11 @@ public record ScheduleAssignment(
 
 public record CoachChatMessage(string Role, string Content);
 
-public record CoachProviderResult(string Text, IReadOnlyList<ScheduleAssignment> Assignments);
+public record CoachProviderResult(
+    string Text,
+    IReadOnlyList<ScheduleAssignment> Assignments,
+    string? Overview = null,
+    bool AwaitingReply = false);
 
 public record CoachTaskSnapshot(
     int OverdueCount,
@@ -39,11 +43,15 @@ public record CoachTaskSnapshot(
 public record CoachChatRequest(
     string? Question,
     CoachTaskSnapshot Snapshot,
-    IReadOnlyList<CoachChatMessage>? History = null
+    IReadOnlyList<CoachChatMessage>? History = null,
+    IReadOnlyList<ScheduleAssignment>? CurrentSchedule = null,
+    bool ReviseSchedule = false
 );
 
 public record CoachChatResponse(
     string Text,
     string Source,
-    IReadOnlyList<ScheduleAssignment>? Schedule = null
+    IReadOnlyList<ScheduleAssignment>? Schedule = null,
+    string? Overview = null,
+    bool AwaitingReply = false
 );

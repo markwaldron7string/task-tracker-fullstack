@@ -154,7 +154,14 @@ app.MapPost("/api/coach/chat", async (CoachChatRequest request, HttpContext ctx,
             task.EstimateMinutes))
         .ToListAsync(cancellationToken);
 
-    var reply = await coach.ChatAsync(request.Question, request.Snapshot, tasks, request.History, cancellationToken);
+    var reply = await coach.ChatAsync(
+        request.Question,
+        request.Snapshot,
+        tasks,
+        request.History,
+        request.CurrentSchedule,
+        request.ReviseSchedule,
+        cancellationToken);
     return Results.Ok(reply);
 });
 

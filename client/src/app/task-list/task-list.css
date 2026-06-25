@@ -116,6 +116,10 @@ h2 {
   min-width: 0;
 }
 
+.task-input::placeholder {
+  font-style: italic;
+}
+
 .task-input:focus {
   border-color: var(--red);
   box-shadow: var(--focus-ring, none);
@@ -160,13 +164,13 @@ h2 {
 }
 
 .btn-danger {
-  background: #EF4444;
-  color: #fff;
-  border: 1px solid #EF4444;
+  background: var(--danger);
+  color: var(--danger-fg);
+  border: 1px solid var(--danger);
 }
 
 .btn-danger:hover {
-  background: #DC2626;
+  background: color-mix(in srgb, var(--danger) 88%, #000);
 }
 
 .confirm-dialog {
@@ -206,7 +210,7 @@ h2 {
 
 .empty-state {
   text-align: center;
-  color: var(--text-faint);
+  color: var(--text-muted);
   padding: 2.5rem 1rem;
   font-size: 0.925rem;
   font-style: italic;

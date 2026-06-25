@@ -48,12 +48,13 @@ export class App {
       const syncHeaderHeight = () => {
         document.documentElement.style.setProperty(
           '--app-header-height',
-          `${header.getBoundingClientRect().height}px`
+          `${Math.ceil(header.getBoundingClientRect().height)}px`
         );
       };
 
       syncHeaderHeight();
       new ResizeObserver(syncHeaderHeight).observe(header);
+      window.addEventListener('resize', syncHeaderHeight, { passive: true });
     });
   }
 
@@ -65,6 +66,8 @@ export class App {
 
   protected onToggleChecklistItem(event: { taskId: number; itemId: string }): void {
     this.store.toggleChecklistItem(event.taskId, event.itemId);
+    const view = this.detailsOverlay.view();
+    if (view?.kind === 'day') return;
     const task = this.store.tasks().find(item => item.id === event.taskId);
     if (task) this.detailsOverlay.open(task);
   }
@@ -73,6 +76,17 @@ export class App {
     const state = this.pickerOverlay.duePicker();
     if (!state) return;
     this.store.setDue(state.taskId, due);
+    this.pickerOverlay.close();
+  }
+
+  protected onBulkRescheduleSelect(due: string | null): void {
+    const state = this.pickerOverlay.bulkReschedule();
+    if (!state) return;
+    if (due) {
+      for (const taskId of state.taskIds) {
+        this.store.setDue(taskId, due);
+      }
+    }
     this.pickerOverlay.close();
   }
 

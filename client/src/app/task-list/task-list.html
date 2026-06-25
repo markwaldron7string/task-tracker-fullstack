@@ -41,7 +41,7 @@
     <input
       #taskInput
       class="task-input"
-      placeholder="Try: Walk dog daily #health or Review PR tomorrow 30m"
+      placeholder="Add a task (i.e. Walk the dog)"
       (keydown.enter)="store.addTask(taskInput.value); taskInput.value = ''"
     />
     <button type="button" class="btn btn-primary" (click)="store.addTask(taskInput.value); taskInput.value = ''">Add</button>

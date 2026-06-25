@@ -48,7 +48,7 @@
         [class.day-cell--busy]="cell.openCount > 0"
         [class.day-cell--has-plan]="hasDetailsTask(cell.tasks)"
         [class.day-cell--drop]="dragOverDay() === cell.iso"
-        [attr.aria-label]="cell.day + ', ' + cell.openCount + ' open tasks'"
+        [attr.aria-label]="cell.day + ', ' + cell.itemCount + ' open tasks'"
         [attr.aria-selected]="cell.iso === selectedDay()"
         (click)="onDayCellClick(cell.iso, cell.tasks)"
         (dragover)="onDragOver($event, cell.iso)"
@@ -74,8 +74,8 @@
             }
           </div>
         }
-        @if (cell.openCount) {
-          <span class="day-badge">{{ cell.openCount }}</span>
+        @if (cell.itemCount) {
+          <span class="day-badge">{{ cell.itemCount }}</span>
         }
       </button>
     }
@@ -85,7 +85,7 @@
     <section class="day-panel">
       <div class="day-panel-head">
         <h3>{{ selectedLabel() }}</h3>
-        <span class="day-panel-count">{{ selectedTasks().length }} task(s)</span>
+        <span class="day-panel-count">{{ selectedDayItemCount() }} task(s)</span>
       </div>
 
       <div class="add-row">
@@ -99,24 +99,29 @@
       </div>
 
       <div class="task-list" role="list">
-        @for (task of selectedTasks(); track task.id) {
-          <div
-            class="draggable-task"
-            draggable="true"
-            (dragstart)="onDragStart($event, task.id)"
-          >
-            <app-task-item
-              role="listitem"
-              [task]="task"
-              (toggle)="store.toggleTask($event)"
-              (remove)="store.removeTask($event)"
-              (edit)="store.editTask($event.id, $event.title)"
-              (update)="store.updateTask($event.id, $event)"
-              (cyclePriority)="store.cyclePriority($event)"
-              (dueChange)="store.setDue($event.id, $event.due)"
-              (estimateChange)="store.setEstimateMinutes($event.id, $event.estimateMinutes)"
-            />
-          </div>
+        @for (group of selectedTaskGroups(); track group.key) {
+          @if (group.label) {
+            <h4 class="plan-section-title">{{ group.label }}</h4>
+          }
+          @for (task of group.tasks; track task.id) {
+            <div
+              class="draggable-task"
+              draggable="true"
+              (dragstart)="onDragStart($event, task.id)"
+            >
+              <app-task-item
+                role="listitem"
+                [task]="task"
+                (toggle)="store.toggleTask($event)"
+                (remove)="store.removeTask($event)"
+                (edit)="store.editTask($event.id, $event.title)"
+                (update)="store.updateTask($event.id, $event)"
+                (cyclePriority)="store.cyclePriority($event)"
+                (dueChange)="store.setDue($event.id, $event.due)"
+                (estimateChange)="store.setEstimateMinutes($event.id, $event.estimateMinutes)"
+              />
+            </div>
+          }
         } @empty {
           <div class="empty-state">Nothing scheduled — add a task above or drag a task here.</div>
         }

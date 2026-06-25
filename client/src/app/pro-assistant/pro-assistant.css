@@ -181,7 +181,7 @@
   margin-bottom: 0.45rem;
   font-size: 0.72rem;
   font-weight: 700;
-  color: var(--text-faint);
+  color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.06em;
 }
@@ -213,6 +213,7 @@
 .coach-form {
   display: flex;
   gap: 0.4rem;
+  align-items: stretch;
 }
 
 .coach-input {
@@ -234,6 +235,9 @@
 }
 
 .coach-send {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   border: none;
   border-radius: 6px;
   background: var(--red);
@@ -241,8 +245,28 @@
   font-family: inherit;
   font-size: 0.8rem;
   font-weight: 700;
+  line-height: 1;
   padding: 0.45rem 0.75rem;
   cursor: pointer;
+}
+
+.coach-send--reply {
+  min-width: 2.85rem;
+  padding: 0 0.55rem;
+}
+
+.coach-send-arrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  line-height: 1;
+}
+
+.coach-send-arrow svg {
+  display: block;
+  width: 1.45rem;
+  height: auto;
 }
 
 .coach-send:disabled,
@@ -252,7 +276,7 @@
 }
 
 .coach-reply {
-  margin: 0.55rem 0 0;
+  margin: 0;
   padding: 0.65rem 0.75rem;
   border-radius: 8px;
   background: var(--red-light);
@@ -261,7 +285,72 @@
   line-height: 1.45;
 }
 
+.coach-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  margin-top: 0.55rem;
+}
+
+.coach-overview-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  border: 1px solid var(--red-border);
+  background: transparent;
+  color: var(--red-dark);
+  border-radius: 6px;
+  font-family: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  line-height: 1;
+  padding: 0.45rem 0.75rem;
+  cursor: pointer;
+}
+
+.coach-overview-btn:hover,
+.coach-overview-btn--open {
+  background: var(--red);
+  color: var(--on-primary, white);
+}
+
+.coach-overview {
+  margin-top: 0.45rem;
+  padding: 0.65rem 0.75rem;
+  border-radius: 8px;
+  border: 1px solid var(--border-light);
+  background: var(--overlay-surface-muted);
+}
+
+.coach-overview p {
+  margin: 0;
+  font-size: 0.78rem;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+.coach-overview p + p {
+  margin-top: 0.55rem;
+}
+
+.coach-follow-up {
+  margin-top: 0.65rem;
+  padding-top: 0.65rem;
+  border-top: 1px dashed var(--border-light);
+}
+
+.coach-follow-up-label {
+  margin: 0 0 0.45rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
 .coach-reply--pending {
+  margin-top: 0.55rem;
   color: var(--text-muted);
   background-color: var(--overlay-surface-muted);
 }
@@ -269,7 +358,7 @@
 .coach-source {
   margin: 0.35rem 0 0;
   font-size: 0.68rem;
-  color: var(--text-faint);
+  color: var(--text-muted);
 }
 
 .coach-schedule {
@@ -281,12 +370,56 @@
 }
 
 .coach-schedule-title {
-  margin: 0 0 0.5rem;
+  margin: 0;
   font-size: 0.72rem;
   font-weight: 700;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  color: var(--text-faint);
+  color: var(--text-muted);
+}
+
+.coach-schedule-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.coach-schedule-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  font-family: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  line-height: 1;
+  padding: 0.45rem 0.75rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.coach-schedule-btn--primary {
+  border: 1px solid var(--red-border);
+  background: var(--red-light);
+  color: var(--red-dark);
+}
+
+.coach-schedule-btn--primary:hover {
+  background: var(--red);
+  color: var(--on-primary, white);
+}
+
+.coach-schedule-btn--secondary {
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-muted);
+}
+
+.coach-schedule-btn--secondary:hover {
+  border-color: var(--text-faint);
+  color: var(--text);
 }
 
 .coach-schedule-list {
@@ -365,21 +498,12 @@
 
 .coach-schedule-actions {
   display: flex;
-  flex-wrap: wrap;
   gap: 0.45rem;
   margin-top: 0.65rem;
 }
 
-.coach-schedule-dismiss {
-  border: 1px solid var(--border);
-  background: transparent;
-  color: var(--text-muted);
-  border-radius: 6px;
-  font-family: inherit;
-  font-size: 0.78rem;
-  font-weight: 600;
-  padding: 0.45rem 0.75rem;
-  cursor: pointer;
+.coach-schedule-actions .coach-schedule-btn {
+  flex: 1;
 }
 
 @media (max-width: 768px) {

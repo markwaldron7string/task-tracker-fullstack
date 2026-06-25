@@ -1,37 +1,115 @@
 <div class="dialog-backdrop" (click)="onBackdropClick()">
-  <div class="dialog" role="dialog" aria-labelledby="task-details-title" (click)="onDialogClick($event)">
+  <div
+    class="dialog"
+    role="dialog"
+    [attr.aria-labelledby]="isDayView() ? 'day-details-title' : 'task-details-title'"
+    (click)="onDialogClick($event)"
+  >
     <header class="dialog-head">
       <div>
-        <h2 id="task-details-title">{{ task().title }}</h2>
-        @if (task().due) {
-          <p class="dialog-subtitle">{{ formatDue(task().due!) }}</p>
-        }
-        @if (progress(); as stats) {
-          <p class="dialog-progress">{{ stats.done }}/{{ stats.total }} complete</p>
+        @if (isDayView()) {
+          <h2 id="day-details-title">{{ dayLabel() }}</h2>
+          <p class="dialog-subtitle">{{ dayItemCount() }} open item(s)</p>
+        } @else if (task(); as current) {
+          <h2 id="task-details-title">{{ current.title }}</h2>
+          @if (current.due) {
+            <p class="dialog-subtitle">{{ formatDue(current.due) }}</p>
+          }
+          @if (progress(); as stats) {
+            <p class="dialog-progress">{{ stats.done }}/{{ stats.total }} complete</p>
+          }
         }
       </div>
       <button type="button" class="close-btn" (click)="close.emit()" aria-label="Close">×</button>
     </header>
 
-    <div class="dialog-body">
-      @if (checklist().length === 0) {
-        <p class="empty-note">No checklist items for this task.</p>
-      } @else {
-        <ul class="checklist" aria-label="Task checklist">
-          @for (item of checklist(); track item.id) {
-            <li class="checklist-item" [class.checklist-item--done]="item.done">
-              <label class="checklist-label">
-                <input
-                  type="checkbox"
-                  class="checklist-checkbox"
-                  [checked]="item.done"
-                  (change)="onToggleItem(item)"
-                />
-                <span class="checklist-text">{{ item.title }}</span>
-              </label>
-            </li>
+    @if (isDayView() && showPlanFilters()) {
+      <div class="plan-filter" role="tablist" aria-label="Filter plans">
+        <button
+          type="button"
+          class="plan-filter-btn"
+          role="tab"
+          [class.plan-filter-btn--active]="planFilter() === '__all__'"
+          [attr.aria-selected]="planFilter() === '__all__'"
+          (click)="selectPlanFilter('__all__')"
+        >
+          All
+        </button>
+        @for (group of planGroups(); track group.key) {
+          @if (group.label) {
+            <button
+              type="button"
+              class="plan-filter-btn"
+              role="tab"
+              [class.plan-filter-btn--active]="planFilter() === group.key"
+              [attr.aria-selected]="planFilter() === group.key"
+              (click)="selectPlanFilter(group.key)"
+            >
+              {{ group.label }}
+            </button>
           }
-        </ul>
+        }
+      </div>
+    }
+
+    <div class="dialog-body">
+      @if (isDayView()) {
+        @if (visibleGroups().length === 0) {
+          <p class="empty-note">No tasks with details for this day.</p>
+        } @else {
+          @for (group of visibleGroups(); track group.key) {
+            @if (planFilter() === '__all__' && group.label) {
+              <h3 class="plan-section-title">{{ group.label }}</h3>
+            }
+            @for (dayTask of group.tasks; track dayTask.id) {
+              @if (dayTask.checklist.length > 0) {
+                <section class="day-task-block" [attr.aria-label]="dayTask.title">
+                  <div class="day-task-head">
+                    <h4 class="day-task-title">{{ dayTask.title }}</h4>
+                    @if (taskProgress(dayTask); as stats) {
+                      <span class="day-task-progress">{{ stats.done }}/{{ stats.total }}</span>
+                    }
+                  </div>
+                  <ul class="checklist" [attr.aria-label]="'Checklist for ' + dayTask.title">
+                    @for (item of dayTask.checklist; track item.id) {
+                      <li class="checklist-item" [class.checklist-item--done]="item.done">
+                        <label class="checklist-label">
+                          <input
+                            type="checkbox"
+                            class="checklist-checkbox"
+                            [checked]="item.done"
+                            (change)="onToggleItem(item, dayTask.id)"
+                          />
+                          <span class="checklist-text">{{ item.title }}</span>
+                        </label>
+                      </li>
+                    }
+                  </ul>
+                </section>
+              }
+            }
+          }
+        }
+      } @else if (task(); as current) {
+        @if (checklist().length === 0) {
+          <p class="empty-note">No checklist items for this task.</p>
+        } @else {
+          <ul class="checklist" aria-label="Task checklist">
+            @for (item of checklist(); track item.id) {
+              <li class="checklist-item" [class.checklist-item--done]="item.done">
+                <label class="checklist-label">
+                  <input
+                    type="checkbox"
+                    class="checklist-checkbox"
+                    [checked]="item.done"
+                    (change)="onToggleItem(item, current.id)"
+                  />
+                  <span class="checklist-text">{{ item.title }}</span>
+                </label>
+              </li>
+            }
+          </ul>
+        }
       }
     </div>
 

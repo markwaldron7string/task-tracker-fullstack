@@ -2,7 +2,7 @@ import { Injectable, signal, computed, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { catchError, firstValueFrom, of } from 'rxjs';
 import { parseQuickAdd } from './task-quick-parse';
-import { normalizeProject } from './task-domains';
+import { normalizeProject, coachPlanProject } from './task-domains';
 import { nextRecurrenceDue, normalizeRecurrence, RecurrenceRule } from './task-recurrence';
 
 export type Priority = 'none' | 'low' | 'medium' | 'high';
@@ -45,14 +45,36 @@ function priorityRank(priority: Priority): number {
   return PRIORITY_CYCLE.indexOf(priority);
 }
 
-function todayIso(): string {
-  return dateToIso(new Date());
-}
-
 export function dateToIso(date: Date): string {
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const day = String(date.getDate()).padStart(2, '0');
   return `${date.getFullYear()}-${month}-${day}`;
+}
+
+function todayIso(): string {
+  return dateToIso(new Date());
+}
+
+/** Count open work items for a day — checklist items count individually. */
+export function countOpenDayTasks(tasks: Task[]): number {
+  return tasks.reduce((sum, task) => {
+    if (task.done) return sum;
+    if (task.checklist.length > 0) {
+      const openItems = task.checklist.filter(item => !item.done).length;
+      return sum + openItems;
+    }
+    return sum + 1;
+  }, 0);
+}
+
+/** Count completed work items for a day — checklist items count individually. */
+export function countCompletedDayTasks(tasks: Task[]): number {
+  return tasks.reduce((sum, task) => {
+    if (task.checklist.length > 0) {
+      return sum + task.checklist.filter(item => item.done).length;
+    }
+    return sum + (task.done ? 1 : 0);
+  }, 0);
 }
 
 export function offsetDateIso(days: number): string {
@@ -244,14 +266,17 @@ export class TaskStore {
 
   completedDueTodayCount = computed(() => {
     const today = todayIso();
-    return this.tasks().filter(task => task.done && task.due === today).length;
+    return countCompletedDayTasks(this.tasks().filter(task => task.due === today));
   });
 
-  incompleteDueTodayCount = computed(() => this.dueTodayTasks().length);
+  incompleteDueTodayCount = computed(() => countOpenDayTasks(this.dueTodayTasks()));
+
+  openDueTodayCount = computed(() => countOpenDayTasks(this.dueTodayTasks()));
 
   tomorrowTaskCount = computed(() => {
     const tomorrow = tomorrowIso();
-    return this.enrichedTasks().filter(task => !task.done && task.due === tomorrow).length;
+    const tasks = this.enrichedTasks().filter(task => task.due === tomorrow);
+    return countOpenDayTasks(tasks);
   });
 
   overdueTasks = computed(() => {
@@ -316,7 +341,7 @@ export class TaskStore {
         iso,
         weekday: date.toLocaleDateString(undefined, { weekday: 'short' }),
         day: date.getDate(),
-        count: (byDate[iso] ?? []).filter(task => !task.done).length,
+        count: countOpenDayTasks(byDate[iso] ?? []),
         isToday: iso === today,
       });
     }
@@ -574,12 +599,12 @@ export class TaskStore {
     }
   }
 
-  /** Move incomplete due-today tasks to tomorrow — end-of-day wrap-up. */
-  wrapUpDay(): number {
+  /** Move incomplete due-today tasks to another date. */
+  rescheduleIncompleteDueToday(toIso: string): number {
     let moved = 0;
     for (const task of this.dueTodayTasks()) {
       if (task.done) continue;
-      this.setDue(task.id, tomorrowIso());
+      this.setDue(task.id, toIso);
       moved++;
     }
     return moved;
@@ -600,8 +625,10 @@ export class TaskStore {
       title?: string;
       estimateMinutes?: number | null;
       checklist?: Array<{ id?: string; title: string; done?: boolean }>;
-    }>
+    }>,
+    planLabel?: string | null
   ): number {
+    const planProject = planLabel?.trim() ? coachPlanProject(planLabel) : null;
     let applied = 0;
     for (const assignment of assignments) {
       const checklist = normalizeChecklist(assignment.checklist);
@@ -612,6 +639,7 @@ export class TaskStore {
         const updatedTask = normalizeTask({
           ...stripFlags(task),
           due: assignment.due,
+          ...(planProject ? { project: planProject } : {}),
           ...(checklist.length > 0 ? { checklist } : {}),
         });
         this.updateLocalTask(updatedTask);
@@ -631,7 +659,7 @@ export class TaskStore {
         priority: 'none',
         due: assignment.due,
         estimateMinutes: assignment.estimateMinutes ?? null,
-        project: null,
+        project: planProject,
         recurrence: null,
         checklist,
       };

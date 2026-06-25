@@ -9,5 +9,7 @@ public interface ICoachProvider
         CoachTaskSnapshot snapshot,
         IReadOnlyList<CoachTaskItem> tasks,
         IReadOnlyList<CoachChatMessage> history,
+        IReadOnlyList<ScheduleAssignment>? currentSchedule,
+        bool reviseSchedule,
         CancellationToken cancellationToken);
 }

@@ -42,15 +42,67 @@ export interface CoachChatTurn {
 
 const SCHEDULE_INTENT =
   /\b(schedule|plan|build\s+(a\s+)?schedule|assign|spread|calendar|this\s+week|next\s+week|week\s+plan|routine|program|workout|habit)\b/i;
-const MULTI_DAY_PLAN_INTENT = /\b(\d+\s*day|month|weekly|routine|workout|training|habit)\b/i;
+const MULTI_DAY_PLAN_INTENT = /\b(\d+\s*day|month|weekly|routine|workout|training|habit|mental health|wellness|mindfulness|well-being|wellbeing)\b/i;
 const CONFIRMATION_INTENT =
   /^(ok|okay|yes|yep|yeah|sure|do it|go ahead|proceed|sounds good|let'?s do it|please do|apply it|create it|make it)\.?!?$/i;
 
 export function isScheduleRequest(question: string, history: CoachChatTurn[] = []): boolean {
   const trimmed = question.trim();
   if (!trimmed) return false;
+  if (isVagueCoachInput(trimmed)) return false;
   if (SCHEDULE_INTENT.test(trimmed) || MULTI_DAY_PLAN_INTENT.test(trimmed)) return true;
   return CONFIRMATION_INTENT.test(trimmed) && historyIndicatesPendingPlan(history);
+}
+
+export function isCoachAwaitingReply(text: string): boolean {
+  const trimmed = text.trim();
+  if (!trimmed) return false;
+  if (trimmed.endsWith('?')) return true;
+  if (/\blet me know\b/i.test(trimmed)) return true;
+  if (/\btell me\b/i.test(trimmed) && /\b(when|if|what|how|ready)\b/i.test(trimmed)) return true;
+  if (/\b(ready for me to|when you're ready|if you're ready|should I|would you like|do you want)\b/i.test(trimmed)) {
+    return true;
+  }
+  return false;
+}
+
+export function isVagueCoachInput(question: string): boolean {
+  const trimmed = question.trim();
+  if (!trimmed) return false;
+  if (CONFIRMATION_INTENT.test(trimmed)) return false;
+
+  const lower = trimmed.toLowerCase();
+  if (/overdue|today|focus|overcommit|capacity|priority|tomorrow/.test(lower)) return false;
+  if (/\d+\s*day/i.test(trimmed)) return false;
+  if (/mental health|wellness|mindfulness|workout|training|this week|next week|for this week/i.test(trimmed)) return false;
+
+  if (/^(help(\s+me)?|plan(s|ning)?|schedule)\.?$/i.test(trimmed)) return true;
+  if (/^(make|create|build)\s+(a\s+)?(plan|schedule)\.?$/i.test(trimmed)) return true;
+  if (/^(i\s+)?(need|want)\s+(a\s+)?(plan|schedule|help)\.?$/i.test(trimmed)) return true;
+
+  const words = trimmed.split(/\s+/);
+  if (words.length <= 2 && !/\d/.test(trimmed)) return true;
+
+  if (
+    words.length <= 4 &&
+    /\b(plan|schedule|help|something|better|health|fitness|wellness)\b/i.test(trimmed) &&
+    !/\d+\s*day|week|workout|mental|mindfulness|today|overdue/i.test(trimmed)
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
+export function buildClarifyingReply(question: string): string {
+  const lower = question.trim().toLowerCase();
+  if (/health|wellness|better|feel|mind/.test(lower)) {
+    return 'Are you thinking about mental wellness, physical fitness, or something else — and how many days should the plan run?';
+  }
+  if (/plan|schedule/.test(lower)) {
+    return 'Happy to help — should I schedule your existing tasks, or create a new multi-day plan (workout, wellness, habits)? How many days?';
+  }
+  return 'What would be most helpful right now — focus for today, a multi-day plan, or help placing tasks on your calendar?';
 }
 
 function historyIndicatesPendingPlan(history: CoachChatTurn[]): boolean {
@@ -59,6 +111,7 @@ function historyIndicatesPendingPlan(history: CoachChatTurn[]): boolean {
   const recent = history.slice(-4);
   for (const message of recent) {
     if (message.role !== 'assistant') continue;
+    if (isCoachAwaitingReply(message.content)) continue;
     if (/\b(schedule|calendar|workout|plan|routine|apply|ready for you to apply|proposed)\b/i.test(message.content)) {
       return true;
     }
@@ -67,6 +120,7 @@ function historyIndicatesPendingPlan(history: CoachChatTurn[]): boolean {
   return recent.some(
     message =>
       message.role === 'user' &&
+      !isVagueCoachInput(message.content) &&
       (SCHEDULE_INTENT.test(message.content) || MULTI_DAY_PLAN_INTENT.test(message.content))
   );
 }
@@ -121,6 +175,83 @@ export function buildLocalWorkoutPlan(question: string, maxDays = 31): CoachSche
   return assignments;
 }
 
+export function buildLocalWellnessPlan(question: string, maxDays = 31): CoachScheduleAssignment[] {
+  const match = question.match(/(\d+)\s*day/i);
+  const days = match ? Math.min(parseInt(match[1], 10), maxDays) : 0;
+  if (days < 3 || !/\b(mental health|wellness|mindfulness|well-being|wellbeing)\b/i.test(question)) return [];
+
+  const themes = [
+    'Morning Mindfulness',
+    'Nature Walk',
+    'Gratitude & Journaling',
+    'Gentle Movement',
+    'Social Connection',
+    'Creative Expression',
+    'Rest & Recovery',
+  ];
+
+  const assignments: CoachScheduleAssignment[] = [];
+  let day = new Date();
+
+  for (let index = 0; index < days; index++) {
+    if (index > 0) day = addDays(day, 1);
+    day = nextWeekday(day);
+    const theme = themes[index % themes.length];
+    assignments.push({
+      due: formatIso(day),
+      title: `Day ${index + 1} – ${theme}`,
+      estimateMinutes: 30,
+      checklist: [
+        { title: '5 min breathing exercise', done: false },
+        { title: '10 min mindful walk outside', done: false },
+        { title: "Write 3 things you're grateful for", done: false },
+        { title: 'Evening check-in: rate mood 1–5', done: false },
+      ],
+    });
+  }
+
+  return assignments;
+}
+
+export function reviseLocalSchedule(
+  question: string,
+  currentSchedule: CoachScheduleAssignment[]
+): CoachScheduleAssignment[] {
+  const lower = question.toLowerCase();
+  let revised = currentSchedule.map(item => ({ ...item, checklist: item.checklist?.map(step => ({ ...step })) }));
+
+  if (/\b(rest|lighter|lighten|easier|fewer)\b/.test(lower)) {
+    revised = revised.map((item, index) =>
+      index % 2 === 1 && /\b(rest|lighter|lighten|easier)\b/.test(lower)
+        ? {
+            ...item,
+            title: `Rest day – ${item.title ?? 'Recovery'}`,
+            estimateMinutes: 20,
+            checklist: [
+              { title: '20 min easy walk', done: false },
+              { title: '10 min stretching', done: false },
+              { title: "Journal: one thing you're grateful for", done: false },
+            ],
+          }
+        : item
+    );
+  }
+
+  if (/\b(shorten|shorter|less time|quick)\b/.test(lower)) {
+    revised = revised.map(item => ({
+      ...item,
+      estimateMinutes: item.estimateMinutes ? Math.max(15, item.estimateMinutes - 15) : 20,
+      checklist: item.checklist?.slice(0, Math.max(2, Math.ceil((item.checklist.length + 1) / 2))),
+    }));
+  }
+
+  if (/\b(remove|drop|skip)\b.*\b(day|week)\b/.test(lower)) {
+    revised = revised.slice(0, Math.max(1, revised.length - 1));
+  }
+
+  return revised;
+}
+
 function buildLocalDayChecklist(dayIndex: number, includesMeals: boolean) {
   const isRestDay = dayIndex > 0 && (dayIndex + 1) % 7 === 0;
   if (isRestDay) {
@@ -162,6 +293,31 @@ function formatIso(date: Date): string {
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const day = String(date.getDate()).padStart(2, '0');
   return `${date.getFullYear()}-${month}-${day}`;
+}
+
+export function buildLocalOverview(schedule: CoachScheduleAssignment[], question: string): string {
+  if (schedule.length === 0) return '';
+
+  const days = schedule.length;
+  if (/\b(mental health|wellness|mindfulness|well-being|wellbeing)\b/i.test(question)) {
+    return `This ${days}-day mental health plan balances mindfulness, gentle movement, and reflective habits. Each day builds on the last with small, achievable steps so you can support your well-being without overwhelming your calendar.\n\nReview the daily tasks below, tap Overview for this summary, and ask me to adjust anything before you apply the plan.`;
+  }
+
+  if (/\b(workout|training|exercise|habit|routine)\b/i.test(question)) {
+    return `This ${days}-day plan mixes training sessions, active recovery, and optional nutrition checkpoints. Workouts progress through different muscle groups while keeping daily time blocks realistic.\n\nUse each day's checklist to track warm-ups, main work, and meals. Tell me if you want it lighter or shorter before applying.`;
+  }
+
+  return `This plan spreads ${days} calendar task${days === 1 ? '' : 's'} across upcoming days. Each entry includes a due date and checklist steps so you know exactly what to do when.\n\nAsk me to lighten specific days, swap tasks, or change the focus before you tap Apply to calendar.`;
+}
+
+export function buildPlanSummaryTag(schedule: CoachScheduleAssignment[], question: string): string {
+  if (/\b(mental health|wellness|mindfulness|well-being|wellbeing)\b/i.test(question)) {
+    return `${schedule.length}-day mental health plan to support your well-being.`;
+  }
+  if (/\b(workout|training|exercise|habit|routine)\b/i.test(question)) {
+    return `${schedule.length}-day workout plan with daily checklists.`;
+  }
+  return `I created a ${schedule.length}-day plan with new calendar tasks. Review below and apply to your calendar.`;
 }
 
 export function formatScheduleDue(iso: string): string {
@@ -242,11 +398,18 @@ export function buildCoachSuggestions(snapshot: CoachTaskSnapshot): CoachSuggest
   return suggestions.slice(0, 4);
 }
 
-export function answerCoachQuestion(question: string, snapshot: CoachTaskSnapshot): CoachChatReply {
+export function answerCoachQuestion(question: string, snapshot: CoachTaskSnapshot, history: CoachChatTurn[] = []): CoachChatReply {
   const q = question.trim().toLowerCase();
   if (!q) {
     return {
       text: 'Ask me what to focus on, whether you\'re overcommitted, or what to schedule next.',
+      suggestions: buildCoachSuggestions(snapshot),
+    };
+  }
+
+  if (isVagueCoachInput(question)) {
+    return {
+      text: buildClarifyingReply(question),
       suggestions: buildCoachSuggestions(snapshot),
     };
   }

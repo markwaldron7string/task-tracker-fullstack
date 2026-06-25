@@ -30,13 +30,21 @@
 
 <app-pro-assistant />
 
-@if (pickerOverlay.duePicker() || pickerOverlay.estimatePicker()) {
+@if (pickerOverlay.duePicker() || pickerOverlay.estimatePicker() || pickerOverlay.bulkReschedule()) {
   <button
     type="button"
     class="picker-scrim"
     aria-label="Close picker"
     (click)="pickerOverlay.close()"
   ></button>
+}
+
+@if (pickerOverlay.bulkReschedule()) {
+  <app-task-date-picker
+    mode="popover"
+    [value]="null"
+    (select)="onBulkRescheduleSelect($event)"
+  />
 }
 
 @if (pickerOverlay.duePicker(); as due) {
@@ -62,10 +70,11 @@
   />
 }
 
-@if (detailsOverlay.task(); as task) {
+@if (detailsOverlay.view(); as view) {
   <app-task-details-dialog
-    [task]="task"
+    [view]="view"
     (toggleItem)="onToggleChecklistItem($event)"
+    (planFilterChange)="detailsOverlay.setDayPlanFilter($event)"
     (close)="detailsOverlay.close()"
   />
 }
