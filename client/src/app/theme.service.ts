@@ -30,7 +30,7 @@ export const THEMES: Theme[] = [
   { id: 'neon-forest', name: 'Matrix',  swatch: '#00E676', category: 'neon' },
   { id: 'neon-sunset', name: 'Blade',   swatch: '#FF6D00', category: 'neon' },
   { id: 'neon-sakura', name: 'Vapor',   swatch: '#FF2D78', category: 'neon' },
-  { id: 'neon-galaxy', name: 'Ghost',   swatch: '#D500F9', category: 'neon' },
+  { id: 'neon-galaxy', name: 'Violina', swatch: '#D500F9', category: 'neon' },
 ];
 
 const MIGRATIONS: Record<string, string> = {
