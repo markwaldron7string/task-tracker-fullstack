@@ -76,19 +76,21 @@ main {
   padding: 0 1rem;
 }
 
-@media (max-width: 640px) {
+@media (max-width: 768px) {
   header {
     padding: 0 1rem;
   }
 
   .header-content {
-    align-items: stretch;
+    align-items: center;
     gap: 0.85rem;
     padding: 0.85rem 0;
   }
 
   .logo {
-    justify-content: center;
+    order: 1;
+    margin-right: auto;
+    justify-content: flex-start;
   }
 
   .angular-shield {
@@ -99,7 +101,15 @@ main {
     font-size: 1.15rem;
   }
 
+  theme-picker {
+    order: 2;
+    width: auto;
+    justify-content: flex-end;
+  }
+
   nav {
+    order: 3;
+    flex-basis: 100%;
     width: 100%;
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -113,11 +123,6 @@ main {
     padding: 0.55rem 0.35rem;
     text-align: center;
     font-size: 0.8rem;
-  }
-
-  theme-picker {
-    width: 100%;
-    justify-content: center;
   }
 
   main {
