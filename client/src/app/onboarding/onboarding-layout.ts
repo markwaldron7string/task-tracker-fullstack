@@ -232,6 +232,45 @@ export function computeHeaderPinnedFlagPosition(
 }
 
 /** Animated pointer between the card edge and the highlighted target. */
+export function isMobileTour(): boolean {
+  return window.matchMedia('(max-width: 768px)').matches;
+}
+
+export function isCoarsePointer(): boolean {
+  return window.matchMedia('(hover: none), (pointer: coarse)').matches;
+}
+
+export function isKeyboardOpen(): boolean {
+  const vv = window.visualViewport;
+  if (!vv) return false;
+  return vv.height < window.innerHeight * 0.72;
+}
+
+export function getVisualViewportTop(): number {
+  return window.visualViewport?.offsetTop ?? 0;
+}
+
+export function getVisualViewportHeight(): number {
+  const vv = window.visualViewport;
+  return vv ? vv.height : window.innerHeight;
+}
+
+export function computeViewportTopFlagPosition(
+  flagWidth: number,
+  topPad = 12,
+): FlagLayout {
+  const viewportPad = 12;
+  const top = getVisualViewportTop() + topPad;
+  const left = Math.max(
+    viewportPad,
+    Math.min(
+      window.innerWidth - flagWidth - viewportPad,
+      (window.innerWidth - flagWidth) / 2,
+    ),
+  );
+  return { top, left, arrowX: flagWidth / 2, placement: 'bottom' };
+}
+
 export function computeTourPointer(
   flag: FlagLayout,
   flagWidth: number,

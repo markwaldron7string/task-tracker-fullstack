@@ -1,4 +1,5 @@
 import { Component, computed, inject, input, output } from '@angular/core';
+import { OnboardingService } from '../onboarding/onboarding.service';
 import { TaskDetailsOverlayService } from '../task-details-overlay.service';
 import { TaskEditOverlayService } from '../task-edit-overlay.service';
 import { projectLabel, isCoachPlan } from '../task-domains';
@@ -12,6 +13,7 @@ import { EnrichedTask } from '../task-store';
   host: {
     class: 'task-item-host',
     '[attr.data-tour]': 'position() === 1 ? "first-task" : null',
+    '[class.tour-demo-locked]': 'tourDemoLocked()',
   },
   imports: [],
   templateUrl: './task-item.html',
@@ -22,9 +24,11 @@ export class TaskItem {
   private detailsOverlay = inject(TaskDetailsOverlayService);
   private reminderOverlay = inject(TaskReminderOverlayService);
   private reminders = inject(TaskReminderService);
+  private onboarding = inject(OnboardingService);
 
   task = input.required<EnrichedTask>();
   position = input<number>();
+  protected tourDemoLocked = computed(() => this.onboarding.introTaskControlsStepActive());
   protected projectLabel = projectLabel;
   protected isCoachPlan = isCoachPlan;
   protected recurrenceLabel = recurrenceLabel;
@@ -49,21 +53,33 @@ export class TaskItem {
     return `${items.filter(item => item.done).length}/${items.length}`;
   });
 
-  onToggle(): void { this.toggle.emit(this.task().id); }
-  onRemove(): void { this.remove.emit(this.task().id); }
-  onCyclePriority(): void { this.cyclePriority.emit(this.task().id); }
+  onToggle(): void {
+    if (this.tourDemoLocked()) return;
+    this.toggle.emit(this.task().id);
+  }
+  onRemove(): void {
+    if (this.tourDemoLocked()) return;
+    this.remove.emit(this.task().id);
+  }
+  onCyclePriority(): void {
+    if (this.tourDemoLocked()) return;
+    this.cyclePriority.emit(this.task().id);
+  }
 
   openEditDialog(event: Event): void {
+    if (this.tourDemoLocked()) return;
     event.stopPropagation();
     this.editOverlay.open(this.task());
   }
 
   openDetailsDialog(event: Event): void {
+    if (this.tourDemoLocked()) return;
     event.stopPropagation();
     this.detailsOverlay.open(this.task());
   }
 
   onBellClick(event: Event): void {
+    if (this.tourDemoLocked()) return;
     event.stopPropagation();
     this.reminderOverlay.open(this.task());
   }

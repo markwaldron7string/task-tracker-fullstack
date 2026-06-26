@@ -20,7 +20,7 @@ const INTRO_TOUR_STEPS: TourStep[] = [
   {
     id: 'welcome',
     title: 'Welcome to Task Tracker',
-    body: 'Let’s take a quick tour — you’ll pick a theme, add your first task, and see how everything works.',
+    body: 'Let’s take a quick tour — you’ll pick a theme, see how to add tasks, and learn the basics.',
     placement: 'center',
   },
   {
@@ -34,8 +34,8 @@ const INTRO_TOUR_STEPS: TourStep[] = [
   {
     id: 'add-task',
     target: 'add-task',
-    title: 'Add your first task',
-    body: 'Type a task in the field below — try “Walk the dog tomorrow” — then tap Add or press Enter.',
+    title: 'Add tasks here',
+    body: 'Type a task and tap Add — try something like “Walk the dog tomorrow”. This field is where new tasks start.',
     placement: 'bottom',
     route: '/',
   },
@@ -131,13 +131,7 @@ export class OnboardingService {
     const source = this.kind() === 'pro' ? PRO_TOUR_STEPS : INTRO_TOUR_STEPS;
     return source.filter(step => {
       if (step.id === 'upgrade' && this.pro.unlocked()) return false;
-      if (
-        (step.id === 'add-task' || step.id === 'pro-add-task') &&
-        document.querySelector('[data-tour="first-task"]')
-      ) {
-        return false;
-      }
-      if (step.id === 'task-controls' && !document.querySelector('[data-tour="first-task-actions"]')) {
+      if (step.id === 'pro-add-task' && document.querySelector('[data-tour="first-task"]')) {
         return false;
       }
       if (step.id === 'pro-calendar' && !document.querySelector('[data-tour="calendar-view"]')) {
@@ -170,14 +164,24 @@ export class OnboardingService {
   readonly openThemePickerTick = signal(0);
   readonly addTaskStepSkipped = signal(false);
 
+  readonly introAddTaskStepActive = computed(
+    () => this.introTourActive() && this.currentStep()?.id === 'add-task'
+  );
+
+  readonly introTaskControlsStepActive = computed(
+    () => this.introTourActive() && this.currentStep()?.id === 'task-controls'
+  );
+
   readonly addTaskStepActive = computed(() => {
     const stepId = this.currentStep()?.id;
     return !!stepId && ADD_TASK_STEP_IDS.has(stepId);
   });
 
-  readonly taskEntryLocked = computed(
-    () => this.active() && !this.addTaskStepActive()
-  );
+  readonly taskEntryLocked = computed(() => {
+    if (!this.active()) return false;
+    if (this.currentStep()?.id === 'pro-add-task') return false;
+    return true;
+  });
 
   readonly progressLabel = computed(() => {
     const total = this.steps().length;
@@ -221,9 +225,11 @@ export class OnboardingService {
     this.startIntro();
   }
 
-  canAdvance(taskCount: number): boolean {
+  canAdvance(_taskCount = 0): boolean {
+    const step = this.currentStep();
+    if (step?.id === 'add-task' && this.kind() === 'intro') return true;
     if (!this.addTaskStepActive() || this.addTaskStepSkipped()) return true;
-    return taskCount > 0;
+    return _taskCount > 0;
   }
 
   next(): void {
@@ -304,6 +310,7 @@ export class OnboardingService {
 
   private isStepReachable(step: TourStep): boolean {
     if (step.placement === 'center' || !step.target) return true;
+    if (step.id === 'task-controls') return true;
     return !!document.querySelector(`[data-tour="${step.target}"]`);
   }
 }

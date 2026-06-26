@@ -71,22 +71,23 @@ describe('OnboardingService', () => {
     expect(service.steps().some(step => step.id === 'upgrade')).toBe(true);
   });
 
-  it('should block advance on add-task step until a task exists', () => {
+  it('should always allow advance on intro add-task step', () => {
     service.startIntro();
     while (service.currentStep()?.id !== 'add-task') {
       service.next();
     }
-    expect(service.canAdvance(0)).toBe(false);
-    expect(service.canAdvance(1)).toBe(true);
+    expect(service.canAdvance(0)).toBe(true);
   });
 
-  it('should allow skipping the add-task step', () => {
-    service.startIntro();
-    while (service.currentStep()?.id !== 'add-task') {
+  it('should allow skipping the pro add-task step', () => {
+    proUnlocked.set(true);
+    storage.setItem('ttf-onboarding-complete', '1');
+    service.startPro();
+    while (service.currentStep()?.id !== 'pro-add-task') {
       service.next();
     }
     service.skipAddTaskStep();
-    expect(service.currentStep()?.id).not.toBe('add-task');
+    expect(service.currentStep()?.id).not.toBe('pro-add-task');
     expect(service.canAdvance(0)).toBe(true);
   });
 

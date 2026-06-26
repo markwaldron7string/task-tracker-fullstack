@@ -5,7 +5,19 @@ import { TaskItem } from '../task-item/task-item';
 import { TaskSummary } from '../task-summary/task-summary';
 import { TASK_DOMAINS, projectLabel } from '../task-domains';
 import { TaskReminderService } from '../task-reminder.service';
-import { TaskStore } from '../task-store';
+import { TaskStore, Task } from '../task-store';
+
+const TOUR_DEMO_TASK: Task = {
+  id: 0,
+  title: 'Walk the dog',
+  done: false,
+  priority: 'none',
+  due: null,
+  estimateMinutes: null,
+  project: null,
+  recurrence: null,
+  checklist: [],
+};
 
 @Component({
   selector: 'app-task-list',
@@ -21,6 +33,9 @@ export class TaskList {
   protected confirmClearOpen = signal(false);
 
   protected taskEntryLocked = this.onboarding.taskEntryLocked;
+  protected introAddTaskStepActive = this.onboarding.introAddTaskStepActive;
+  protected introTaskControlsStepActive = this.onboarding.introTaskControlsStepActive;
+  protected tourDemoTask = TOUR_DEMO_TASK;
 
   constructor() {
     injectOverlayDismissBinding(() => {
@@ -79,4 +94,6 @@ export class TaskList {
       this.onboarding.notifyTaskAdded();
     }
   }
+
+  protected ignoreTourDemoAction(): void {}
 }

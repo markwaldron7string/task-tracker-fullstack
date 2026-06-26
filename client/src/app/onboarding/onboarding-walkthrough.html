@@ -1,5 +1,11 @@
 @if (onboarding.active() && step(); as current) {
-  <div class="tour-root" role="dialog" aria-modal="true" [attr.aria-label]="current.title">
+  <div
+    class="tour-root"
+    [class.tour-root--keyboard-open]="keyboardOpen()"
+    role="dialog"
+    aria-modal="true"
+    [attr.aria-label]="current.title"
+  >
     @if (spotlight(); as box) {
       <div
         class="tour-spotlight tour-spotlight--pulse"
@@ -9,7 +15,7 @@
         [style.height.px]="box.height"
         [style.border-radius]="box.radius"
       ></div>
-    } @else {
+    } @else if (showFullScrim()) {
       <div class="tour-scrim tour-scrim--full"></div>
     }
 

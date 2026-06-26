@@ -9,6 +9,12 @@
   pointer-events: none;
 }
 
+.tour-root--keyboard-open {
+  top: var(--vv-offset-top, 0px);
+  height: var(--vv-height, 100vh);
+  bottom: auto;
+}
+
 .tour-scrim--full {
   position: fixed;
   inset: 0;

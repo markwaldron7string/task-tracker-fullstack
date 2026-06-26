@@ -52,7 +52,7 @@
   </aside>
 }
 
-@if (appUpdate.enabled && !appUpdate.updateReady() && !onboarding.proCoachStepActive()) {
+@if (appUpdate.enabled && !appUpdate.updateReady() && !onboarding.active()) {
   <button
     type="button"
     class="app-manual-refresh"

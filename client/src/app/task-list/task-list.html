@@ -53,13 +53,19 @@
     }
   </div>
 
-  <div class="add-task-row" data-tour="add-task" [class.add-task-row--locked]="taskEntryLocked()">
+  <div
+    class="add-task-row"
+    data-tour="add-task"
+    [class.add-task-row--locked]="taskEntryLocked() && !introAddTaskStepActive()"
+    [class.add-task-row--tour-demo]="introAddTaskStepActive()"
+  >
     <input
       #taskInput
       class="task-input"
-      placeholder="Add a task (i.e. Walk the dog)"
+      placeholder="Walk the dog tomorrow"
       [readonly]="taskEntryLocked()"
       [attr.aria-disabled]="taskEntryLocked()"
+      [attr.tabindex]="introAddTaskStepActive() ? -1 : null"
       (keydown.enter)="tryAddTask(taskInput)"
     />
     <button
@@ -86,6 +92,20 @@
   }
 
   <div class="task-list" role="list">
+    @if (onboarding.introTourActive() && store.tasks().length === 0) {
+      <app-task-item
+        role="listitem"
+        class="tour-demo-task"
+        [class.tour-demo-task--hidden]="!introTaskControlsStepActive()"
+        [task]="tourDemoTask"
+        [position]="1"
+        (toggle)="ignoreTourDemoAction()"
+        (remove)="ignoreTourDemoAction()"
+        (edit)="ignoreTourDemoAction()"
+        (update)="ignoreTourDemoAction()"
+        (cyclePriority)="ignoreTourDemoAction()"
+      />
+    }
     @for (task of store.filteredEnrichedTasks(); track task.id) {
       <app-task-item
         role="listitem"
@@ -98,6 +118,7 @@
         (cyclePriority)="store.cyclePriority($event)"
       />
     } @empty {
+      @if (!(onboarding.introTourActive() && store.tasks().length === 0)) {
       <div class="empty-state">
         @if (store.searchQuery() || store.projectFilter()) {
           No tasks match your filters.
@@ -105,6 +126,7 @@
           No tasks yet.
         }
       </div>
+      }
     }
   </div>
 </div>

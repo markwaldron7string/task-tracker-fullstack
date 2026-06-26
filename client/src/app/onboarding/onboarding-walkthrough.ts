@@ -17,7 +17,13 @@ import {
   computeHeaderPinnedFlagPosition,
   computeThemeStepFlagPosition,
   computeTourPointer,
+  computeViewportTopFlagPosition,
   FlagLayout,
+  getVisualViewportHeight,
+  getVisualViewportTop,
+  isCoarsePointer,
+  isKeyboardOpen,
+  isMobileTour,
   resolveTourTarget,
   SpotlightBox,
   TourPointer,
@@ -51,6 +57,20 @@ export class OnboardingWalkthrough {
   protected flagPos = signal<FlagPosition | null>(null);
   protected flagPlacement = signal<TourPlacement>('bottom');
   protected pointer = signal<TourPointer | null>(null);
+  protected keyboardOpen = signal(false);
+
+  protected showFullScrim = computed(() => {
+    const step = this.step();
+    if (!step) return true;
+    if (
+      this.keyboardOpen() &&
+      isMobileTour() &&
+      (step.id === 'add-task' || step.id === 'pro-add-task')
+    ) {
+      return false;
+    }
+    return true;
+  });
 
   protected isLastStep = computed(() => {
     const steps = this.onboarding.steps();
@@ -67,7 +87,9 @@ export class OnboardingWalkthrough {
 
   protected showThemeSkip = computed(() => this.onboarding.introThemeStepActive());
 
-  protected showAddTaskSkip = computed(() => this.onboarding.addTaskStepActive());
+  protected showAddTaskSkip = computed(
+    () => this.onboarding.isProTour() && this.onboarding.addTaskStepActive()
+  );
 
   protected canAdvance = computed(() => this.onboarding.canAdvance(this.store.tasks().length));
 
@@ -76,7 +98,7 @@ export class OnboardingWalkthrough {
     if (!step) return 'Next';
     if (this.isLastStep()) return this.finishLabel();
     if (step.id === 'theme') return 'Continue';
-    if (step.id === 'add-task' || step.id === 'pro-add-task') {
+    if (step.id === 'pro-add-task') {
       return this.store.tasks().length > 0 ? 'Continue' : 'Next';
     }
     return 'Next';
@@ -87,7 +109,15 @@ export class OnboardingWalkthrough {
   private scrollLockY = 0;
   private layoutTarget: Element | null = null;
   private positionObserver: ResizeObserver | null = null;
-  private readonly onViewportChange = () => this.scheduleLayout();
+  private lastKeyboardOpen = false;
+  private readonly onViewportChange = () => {
+    const open = isKeyboardOpen();
+    const step = this.onboarding.currentStep();
+    const isAddTask = step?.id === 'add-task' || step?.id === 'pro-add-task';
+    if (isAddTask && open === this.lastKeyboardOpen) return;
+    this.lastKeyboardOpen = open;
+    this.scheduleLayout();
+  };
   private readonly onTouchMove = (event: TouchEvent) => {
     if (!this.onboarding.active()) return;
     const target = event.target as Node | null;
@@ -239,7 +269,7 @@ export class OnboardingWalkthrough {
       window.setTimeout(() => this.scheduleLayout(), 80);
       window.setTimeout(() => this.scheduleLayout(), 220);
     }
-    if (stepChanged && (step.id === 'add-task' || step.id === 'pro-add-task')) {
+    if (stepChanged && step.id === 'pro-add-task' && !isCoarsePointer()) {
       window.setTimeout(() => {
         const input = document.querySelector(
           '[data-tour="add-task"] .task-input'
@@ -257,6 +287,10 @@ export class OnboardingWalkthrough {
   private layoutCurrentStep(): void {
     const step = this.onboarding.currentStep();
     if (!step) return;
+
+    const keyboardOpen = isKeyboardOpen();
+    this.keyboardOpen.set(keyboardOpen);
+    this.syncViewportCssVars();
 
     if (!step.target) {
       this.spotlight.set(null);
@@ -289,12 +323,51 @@ export class OnboardingWalkthrough {
     const navBottom =
       document.querySelector('[data-tour="nav"]')?.getBoundingClientRect().bottom ?? headerBottom;
 
+    if (this.isMobileAddTaskWithKeyboard(step, keyboardOpen)) {
+      this.spotlight.set(null);
+      const flag = computeViewportTopFlagPosition(flagW, 8);
+      this.flagPlacement.set(flag.placement);
+      this.flagPos.set({ top: flag.top, left: flag.left, arrowX: flag.arrowX });
+      this.pointer.set(null);
+      return;
+    }
+
     const flag = this.layoutFlag(step, box, targetRect, flagW, flagH, headerBottom, navBottom);
 
     this.spotlight.set(box);
     this.flagPlacement.set(flag.placement);
     this.flagPos.set({ top: flag.top, left: flag.left, arrowX: flag.arrowX });
-    this.pointer.set(computeTourPointer(flag, flagW, flagH, targetRect));
+    this.pointer.set(
+      this.shouldShowPointer(step) ? computeTourPointer(flag, flagW, flagH, targetRect) : null,
+    );
+  }
+
+  private syncViewportCssVars(): void {
+    document.documentElement.style.setProperty('--vv-offset-top', `${getVisualViewportTop()}px`);
+    document.documentElement.style.setProperty('--vv-height', `${getVisualViewportHeight()}px`);
+  }
+
+  private isMobileAddTaskWithKeyboard(step: TourStep, keyboardOpen: boolean): boolean {
+    return (
+      keyboardOpen &&
+      isMobileTour() &&
+      (step.id === 'add-task' || step.id === 'pro-add-task')
+    );
+  }
+
+  private shouldShowPointer(step: TourStep): boolean {
+    if (
+      step.id === 'pro-calendar-nav' ||
+      step.id === 'pro-calendar' ||
+      step.id === 'add-task' ||
+      step.id === 'task-controls'
+    ) {
+      return false;
+    }
+    if (isMobileTour() && step.id === 'pro-add-task') {
+      return false;
+    }
+    return true;
   }
 
   private layoutFlag(
@@ -311,8 +384,14 @@ export class OnboardingWalkthrough {
         return computeThemeStepFlagPosition(box, flagW, flagH, VIEWPORT_PAD, FLAG_GAP);
       case 'add-task':
       case 'pro-add-task':
+        if (isMobileTour()) {
+          return computeHeaderPinnedFlagPosition(targetRect, headerBottom, flagW, VIEWPORT_PAD, 10);
+        }
         return computeCardNearTarget(targetRect, flagW, flagH, VIEWPORT_PAD, 20, 'above');
       case 'task-controls':
+        if (isMobileTour()) {
+          return computeHeaderPinnedFlagPosition(targetRect, headerBottom, flagW, VIEWPORT_PAD, 10);
+        }
         return computeCardNearTarget(targetRect, flagW, flagH, VIEWPORT_PAD, 24, 'above');
       case 'nav':
         return computeHeaderPinnedFlagPosition(targetRect, navBottom, flagW, VIEWPORT_PAD, 10);
