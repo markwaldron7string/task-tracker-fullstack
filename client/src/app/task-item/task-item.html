@@ -37,6 +37,7 @@
     class="task-actions"
     [attr.data-tour]="position() === 1 ? 'first-task-actions' : null"
   >
+    @if (showReminders()) {
     <button
       type="button"
       class="bell-btn"
@@ -51,6 +52,7 @@
         <path d="M12 22a2.2 2.2 0 0 0 2.1-1.5H9.9A2.2 2.2 0 0 0 12 22Zm6.3-5.5V11a6.3 6.3 0 0 0-5-6.2V4a2 2 0 1 0-4 0v.8A6.3 6.3 0 0 0 4.7 11v5.5L3 18.5h18l-1.7-1.5Z" fill="currentColor"/>
       </svg>
     </button>
+    }
     <button type="button" class="action-btn" (click)="openEditDialog($event)">Edit</button>
     <button type="button" class="action-btn delete-btn" (click)="onRemove()">Delete</button>
   </div>

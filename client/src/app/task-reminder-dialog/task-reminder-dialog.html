@@ -93,10 +93,10 @@
 
       @if (notice(); as message) {
         <p class="notice">{{ message }}</p>
-      } @else if (permissionUnsupported()) {
-        <p class="hint">Notifications are not available in this browser.</p>
+      } @else if (permissionNeedsInstall() || permissionUnsupported()) {
+        <p class="hint">{{ permissionHint() }}</p>
       } @else if (permissionBlocked()) {
-        <p class="hint">Notifications are blocked. Allow them in browser settings to use reminders.</p>
+        <p class="hint">{{ permissionHint() }}</p>
       } @else {
         <p class="hint">You'll get a notification on this device at the date and time above.</p>
       }

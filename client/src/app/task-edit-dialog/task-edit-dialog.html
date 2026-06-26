@@ -88,12 +88,14 @@
         </div>
       </fieldset>
 
+      @if (showReminders()) {
       <div class="field reminder-field">
         <button type="button" class="reminder-link" (click)="openReminderSettings()">
           Remind me on this device
         </button>
         <p class="reminder-hint">Set date, time, and repeat options in the reminder window.</p>
       </div>
+      }
 
       <label class="done-row">
         <input type="checkbox" [checked]="done()" (change)="done.set($any($event.target).checked)" />

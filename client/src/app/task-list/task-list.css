@@ -71,6 +71,17 @@ h2 {
   margin-bottom: 1.25rem;
 }
 
+.reminder-notice {
+  margin: -0.35rem 0 0.85rem;
+  padding: 0.55rem 0.75rem;
+  border-radius: 8px;
+  border: 1px solid var(--red-border);
+  background: color-mix(in srgb, var(--red) 8%, transparent);
+  color: var(--text);
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
 .separator {
   color: var(--text-faint);
 }

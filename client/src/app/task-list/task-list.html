@@ -2,6 +2,7 @@
   <div class="card-header">
     <h2>All Tasks</h2>
     <div class="header-tools">
+      @if (pro.unlocked()) {
       <button
         type="button"
         class="notifications-toggle"
@@ -16,9 +17,14 @@
         </svg>
         <span>{{ reminders.isMasterEnabled() ? 'Reminders on' : 'Reminders off' }}</span>
       </button>
+      }
       <app-task-summary />
     </div>
   </div>
+
+  @if (pro.unlocked() && reminders.notice(); as reminderNotice) {
+    <p class="reminder-notice" role="status">{{ reminderNotice }}</p>
+  }
 
   <div class="task-stats">
     <span>{{ store.tasks().length }} total</span>

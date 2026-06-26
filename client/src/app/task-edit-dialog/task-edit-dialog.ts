@@ -1,6 +1,7 @@
 import { TitleCasePipe } from '@angular/common';
 import { Component, ElementRef, effect, inject, input, output, signal } from '@angular/core';
 import { injectOverlayDismissBinding } from '../overlay-dismiss.service';
+import { ProService } from '../pro.service';
 import { TASK_DOMAINS, projectLabel } from '../task-domains';
 import { TaskDatePicker } from '../task-date-picker/task-date-picker';
 import { parseEstimateInput } from '../task-quick-parse';
@@ -36,6 +37,7 @@ const ESTIMATE_PRESETS: Array<{ label: string; minutes: number | null }> = [
 })
 export class TaskEditDialog {
   private reminderOverlay = inject(TaskReminderOverlayService);
+  private pro = inject(ProService);
   private host = inject(ElementRef<HTMLElement>);
 
   task = input.required<EnrichedTask>();
@@ -47,6 +49,7 @@ export class TaskEditDialog {
   protected readonly estimatePresets = ESTIMATE_PRESETS;
   protected readonly domainOptions = TASK_DOMAINS;
   protected readonly projectLabel = projectLabel;
+  protected showReminders = this.pro.unlocked;
 
   protected title = signal('');
   protected priority = signal<Priority>('none');

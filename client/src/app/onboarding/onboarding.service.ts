@@ -43,7 +43,7 @@ const INTRO_TOUR_STEPS: TourStep[] = [
     id: 'task-controls',
     target: 'first-task-actions',
     title: 'Manage each task',
-    body: 'Every row has a bell for reminders, Edit for details, and Delete to remove the task.',
+    body: 'Use Edit to update a task or Delete to remove it.',
     placement: 'top',
     route: '/',
   },
@@ -51,14 +51,14 @@ const INTRO_TOUR_STEPS: TourStep[] = [
     id: 'nav',
     target: 'nav',
     title: 'Filter your work',
-    body: 'Use these tabs to switch between All Tasks, Today, Calendar, Active, and Completed.',
+    body: 'Switch between All Tasks, Today, Active, and Completed. Calendar and device reminders unlock with Pro.',
     placement: 'bottom',
   },
   {
     id: 'upgrade',
     target: 'upgrade',
     title: 'Unlock Pro features',
-    body: 'Upgrade anytime for calendar planning, recurring tasks, and the AI Planning Coach.',
+    body: 'Upgrade for calendar planning, device reminders, recurring tasks, and the AI Planning Coach.',
     placement: 'bottom',
   },
 ];
@@ -98,7 +98,7 @@ const PRO_TOUR_STEPS: TourStep[] = [
     id: 'pro-notifications',
     target: 'notifications-toggle',
     title: 'Device reminders',
-    body: 'Turn reminders on for the whole list, then tap the bell on any task row to schedule alerts on this device.',
+    body: 'Turn reminders on here, then tap the bell on any task row. On iPhone or iPad, add the app to your Home Screen first, then allow notifications when prompted.',
     placement: 'bottom',
     route: '/',
   },
@@ -132,6 +132,9 @@ export class OnboardingService {
     return source.filter(step => {
       if (step.id === 'upgrade' && this.pro.unlocked()) return false;
       if (step.id === 'pro-add-task' && document.querySelector('[data-tour="first-task"]')) {
+        return false;
+      }
+      if (step.id === 'pro-notifications' && !document.querySelector('[data-tour="notifications-toggle"]')) {
         return false;
       }
       if (step.id === 'pro-calendar' && !document.querySelector('[data-tour="calendar-view"]')) {

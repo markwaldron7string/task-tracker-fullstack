@@ -7,7 +7,11 @@
     <nav data-tour="nav">
       <a routerLink="/" routerLinkActive="active-link" [routerLinkActiveOptions]="{ exact: true }"><span class="nav-short">All</span><span class="nav-long">All Tasks</span></a>
       <a routerLink="/today" routerLinkActive="active-link" data-tour="nav-today">Today</a>
-      <a routerLink="/calendar" routerLinkActive="active-link" data-tour="nav-calendar">Calendar</a>
+      @if (pro.unlocked()) {
+        <a routerLink="/calendar" routerLinkActive="active-link" data-tour="nav-calendar">Calendar</a>
+      } @else {
+        <a routerLink="/upgrade" routerLinkActive="active-link" data-tour="nav-calendar" class="nav-pro-link">Calendar <span class="nav-pro-tag">Pro</span></a>
+      }
       <a routerLink="/active" routerLinkActive="active-link">Active</a>
       <a routerLink="/completed" routerLinkActive="active-link"><span class="nav-short">Done</span><span class="nav-long">Completed</span></a>
     </nav>

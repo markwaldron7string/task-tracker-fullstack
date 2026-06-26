@@ -1,4 +1,6 @@
 import { Injectable, effect, inject, signal } from '@angular/core';
+import { getNotificationSupport, hasNotificationApi, type NotificationSupportStatus } from './notification-support';
+import { ProService } from './pro.service';
 import { RecurrenceRule } from './task-recurrence';
 import { Task, TaskStore } from './task-store';
 
@@ -7,7 +9,7 @@ const FIRED_KEY = 'ttf-reminder-fired-v2';
 const MASTER_KEY = 'ttf-reminders-master-v1';
 const DEFAULT_TIME = '09:00';
 
-export type ReminderPermissionState = 'unsupported' | 'denied' | 'prompt' | 'granted';
+export type ReminderPermissionState = NotificationSupportStatus;
 
 export interface TaskReminderConfig {
   enabled: boolean;
@@ -30,6 +32,7 @@ export interface TaskReminderSave {
 @Injectable({ providedIn: 'root' })
 export class TaskReminderService {
   private store = inject(TaskStore);
+  private pro = inject(ProService);
   private settings = new Map<number, TaskReminderConfig>(this.loadSettings());
   private firedKeys = new Set<string>(this.loadFired());
   private firingKeys = new Set<string>();
@@ -37,6 +40,7 @@ export class TaskReminderService {
   private intervalId: ReturnType<typeof setInterval> | null = null;
 
   readonly masterEnabled = signal(this.loadMaster());
+  readonly notice = signal<string | null>(null);
 
   constructor() {
     effect(() => {
@@ -54,18 +58,56 @@ export class TaskReminderService {
   }
 
   permissionState(): ReminderPermissionState {
-    if (typeof window === 'undefined' || !('Notification' in window)) return 'unsupported';
-    return Notification.permission as ReminderPermissionState;
+    return getNotificationSupport().status;
+  }
+
+  permissionMessage(): string | null {
+    return getNotificationSupport().message;
   }
 
   isMasterEnabled(): boolean {
     return this.masterEnabled();
   }
 
-  setMasterEnabled(enabled: boolean): void {
+  setMasterEnabled(enabled: boolean): boolean {
+    if (!this.pro.unlocked()) {
+      this.notice.set('Device reminders are a Pro feature.');
+      return false;
+    }
+    this.notice.set(null);
     this.masterEnabled.set(enabled);
     writeStoredJson(MASTER_KEY, enabled);
     this.reschedule(this.store.tasks());
+    return true;
+  }
+
+  async enableMasterWithPermission(): Promise<boolean> {
+    if (!this.pro.unlocked()) {
+      this.notice.set('Device reminders are a Pro feature.');
+      return false;
+    }
+
+    const support = getNotificationSupport();
+    if (support.status === 'ios-needs-install' || support.status === 'unsupported') {
+      this.notice.set(support.message);
+      return false;
+    }
+    if (support.status === 'denied') {
+      this.notice.set(support.message);
+      return false;
+    }
+
+    if (support.status !== 'granted') {
+      const granted = await this.ensurePermission();
+      if (!granted) {
+        this.notice.set(getNotificationSupport().message ?? 'Notification permission was not granted.');
+        return false;
+      }
+    }
+
+    this.notice.set(null);
+    this.setMasterEnabled(true);
+    return true;
   }
 
   getConfig(taskId: number): TaskReminderConfig | null {
@@ -92,6 +134,7 @@ export class TaskReminderService {
   }
 
   async saveConfig(taskId: number, save: TaskReminderSave): Promise<boolean> {
+    if (!this.pro.unlocked()) return false;
     if (save.enabled) {
       const granted = await this.ensurePermission();
       if (!granted) return false;
@@ -112,6 +155,7 @@ export class TaskReminderService {
   }
 
   async toggleEnabled(task: Task): Promise<'opened' | 'disabled' | 'blocked'> {
+    if (!this.pro.unlocked()) return 'blocked';
     if (!this.masterEnabled()) return 'blocked';
 
     const config = this.settings.get(task.id);
@@ -137,9 +181,11 @@ export class TaskReminderService {
   }
 
   async ensurePermission(): Promise<boolean> {
-    if (typeof window === 'undefined' || !('Notification' in window)) return false;
-    if (Notification.permission === 'granted') return true;
-    if (Notification.permission === 'denied') return false;
+    const support = getNotificationSupport();
+    if (support.status === 'ios-needs-install' || support.status === 'unsupported') return false;
+    if (support.status === 'denied') return false;
+    if (support.status === 'granted') return true;
+    if (!hasNotificationApi()) return false;
     return (await Notification.requestPermission()) === 'granted';
   }
 
@@ -185,7 +231,8 @@ export class TaskReminderService {
   }
 
   private async fireReminder(task: Task, config: TaskReminderConfig): Promise<boolean> {
-    if (typeof window === 'undefined' || !('Notification' in window)) return false;
+    if (!this.pro.unlocked()) return false;
+    if (!hasNotificationApi()) return false;
     if (Notification.permission !== 'granted') return false;
 
     const when = formatReminderWhen(config);
@@ -221,7 +268,7 @@ export class TaskReminderService {
 
       const ready = await Promise.race([
         navigator.serviceWorker.ready,
-        new Promise<null>(resolve => window.setTimeout(() => resolve(null), 1000)),
+        new Promise<null>(resolve => window.setTimeout(() => resolve(null), 5000)),
       ]);
       return ready && 'showNotification' in ready ? ready : null;
     } catch {
@@ -282,7 +329,7 @@ export class TaskReminderService {
 
   private loadMaster(): boolean {
     const value = readStoredJson<boolean | null>(MASTER_KEY, null);
-    return value ?? true;
+    return value ?? false;
   }
 }
 

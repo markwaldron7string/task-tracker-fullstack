@@ -1,5 +1,6 @@
 import { Component, computed, inject, input, output } from '@angular/core';
 import { OnboardingService } from '../onboarding/onboarding.service';
+import { ProService } from '../pro.service';
 import { TaskDetailsOverlayService } from '../task-details-overlay.service';
 import { TaskEditOverlayService } from '../task-edit-overlay.service';
 import { projectLabel, isCoachPlan } from '../task-domains';
@@ -25,9 +26,11 @@ export class TaskItem {
   private reminderOverlay = inject(TaskReminderOverlayService);
   private reminders = inject(TaskReminderService);
   private onboarding = inject(OnboardingService);
+  private pro = inject(ProService);
 
   task = input.required<EnrichedTask>();
   position = input<number>();
+  protected showReminders = computed(() => this.pro.unlocked());
   protected tourDemoLocked = computed(() => this.onboarding.introTaskControlsStepActive());
   protected projectLabel = projectLabel;
   protected isCoachPlan = isCoachPlan;
@@ -79,7 +82,7 @@ export class TaskItem {
   }
 
   onBellClick(event: Event): void {
-    if (this.tourDemoLocked()) return;
+    if (this.tourDemoLocked() || !this.pro.unlocked()) return;
     event.stopPropagation();
     this.reminderOverlay.open(this.task());
   }

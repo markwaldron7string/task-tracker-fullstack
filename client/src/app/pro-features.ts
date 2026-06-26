@@ -1,5 +1,6 @@
 export type ProFeatureId =
   | 'calendar'
+  | 'device-reminders'
   | 'custom-themes'
   | 'ai-coach'
   | 'smart-scheduling'
@@ -32,6 +33,12 @@ export const PRO_FEATURES: ProFeature[] = [
     id: 'calendar',
     title: 'Calendar planning',
     description: 'Month and week views, drag tasks between days, and a day panel for focused scheduling.',
+    highlight: true,
+  },
+  {
+    id: 'device-reminders',
+    title: 'Device reminders',
+    description: 'Turn reminders on for your task list and schedule alerts on this phone, tablet, or computer.',
     highlight: true,
   },
   {

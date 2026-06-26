@@ -9,6 +9,7 @@ import {
   RecurrenceRule,
   WEEKDAY_LABELS,
 } from '../task-recurrence';
+import { getNotificationSupport } from '../notification-support';
 import { TaskReminderService } from '../task-reminder.service';
 import { EnrichedTask } from '../task-store';
 
@@ -54,8 +55,10 @@ export class TaskReminderDialog {
 
   protected popoverPanel = viewChild<ElementRef<HTMLElement>>('popoverPanel');
 
-  protected permissionBlocked = computed(() => this.reminders.permissionState() === 'denied');
-  protected permissionUnsupported = computed(() => this.reminders.permissionState() === 'unsupported');
+  protected permissionBlocked = computed(() => getNotificationSupport().status === 'denied');
+  protected permissionNeedsInstall = computed(() => getNotificationSupport().status === 'ios-needs-install');
+  protected permissionUnsupported = computed(() => getNotificationSupport().status === 'unsupported');
+  protected permissionHint = computed(() => getNotificationSupport().message);
 
   protected customActive = computed(() => {
     const rule = this.recurrence();
@@ -192,15 +195,16 @@ export class TaskReminderDialog {
   }
 
   protected async saveReminder(): Promise<void> {
-    if (this.permissionUnsupported()) {
-      this.notice.set('Notifications are not available in this browser.');
+    const support = getNotificationSupport();
+    if (support.status === 'ios-needs-install' || support.status === 'unsupported') {
+      this.notice.set(support.message);
       return;
     }
 
     if (this.enabled()) {
       const granted = await this.reminders.ensurePermission();
       if (!granted) {
-        this.notice.set('Notifications are blocked. Enable them in browser settings, then try again.');
+        this.notice.set(getNotificationSupport().message ?? 'Notifications are blocked. Enable them in browser settings, then try again.');
         return;
       }
     }

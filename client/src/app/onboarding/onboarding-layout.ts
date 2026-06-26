@@ -91,7 +91,7 @@ function buildAddTaskSpotlight(root: Element): SpotlightBox {
 function buildTaskActionsSpotlight(root: Element): SpotlightBox {
   const host = root.closest('app-task-item') ?? root;
   const buttons = [
-    ...host.querySelectorAll('.task-actions .bell-btn, .task-actions .action-btn'),
+    ...host.querySelectorAll('.task-actions .action-btn'),
   ];
   const rect = unionElementRects(buttons) ?? root.getBoundingClientRect();
   return boxFromRect(rect, PAD_TIGHT, '8px');
