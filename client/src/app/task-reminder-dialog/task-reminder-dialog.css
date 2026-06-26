@@ -171,9 +171,11 @@
 }
 
 .option-btn--active {
-  border-color: var(--red-border);
+  border-color: var(--red);
   background: var(--red-light);
-  color: var(--red-dark);
+  color: var(--red);
+  font-weight: 800;
+  box-shadow: 0 0 0 2px var(--red);
 }
 
 .custom-days-popover,

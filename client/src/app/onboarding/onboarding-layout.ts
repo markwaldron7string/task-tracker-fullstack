@@ -80,19 +80,6 @@ export function buildSpotlightBox(
 
   const rect = target.getBoundingClientRect();
 
-  if (step.target === 'nav') {
-    // Extend spotlight to viewport top so the full sticky header is captured.
-    // On mobile, backdrop-filter on the header can bleed through a partial scrim,
-    // making the first header row appear un-dimmed. Covering from y=0 makes it intentional.
-    return {
-      top: 0,
-      left: 0,
-      width: window.innerWidth,
-      height: rect.bottom + PAD_DEFAULT,
-      radius: '0px',
-    };
-  }
-
   const pad = spotlightPadding(step.target ?? '', rect);
 
   return {

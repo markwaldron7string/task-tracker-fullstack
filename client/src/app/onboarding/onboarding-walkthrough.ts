@@ -203,20 +203,36 @@ export class OnboardingWalkthrough {
     }
 
     if (step.placement === 'center') {
-      // Spotlight the target element but keep the tour card centered.
       const el = document.querySelector(`[data-tour="${step.target}"]`);
-      if (el) {
+      if (!el) {
+        if (this.layoutAttempts < 8) {
+          this.layoutAttempts += 1;
+          window.setTimeout(() => this.layoutCurrentStep(), 60);
+          return;
+        }
+      } else {
         this.layoutAttempts = 0;
         const target = resolveTourTarget(el, step.target!);
         const box = buildSpotlightBox(step, target, VIEWPORT_PAD);
         this.spotlight.set(box);
-      } else if (this.layoutAttempts < 8) {
-        this.layoutAttempts += 1;
-        window.setTimeout(() => this.layoutCurrentStep(), 60);
+
+        // If there's room above the spotlight, anchor the card there so it
+        // doesn't overlap the highlighted element (e.g. task-controls step).
+        const vw = window.innerWidth;
+        const flagW = Math.min(FLAG_WIDTH, vw - VIEWPORT_PAD * 2);
+        const cardTop = box.top - FLAG_HEIGHT_EST - FLAG_GAP;
+        if (cardTop >= VIEWPORT_PAD) {
+          const left = Math.max(VIEWPORT_PAD, Math.min(vw / 2 - flagW / 2, vw - flagW - VIEWPORT_PAD));
+          this.flagPos.set({ top: cardTop, left, arrowX: flagW / 2 });
+          this.flagPlacement.set('top');
+          return;
+        }
+        // Not enough room above (e.g. upgrade button in header) → centered card.
+        this.flagPos.set(null);
+        this.flagPlacement.set('center');
         return;
-      } else {
-        this.spotlight.set(null);
       }
+      this.spotlight.set(null);
       this.flagPos.set(null);
       this.flagPlacement.set('center');
       return;

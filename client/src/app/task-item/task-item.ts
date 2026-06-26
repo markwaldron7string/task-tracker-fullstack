@@ -73,7 +73,7 @@ export class TaskItem {
     }
 
     const result = await this.reminders.toggleEnabled(this.task());
-    if (result === 'opened') {
+    if (result === 'opened' || result === 'blocked') {
       this.reminderOverlay.open(this.task());
     }
   }

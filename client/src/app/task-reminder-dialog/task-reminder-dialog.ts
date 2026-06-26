@@ -176,9 +176,12 @@ export class TaskReminderDialog {
       return;
     }
 
-    if (this.enabled() && this.permissionBlocked()) {
-      this.notice.set('Notifications are blocked. Enable them in browser settings.');
-      return;
+    if (this.enabled()) {
+      const granted = await this.reminders.ensurePermission();
+      if (!granted) {
+        this.notice.set('Notifications are blocked. Enable them in browser settings, then try again.');
+        return;
+      }
     }
 
     const rule = this.recurrence();
