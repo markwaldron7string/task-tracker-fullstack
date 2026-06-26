@@ -179,7 +179,6 @@
   color: var(--text-faint);
   background: var(--surface-hover);
   border-color: transparent;
-  text-decoration: line-through;
 }
 
 .swatches {

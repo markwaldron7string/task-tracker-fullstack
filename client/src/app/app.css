@@ -121,6 +121,12 @@ nav a.active-link {
   border-color: rgba(255, 255, 255, 0.55);
 }
 
+.upgrade-btn--disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
 .pro-badge {
   display: inline-flex;
   align-items: center;
@@ -160,6 +166,11 @@ main {
     top: 0;
     z-index: 100;
     padding: 0 1rem;
+    background:
+      var(--header-frost),
+      var(--header-gradient);
+    backdrop-filter: blur(24px) saturate(1.35);
+    -webkit-backdrop-filter: blur(24px) saturate(1.35);
   }
 
   .header-content {
@@ -202,7 +213,10 @@ main {
     padding: 0.25rem 0;
     margin: 0;
     border-radius: 8px;
-    background: rgba(255, 255, 255, 0.12);
+    background: var(--header-nav-bg);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(16px) saturate(1.2);
+    -webkit-backdrop-filter: blur(16px) saturate(1.2);
   }
 
   nav a {

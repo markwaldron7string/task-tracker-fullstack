@@ -53,6 +53,8 @@ export class ThemePicker {
       : THEMES.find(t => t.id === this.theme.active())?.name
   );
 
+  protected customTabDisabled = computed(() => this.onboarding.introTourActive());
+
   constructor() {
     injectOverlayDismissBinding(() => {
       if (!this.open() || this.onboarding.introThemeStepActive()) return null;
@@ -67,6 +69,14 @@ export class ThemePicker {
       if (!this.onboarding.introThemeStepActive()) return;
       this.openPanel();
     });
+
+    effect(() => {
+      const onThemeStep = this.onboarding.introThemeStepActive();
+      if (!onThemeStep && this.open() && this.onboarding.introTourActive()) {
+        this.open.set(false);
+        this.resetPanelPosition();
+      }
+    });
   }
 
   protected openPanel(): void {
@@ -74,7 +84,8 @@ export class ThemePicker {
       this.refreshTourLayout();
       return;
     }
-    this.tab.set(this.initialTab());
+    const tab = this.initialTab();
+    this.tab.set(tab === 'custom' && this.customTabDisabled() ? 'dark' : tab);
     this.open.set(true);
     queueMicrotask(() => {
       this.alignPanel();
@@ -121,6 +132,7 @@ export class ThemePicker {
   }
 
   protected switchTab(tab: Tab): void {
+    if (tab === 'custom' && this.customTabDisabled()) return;
     this.tab.set(tab);
     if (tab === 'custom') {
       if (this.pro.unlocked()) this.applyCustom();

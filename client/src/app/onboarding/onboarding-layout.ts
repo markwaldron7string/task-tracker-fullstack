@@ -14,6 +14,7 @@ const PAD_ROOMY = 6;
 const PAD_THEME = 5;
 
 const ROOMY_TARGETS = new Set(['nav', 'add-task', 'calendar-view', 'today-planning']);
+const COMPACT_TARGETS = new Set(['first-task-actions']);
 
 export function resolveTourTarget(root: Element, targetId: string): Element {
   if (targetId === 'theme-picker') {
@@ -24,6 +25,7 @@ export function resolveTourTarget(root: Element, targetId: string): Element {
 
 export function spotlightPadding(targetId: string, rect: DOMRect): number {
   if (targetId === 'theme-picker') return PAD_THEME;
+  if (COMPACT_TARGETS.has(targetId)) return PAD_DEFAULT;
   if (ROOMY_TARGETS.has(targetId)) {
     return rect.height > 100 ? PAD_ROOMY : PAD_DEFAULT;
   }

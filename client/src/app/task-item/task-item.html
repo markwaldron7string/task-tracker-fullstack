@@ -36,7 +36,10 @@
     }
   </div>
 
-  <div class="task-actions">
+  <div
+    class="task-actions"
+    [attr.data-tour]="position() === 1 ? 'first-task-actions' : null"
+  >
     <button
       type="button"
       class="bell-btn"

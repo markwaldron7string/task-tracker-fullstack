@@ -2,6 +2,7 @@ import { afterNextRender, Component, inject } from '@angular/core';
 import { injectOverlayDismissBinding } from './overlay-dismiss.service';
 import { RouterLink, RouterOutlet, RouterLinkActive } from '@angular/router';
 import { OnboardingWalkthrough } from './onboarding/onboarding-walkthrough';
+import { OnboardingService } from './onboarding/onboarding.service';
 import { ProAssistant } from './pro-assistant/pro-assistant';
 import { ProService } from './pro.service';
 import { TaskDatePicker } from './task-date-picker/task-date-picker';
@@ -37,6 +38,7 @@ import { ThemeService } from './theme.service';
 export class App {
   appName = 'Task Tracker';
   protected pro = inject(ProService);
+  protected onboarding = inject(OnboardingService);
   protected store = inject(TaskStore);
   protected editOverlay = inject(TaskEditOverlayService);
   protected detailsOverlay = inject(TaskDetailsOverlayService);

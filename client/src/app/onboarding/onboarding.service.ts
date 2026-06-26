@@ -40,19 +40,19 @@ const INTRO_TOUR_STEPS: TourStep[] = [
     route: '/',
   },
   {
+    id: 'task-controls',
+    target: 'first-task-actions',
+    title: 'Manage each task',
+    body: 'Tap the bell for device reminders, Edit for due dates and details, or Delete to remove a task.',
+    placement: 'top',
+    route: '/',
+  },
+  {
     id: 'nav',
     target: 'nav',
     title: 'Filter your work',
     body: 'Switch between All Tasks, Today, Calendar, Active, and Completed to focus on what matters now.',
     placement: 'bottom',
-  },
-  {
-    id: 'task-controls',
-    target: 'first-task',
-    title: 'Fine-tune each task',
-    body: 'Use Edit for due dates and details. Tap the bell to set device reminders on any row.',
-    placement: 'top',
-    route: '/',
   },
   {
     id: 'upgrade',
@@ -137,7 +137,7 @@ export class OnboardingService {
       ) {
         return false;
       }
-      if (step.id === 'task-controls' && !document.querySelector('[data-tour="first-task"]')) {
+      if (step.id === 'task-controls' && !document.querySelector('[data-tour="first-task-actions"]')) {
         return false;
       }
       if (step.id === 'pro-calendar' && !document.querySelector('[data-tour="calendar-view"]')) {
@@ -149,8 +149,18 @@ export class OnboardingService {
 
   readonly currentStep = computed(() => this.steps()[this.stepIndex()] ?? null);
 
+  readonly introTourActive = computed(() => this.active() && this.kind() === 'intro');
+
   readonly introThemeStepActive = computed(
-    () => this.active() && this.kind() === 'intro' && this.currentStep()?.id === 'theme'
+    () => this.introTourActive() && this.currentStep()?.id === 'theme'
+  );
+
+  readonly introUpgradeStepActive = computed(
+    () => this.introTourActive() && this.currentStep()?.id === 'upgrade'
+  );
+
+  readonly introUpgradeLocked = computed(
+    () => this.introTourActive() && !this.introUpgradeStepActive()
   );
 
   readonly openThemePickerTick = signal(0);

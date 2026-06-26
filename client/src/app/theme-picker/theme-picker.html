@@ -37,7 +37,14 @@
         <button type="button" class="tab" [class.tab--active]="tab() === 'light'" (click)="switchTab('light')">Light</button>
         <button type="button" class="tab" [class.tab--active]="tab() === 'dark'" (click)="switchTab('dark')">Dark</button>
         <button type="button" class="tab" [class.tab--active]="tab() === 'neon'" (click)="switchTab('neon')">Neon</button>
-        <button type="button" class="tab" [class.tab--active]="tab() === 'custom'" (click)="switchTab('custom')">Custom</button>
+        <button
+          type="button"
+          class="tab"
+          [class.tab--active]="tab() === 'custom'"
+          [class.tab--disabled]="customTabDisabled()"
+          [disabled]="customTabDisabled()"
+          (click)="switchTab('custom')"
+        >Custom</button>
       </div>
 
       @if (tab() === 'custom') {
