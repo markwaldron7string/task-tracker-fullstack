@@ -88,25 +88,12 @@
         </div>
       </fieldset>
 
-      <fieldset class="field">
-        <legend class="field-label">Repeats</legend>
-        <div class="priority-row">
-          <button
-            type="button"
-            class="priority-btn"
-            [class.priority-btn--active]="recurrence() === null"
-            (click)="setRecurrence(null)"
-          >Never</button>
-          @for (option of recurrenceOptions; track option.value) {
-            <button
-              type="button"
-              class="priority-btn"
-              [class.priority-btn--active]="recurrence() === option.value"
-              (click)="setRecurrence(option.value)"
-            >{{ option.label }}</button>
-          }
-        </div>
-      </fieldset>
+      <div class="field reminder-field">
+        <button type="button" class="reminder-link" (click)="openReminderSettings()">
+          Remind me on this device
+        </button>
+        <p class="reminder-hint">Set date, time, and repeat options in the reminder window.</p>
+      </div>
 
       <label class="done-row">
         <input type="checkbox" [checked]="done()" (change)="done.set($any($event.target).checked)" />

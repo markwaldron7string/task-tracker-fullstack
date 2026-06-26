@@ -1,7 +1,22 @@
 <div class="card">
   <div class="card-header">
     <h2>All Tasks</h2>
-    <app-task-summary />
+    <div class="header-tools">
+      <button
+        type="button"
+        class="notifications-toggle"
+        [class.notifications-toggle--off]="!reminders.isMasterEnabled()"
+        (click)="toggleMasterNotifications()"
+        [attr.aria-pressed]="reminders.isMasterEnabled()"
+        aria-label="Toggle device reminders"
+      >
+        <svg class="notifications-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 22a2.2 2.2 0 0 0 2.1-1.5H9.9A2.2 2.2 0 0 0 12 22Zm6.3-5.5V11a6.3 6.3 0 0 0-5-6.2V4a2 2 0 1 0-4 0v.8A6.3 6.3 0 0 0 4.7 11v5.5L3 18.5h18l-1.7-1.5Z" fill="currentColor"/>
+        </svg>
+        <span>{{ reminders.isMasterEnabled() ? 'Reminders on' : 'Reminders off' }}</span>
+      </button>
+      <app-task-summary />
+    </div>
   </div>
 
   <div class="task-stats">
@@ -49,6 +64,7 @@
   </div>
 
   @if (confirmClearOpen()) {
+    <button type="button" class="confirm-scrim" aria-label="Close confirmation" (click)="cancelClearAll()"></button>
     <div class="confirm-dialog" role="alertdialog" aria-labelledby="clear-all-title" aria-describedby="clear-all-desc">
       <h3 id="clear-all-title">Clear all tasks?</h3>
       <p id="clear-all-desc">This will permanently remove every task. You can't undo this action.</p>
@@ -70,8 +86,6 @@
         (edit)="store.editTask($event.id, $event.title)"
         (update)="store.updateTask($event.id, $event)"
         (cyclePriority)="store.cyclePriority($event)"
-        (dueChange)="store.setDue($event.id, $event.due)"
-        (estimateChange)="store.setEstimateMinutes($event.id, $event.estimateMinutes)"
       />
     } @empty {
       <div class="empty-state">

@@ -136,8 +136,6 @@
               (edit)="store.editTask($event.id, $event.title)"
               (update)="store.updateTask($event.id, $event)"
               (cyclePriority)="store.cyclePriority($event)"
-              (dueChange)="store.setDue($event.id, $event.due)"
-              (estimateChange)="store.setEstimateMinutes($event.id, $event.estimateMinutes)"
             />
           }
         </div>
@@ -156,8 +154,6 @@
             (edit)="store.editTask($event.id, $event.title)"
             (update)="store.updateTask($event.id, $event)"
             (cyclePriority)="store.cyclePriority($event)"
-            (dueChange)="store.setDue($event.id, $event.due)"
-            (estimateChange)="store.setEstimateMinutes($event.id, $event.estimateMinutes)"
           />
         } @empty {
           <div class="empty-state">Nothing due today. Enjoy the breathing room.</div>
@@ -178,8 +174,6 @@
               (edit)="store.editTask($event.id, $event.title)"
               (update)="store.updateTask($event.id, $event)"
               (cyclePriority)="store.cyclePriority($event)"
-              (dueChange)="store.setDue($event.id, $event.due)"
-              (estimateChange)="store.setEstimateMinutes($event.id, $event.estimateMinutes)"
             />
           }
         </div>

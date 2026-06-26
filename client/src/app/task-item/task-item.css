@@ -1,7 +1,8 @@
 :host {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: 1rem;
+  gap: 0.75rem 1rem;
   position: relative;
   padding: 0.7rem 0.5rem;
   border-bottom: 1px solid var(--border-light);
@@ -28,6 +29,7 @@
 .task-controls {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 0.55rem;
   flex-shrink: 0;
 }
@@ -247,10 +249,45 @@
 
 .task-actions {
   display: flex;
+  align-items: center;
   gap: 0.25rem;
   opacity: 0;
   transition: opacity 0.15s;
   flex-shrink: 0;
+}
+
+.bell-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface-hover);
+  color: var(--text-faint);
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s, border-color 0.15s;
+}
+
+.bell-btn:hover {
+  color: var(--text-muted);
+  border-color: var(--red-border);
+}
+
+.bell-btn--active {
+  color: var(--red-dark);
+  background: var(--red-light);
+  border-color: var(--red-border);
+}
+
+.bell-btn--muted {
+  opacity: 0.55;
+}
+
+.bell-icon {
+  width: 0.95rem;
+  height: 0.95rem;
 }
 
 :host:hover .task-actions {
@@ -287,9 +324,8 @@
 
 @media (max-width: 640px) {
   :host {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 0.55rem;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0.5rem 0.65rem;
     padding: 0.85rem 0;
   }
 
@@ -299,7 +335,7 @@
 
   .task-head {
     align-items: flex-start;
-    width: 100%;
+    min-width: 0;
   }
 
   .task-label {
@@ -324,20 +360,18 @@
   }
 
   .task-controls {
-    flex-wrap: wrap;
-    align-items: center;
-    width: 100%;
+    flex-direction: column;
+    align-items: flex-end;
     gap: 0.35rem;
-    padding-left: 1.65rem;
   }
 
   .task-chips {
     flex-wrap: wrap;
+    justify-content: flex-end;
   }
 
   .task-actions {
     opacity: 1;
-    margin-left: auto;
   }
 
   .action-btn {

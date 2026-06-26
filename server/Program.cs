@@ -251,7 +251,9 @@ static string? NormalizeRecurrence(string? recurrence)
         "daily" => "daily",
         "weekly" => "weekly",
         "weekdays" => "weekdays",
+        "weekends" => "weekends",
         "monthly" => "monthly",
+        "custom" => "custom",
         _ => null
     };
 }

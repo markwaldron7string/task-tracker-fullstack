@@ -1,7 +1,7 @@
 .dialog-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 80;
+  z-index: 85;
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
@@ -80,6 +80,27 @@
   padding: 1rem;
 }
 
+.toggle-row {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-size: 0.9rem;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.toggle-row input {
+  width: 1rem;
+  height: 1rem;
+  accent-color: var(--red);
+}
+
+.datetime-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
 .field {
   border: none;
   margin: 0;
@@ -87,13 +108,7 @@
   display: flex;
   flex-direction: column;
   gap: 0.45rem;
-}
-
-.due-field {
-  padding: 0.65rem;
-  border: 1px solid var(--border-light);
-  border-radius: 8px;
-  background: var(--overlay-surface-muted, var(--surface-hover));
+  min-width: 0;
 }
 
 .field-label,
@@ -102,7 +117,14 @@
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--text-faint);
+  color: var(--text-muted);
+}
+
+.field-label--plain {
+  font-size: 0.82rem;
+  letter-spacing: normal;
+  text-transform: none;
+  color: var(--text);
 }
 
 .field-input {
@@ -114,6 +136,7 @@
   font-size: 0.9rem;
   color: var(--text);
   background: var(--overlay-surface-muted, var(--surface));
+  min-height: 2.65rem;
 }
 
 .field-input:focus {
@@ -122,19 +145,17 @@
   box-shadow: var(--focus-ring, none);
 }
 
-.priority-row,
-.estimate-grid {
+.repeats-field {
+  position: relative;
+}
+
+.option-row {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 0.35rem;
 }
 
-.estimate-grid {
-  grid-template-columns: repeat(3, 1fr);
-}
-
-.priority-btn,
-.estimate-btn {
+.option-btn {
   border: 1px solid var(--border);
   background: var(--surface-hover);
   color: var(--text-muted);
@@ -144,96 +165,110 @@
   font-weight: 700;
   padding: 0.45rem 0.35rem;
   cursor: pointer;
-  text-transform: capitalize;
 }
 
-.priority-btn--active,
-.estimate-btn--active {
+.option-btn--active {
   border-color: var(--red-border);
   background: var(--red-light);
   color: var(--red-dark);
 }
 
-.priority-btn[data-priority="low"].priority-btn--active { color: var(--priority-low); }
-.priority-btn[data-priority="medium"].priority-btn--active { color: var(--priority-medium); }
-.priority-btn[data-priority="high"].priority-btn--active { color: var(--priority-high); }
-
-.custom-estimate {
-  display: flex;
-  gap: 0.4rem;
-  margin-top: 0.45rem;
+.custom-days-popover,
+.recurrence-popover {
+  margin-top: 0.65rem;
+  padding: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--overlay-surface-muted, var(--surface-hover));
+  box-shadow: var(--shadow);
 }
 
-.custom-estimate .field-input {
-  flex: 1;
-  min-width: 0;
+.custom-days-title,
+.recurrence-popover-title {
+  margin: 0 0 0.55rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text-muted);
 }
 
-.apply-btn {
+.weekday-grid,
+.custom-days-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 0.3rem;
+}
+
+.weekday-grid--header {
+  margin-bottom: 0.25rem;
+}
+
+.weekday-heading {
+  text-align: center;
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+.month-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 0.3rem;
+}
+
+.month-spacer {
+  display: block;
+  min-height: 2rem;
+}
+
+.day-toggle {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 0.45rem 0.15rem;
+  cursor: pointer;
+}
+
+.day-toggle--month {
+  min-height: 2rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.day-toggle--active {
+  border-color: var(--red-border);
+  background: var(--red-light);
+  color: var(--red-dark);
+}
+
+.custom-days-done,
+.recurrence-popover-done {
+  margin-top: 0.65rem;
+  width: 100%;
   border: none;
-  border-radius: 6px;
+  border-radius: 8px;
   background: var(--red);
   color: var(--on-primary, white);
   font-family: inherit;
-  font-size: 0.78rem;
+  font-size: 0.82rem;
   font-weight: 700;
-  padding: 0.45rem 0.75rem;
-  cursor: pointer;
-  white-space: nowrap;
-}
-
-.done-row {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.88rem;
-  color: var(--text);
+  padding: 0.5rem 0.75rem;
   cursor: pointer;
 }
 
-.done-row input {
-  width: 1rem;
-  height: 1rem;
-  accent-color: var(--red);
-}
-
-.reminder-field {
-  padding: 0.65rem;
-  border: 1px solid var(--border-light);
-  border-radius: 8px;
-  background: var(--overlay-surface-muted, var(--surface-hover));
-}
-
-.reminder-link {
-  border: none;
-  background: none;
-  padding: 0;
-  font-family: inherit;
-  font-size: 0.88rem;
-  font-weight: 700;
-  color: var(--red-dark);
-  text-decoration: underline;
-  text-underline-offset: 0.15em;
-  cursor: pointer;
-}
-
-.reminder-link:hover {
-  color: var(--red);
-}
-
-.reminder-hint,
-.reminder-notice {
-  margin: 0.45rem 0 0;
-  font-size: 0.78rem;
+.hint,
+.notice {
+  margin: 0;
+  font-size: 0.82rem;
   line-height: 1.45;
   color: var(--text-muted);
 }
 
-.reminder-hint {
-  text-align: center;
-}
-
-.reminder-notice {
+.notice {
   color: var(--red-dark);
 }
 
@@ -266,11 +301,6 @@
 .btn-primary {
   background: var(--red);
   color: var(--on-primary, white);
-  box-shadow: var(--btn-glow, none);
-}
-
-.btn-primary:hover {
-  background: var(--red-dark);
 }
 
 @media (max-width: 768px) {
@@ -283,7 +313,6 @@
     height: auto;
     justify-content: flex-start;
     align-items: stretch;
-    background: rgba(0, 0, 0, 0.35);
   }
 
   .dialog {
@@ -297,10 +326,6 @@
     box-shadow: var(--shadow);
   }
 
-  .priority-row {
-    grid-template-columns: repeat(2, 1fr);
-  }
-
   .dialog-foot {
     flex-direction: column-reverse;
   }
@@ -308,5 +333,11 @@
   .btn {
     width: 100%;
     min-height: 44px;
+  }
+}
+
+@media (max-width: 420px) {
+  .datetime-row {
+    grid-template-columns: 1fr;
   }
 }

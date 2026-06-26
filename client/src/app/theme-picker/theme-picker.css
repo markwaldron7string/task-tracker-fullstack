@@ -6,6 +6,18 @@
 .picker {
   position: relative;
   display: inline-flex;
+  z-index: 111;
+}
+
+.panel-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 109;
+  border: none;
+  padding: 0;
+  margin: 0;
+  background: transparent;
+  cursor: default;
 }
 
 /* ---- Trigger pill (lives on the colored header) ---- */
@@ -71,7 +83,7 @@
   position: absolute;
   top: calc(100% + 8px);
   right: 0;
-  z-index: 50;
+  z-index: 110;
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
@@ -149,6 +161,16 @@
   background: var(--red);
   color: var(--on-primary, white);
   border-color: var(--red);
+}
+
+.tab--disabled,
+.tab--disabled:hover {
+  opacity: 0.45;
+  cursor: not-allowed;
+  color: var(--text-faint);
+  background: var(--surface-hover);
+  border-color: transparent;
+  text-decoration: line-through;
 }
 
 .swatches {

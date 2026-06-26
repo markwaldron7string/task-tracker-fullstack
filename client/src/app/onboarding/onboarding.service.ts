@@ -20,8 +20,16 @@ const INTRO_TOUR_STEPS: TourStep[] = [
   {
     id: 'welcome',
     title: 'Welcome to Task Tracker',
-    body: 'A quick tour of the essentials — takes under a minute.',
+    body: 'A quick tour of the essentials — first, pick a color you like.',
     placement: 'center',
+  },
+  {
+    id: 'theme',
+    target: 'theme-picker',
+    title: 'Pick your color',
+    body: 'Choose a built-in theme swatch below. Custom accent colors unlock with Pro later in the tour.',
+    placement: 'bottom',
+    route: '/',
   },
   {
     id: 'add-task',
@@ -42,16 +50,9 @@ const INTRO_TOUR_STEPS: TourStep[] = [
     id: 'task-controls',
     target: 'first-task',
     title: 'Fine-tune each task',
-    body: 'Set due dates, time estimates, and priority on any row. Use Details for checklist plans from the AI coach.',
+    body: 'Use Edit for due dates and details. Tap the bell to set device reminders on any row.',
     placement: 'top',
     route: '/',
-  },
-  {
-    id: 'theme',
-    target: 'theme-picker',
-    title: 'Make it yours',
-    body: 'Pick a built-in theme or customize accent colors to match your style.',
-    placement: 'bottom',
   },
   {
     id: 'upgrade',
@@ -159,6 +160,12 @@ export class OnboardingService {
 
   readonly currentStep = computed(() => this.steps()[this.stepIndex()] ?? null);
 
+  readonly introThemeStepActive = computed(
+    () => this.active() && this.kind() === 'intro' && this.currentStep()?.id === 'theme'
+  );
+
+  readonly openThemePickerTick = signal(0);
+
   readonly progressLabel = computed(() => {
     const total = this.steps().length;
     if (!total) return '';
@@ -247,6 +254,16 @@ export class OnboardingService {
 
   refreshLayout(): void {
     this.layoutRevision.update(n => n + 1);
+  }
+
+  requestOpenThemePicker(): void {
+    this.openThemePickerTick.update(n => n + 1);
+  }
+
+  skipThemeStep(): void {
+    if (this.currentStep()?.id === 'theme') {
+      this.next();
+    }
   }
 
   private beginProTour(): void {

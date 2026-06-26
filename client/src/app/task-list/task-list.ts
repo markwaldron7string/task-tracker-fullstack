@@ -1,7 +1,9 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, ElementRef, computed, inject, signal } from '@angular/core';
+import { injectOverlayDismissBinding } from '../overlay-dismiss.service';
 import { TaskItem } from '../task-item/task-item';
 import { TaskSummary } from '../task-summary/task-summary';
 import { TASK_DOMAINS, projectLabel } from '../task-domains';
+import { TaskReminderService } from '../task-reminder.service';
 import { TaskStore } from '../task-store';
 
 @Component({
@@ -12,7 +14,22 @@ import { TaskStore } from '../task-store';
 })
 export class TaskList {
   store = inject(TaskStore);
+  protected reminders = inject(TaskReminderService);
+  private host = inject(ElementRef<HTMLElement>);
   protected confirmClearOpen = signal(false);
+
+  constructor() {
+    injectOverlayDismissBinding(() => {
+      if (!this.confirmClearOpen()) return null;
+      return {
+        contains: target => {
+          const dialog = this.host.nativeElement.querySelector('.confirm-dialog');
+          return !!dialog?.contains(target);
+        },
+        close: () => this.cancelClearAll(),
+      };
+    });
+  }
 
   protected domainOptions = computed(() => {
     const fromTasks = this.store.projectOptions();
@@ -41,5 +58,9 @@ export class TaskList {
   protected confirmClearAll(): void {
     this.store.clearTasks();
     this.confirmClearOpen.set(false);
+  }
+
+  protected toggleMasterNotifications(): void {
+    this.reminders.setMasterEnabled(!this.reminders.isMasterEnabled());
   }
 }

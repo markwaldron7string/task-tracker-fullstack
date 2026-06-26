@@ -1,4 +1,5 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, ElementRef, computed, inject, signal } from '@angular/core';
+import { injectOverlayDismissBinding } from '../overlay-dismiss.service';
 import { Router } from '@angular/router';
 import { CoachApiService } from '../coach-api.service';
 import {
@@ -32,6 +33,7 @@ export class ProAssistant {
   private store = inject(TaskStore);
   private router = inject(Router);
   private coachApi = inject(CoachApiService);
+  private host = inject(ElementRef<HTMLElement>);
   protected pro = inject(ProService);
 
   protected open = signal(false);
@@ -72,6 +74,24 @@ export class ProAssistant {
   }));
 
   protected suggestions = computed(() => buildCoachSuggestions(this.snapshot()));
+
+  constructor() {
+    injectOverlayDismissBinding(() => {
+      if (!this.open()) return null;
+      return {
+        contains: target => {
+          const root = this.host.nativeElement;
+          const panel = root.querySelector('.coach-panel');
+          const scrim = root.querySelector('.coach-scrim');
+          return !!(
+            (panel && panel.contains(target))
+            || (scrim && scrim.contains(target))
+          );
+        },
+        close: () => this.minimize(),
+      };
+    });
+  }
 
   protected toggleFab(): void {
     this.syncHeaderHeight();

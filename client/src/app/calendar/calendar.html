@@ -117,8 +117,6 @@
                 (edit)="store.editTask($event.id, $event.title)"
                 (update)="store.updateTask($event.id, $event)"
                 (cyclePriority)="store.cyclePriority($event)"
-                (dueChange)="store.setDue($event.id, $event.due)"
-                (estimateChange)="store.setEstimateMinutes($event.id, $event.estimateMinutes)"
               />
             </div>
           }

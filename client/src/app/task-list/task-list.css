@@ -15,6 +15,45 @@
   margin-bottom: 0.75rem;
 }
 
+.header-tools {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+}
+
+.notifications-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  border: 1px solid var(--red-border);
+  border-radius: 999px;
+  background: var(--red-light);
+  color: var(--red-dark);
+  font-family: inherit;
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1;
+  padding: 0.45rem 0.75rem;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.notifications-toggle--off {
+  background: var(--surface-hover);
+  color: var(--text-muted);
+  border-color: var(--border);
+}
+
+.notifications-toggle:hover {
+  border-color: var(--red);
+}
+
+.notifications-icon {
+  width: 0.95rem;
+  height: 0.95rem;
+}
+
 h2 {
   margin: 0;
   font-size: 1.25rem;
@@ -173,9 +212,25 @@ h2 {
   background: color-mix(in srgb, var(--danger) 88%, #000);
 }
 
+.confirm-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  border: none;
+  padding: 0;
+  margin: 0;
+  background: rgba(0, 0, 0, 0.25);
+  cursor: default;
+}
+
 .confirm-dialog {
-  width: 100%;
-  margin: -0.5rem 0 1.25rem;
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 71;
+  width: min(24rem, calc(100vw - 2rem));
+  margin: 0;
   padding: 1rem 1.25rem;
   border-radius: 10px;
   border: 1px solid var(--red-border);

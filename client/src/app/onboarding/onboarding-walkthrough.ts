@@ -57,8 +57,11 @@ export class OnboardingWalkthrough {
     this.onboarding.isProTour() ? 'Start using Pro' : 'Get started'
   );
 
+  protected showThemeSkip = computed(() => this.onboarding.introThemeStepActive());
+
   private lastStepId: string | null = null;
   private layoutAttempts = 0;
+  private scrollLockY = 0;
 
   constructor() {
     afterNextRender(() => {
@@ -79,13 +82,13 @@ export class OnboardingWalkthrough {
 
     effect(() => {
       if (!this.onboarding.active()) {
-        document.body.style.overflow = '';
+        this.unlockScroll();
         this.spotlight.set(null);
         this.flagPos.set(null);
         return;
       }
 
-      document.body.style.overflow = 'hidden';
+      this.lockScroll();
       const current = this.onboarding.currentStep();
       const taskCount = this.store.tasks().length;
       untracked(() => {
@@ -94,20 +97,39 @@ export class OnboardingWalkthrough {
         void this.syncStep(current);
       });
     });
-
-    this.router.events.pipe(filter(event => event instanceof NavigationEnd)).subscribe(() => {
-      if (this.onboarding.active()) {
-        queueMicrotask(() => this.layoutCurrentStep());
-      }
-    });
   }
 
   @HostListener('window:resize')
-  @HostListener('window:scroll')
   protected onViewportChange(): void {
     if (this.onboarding.active()) {
       this.layoutCurrentStep();
     }
+  }
+
+  private lockScroll(): void {
+    if (document.body.style.position === 'fixed') return;
+    this.scrollLockY = window.scrollY;
+    document.body.style.position = 'fixed';
+    document.body.style.top = `-${this.scrollLockY}px`;
+    document.body.style.left = '0';
+    document.body.style.right = '0';
+    document.body.style.width = '100%';
+    document.body.style.overflow = 'hidden';
+  }
+
+  private unlockScroll(): void {
+    if (document.body.style.position !== 'fixed') {
+      document.body.style.overflow = '';
+      return;
+    }
+
+    document.body.style.position = '';
+    document.body.style.top = '';
+    document.body.style.left = '';
+    document.body.style.right = '';
+    document.body.style.width = '';
+    document.body.style.overflow = '';
+    window.scrollTo(0, this.scrollLockY);
   }
 
   private async syncStep(step: TourStep | null): Promise<void> {
@@ -121,6 +143,10 @@ export class OnboardingWalkthrough {
 
     if (stepChanged && step.route && !this.isCurrentRoute(step.route)) {
       await this.router.navigateByUrl(step.route);
+    }
+
+    if (stepChanged && step.id === 'theme') {
+      this.onboarding.requestOpenThemePicker();
     }
 
     queueMicrotask(() => this.layoutCurrentStep());
@@ -155,8 +181,6 @@ export class OnboardingWalkthrough {
 
     this.layoutAttempts = 0;
     const target = resolveTourTarget(el, step.target!);
-    target.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'auto' });
-
     const box = buildSpotlightBox(step, target, VIEWPORT_PAD);
 
     this.spotlight.set(box);

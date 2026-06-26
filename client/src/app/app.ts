@@ -1,4 +1,5 @@
 import { afterNextRender, Component, inject } from '@angular/core';
+import { injectOverlayDismissBinding } from './overlay-dismiss.service';
 import { RouterLink, RouterOutlet, RouterLinkActive } from '@angular/router';
 import { OnboardingWalkthrough } from './onboarding/onboarding-walkthrough';
 import { ProAssistant } from './pro-assistant/pro-assistant';
@@ -8,8 +9,10 @@ import { TaskDetailsDialog } from './task-details-dialog/task-details-dialog';
 import { TaskDetailsOverlayService } from './task-details-overlay.service';
 import { TaskEditDialog, TaskEditPatch } from './task-edit-dialog/task-edit-dialog';
 import { TaskEditOverlayService } from './task-edit-overlay.service';
-import { TaskEstimatePicker } from './task-estimate-picker/task-estimate-picker';
 import { TaskPickerOverlayService } from './task-picker-overlay.service';
+import { TaskReminderDialog, TaskReminderDialogSave } from './task-reminder-dialog/task-reminder-dialog';
+import { TaskReminderOverlayService } from './task-reminder-overlay.service';
+import { TaskReminderService } from './task-reminder.service';
 import { TaskStore } from './task-store';
 import { ThemePicker } from './theme-picker/theme-picker';
 import { ThemeService } from './theme.service';
@@ -26,7 +29,7 @@ import { ThemeService } from './theme.service';
     TaskEditDialog,
     TaskDetailsDialog,
     TaskDatePicker,
-    TaskEstimatePicker,
+    TaskReminderDialog,
   ],
   templateUrl: './app.html',
   styleUrl: './app.css',
@@ -38,9 +41,26 @@ export class App {
   protected editOverlay = inject(TaskEditOverlayService);
   protected detailsOverlay = inject(TaskDetailsOverlayService);
   protected pickerOverlay = inject(TaskPickerOverlayService);
+  protected reminderOverlay = inject(TaskReminderOverlayService);
+  protected reminders = inject(TaskReminderService);
   protected _theme = inject(ThemeService);
 
   constructor() {
+    injectOverlayDismissBinding(() => {
+      if (!this.pickerOverlay.bulkReschedule()) return null;
+      return {
+        contains: target => {
+          const scrim = document.querySelector('.picker-scrim');
+          const picker = document.querySelector('app-task-date-picker .picker-panel--sheet');
+          return !!(
+            (scrim && scrim.contains(target))
+            || (picker && picker.contains(target))
+          );
+        },
+        close: () => this.pickerOverlay.close(),
+      };
+    });
+
     afterNextRender(() => {
       const header = document.querySelector('header');
       if (!header) return;
@@ -64,19 +84,30 @@ export class App {
     this.editOverlay.close();
   }
 
+  protected async onReminderSave(save: TaskReminderDialogSave): Promise<void> {
+    const task = this.store.tasks().find(item => item.id === save.taskId);
+    if (!task) {
+      this.reminderOverlay.close();
+      return;
+    }
+
+    const ok = await this.reminders.saveConfig(save.taskId, save);
+    if (!ok) return;
+
+    const recurrenceChanged = save.recurrence !== task.recurrence;
+    if (recurrenceChanged) {
+      this.store.updateTask(save.taskId, { recurrence: save.recurrence });
+    }
+
+    this.reminderOverlay.close();
+  }
+
   protected onToggleChecklistItem(event: { taskId: number; itemId: string }): void {
     this.store.toggleChecklistItem(event.taskId, event.itemId);
     const view = this.detailsOverlay.view();
     if (view?.kind === 'day') return;
     const task = this.store.tasks().find(item => item.id === event.taskId);
     if (task) this.detailsOverlay.open(task);
-  }
-
-  protected onDueSelect(due: string | null): void {
-    const state = this.pickerOverlay.duePicker();
-    if (!state) return;
-    this.store.setDue(state.taskId, due);
-    this.pickerOverlay.close();
   }
 
   protected onBulkRescheduleSelect(due: string | null): void {
@@ -87,13 +118,6 @@ export class App {
         this.store.setDue(taskId, due);
       }
     }
-    this.pickerOverlay.close();
-  }
-
-  protected onEstimateSelect(estimateMinutes: number | null): void {
-    const state = this.pickerOverlay.estimatePicker();
-    if (!state) return;
-    this.store.setEstimateMinutes(state.taskId, estimateMinutes);
     this.pickerOverlay.close();
   }
 }

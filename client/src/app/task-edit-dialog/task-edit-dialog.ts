@@ -1,9 +1,10 @@
 import { TitleCasePipe } from '@angular/common';
-import { Component, effect, input, output, signal } from '@angular/core';
+import { Component, ElementRef, effect, inject, input, output, signal } from '@angular/core';
+import { injectOverlayDismissBinding } from '../overlay-dismiss.service';
 import { TASK_DOMAINS, projectLabel } from '../task-domains';
 import { TaskDatePicker } from '../task-date-picker/task-date-picker';
 import { parseEstimateInput } from '../task-quick-parse';
-import { RECURRENCE_OPTIONS, RecurrenceRule } from '../task-recurrence';
+import { TaskReminderOverlayService } from '../task-reminder-overlay.service';
 import { EnrichedTask, Priority } from '../task-store';
 
 export interface TaskEditPatch {
@@ -14,7 +15,6 @@ export interface TaskEditPatch {
   estimateMinutes: number | null;
   done: boolean;
   project: string | null;
-  recurrence: RecurrenceRule | null;
 }
 
 const PRIORITIES: Priority[] = ['none', 'low', 'medium', 'high'];
@@ -35,6 +35,9 @@ const ESTIMATE_PRESETS: Array<{ label: string; minutes: number | null }> = [
   styleUrl: './task-edit-dialog.css',
 })
 export class TaskEditDialog {
+  private reminderOverlay = inject(TaskReminderOverlayService);
+  private host = inject(ElementRef<HTMLElement>);
+
   task = input.required<EnrichedTask>();
 
   save = output<TaskEditPatch>();
@@ -43,7 +46,6 @@ export class TaskEditDialog {
   protected readonly priorities = PRIORITIES;
   protected readonly estimatePresets = ESTIMATE_PRESETS;
   protected readonly domainOptions = TASK_DOMAINS;
-  protected readonly recurrenceOptions = RECURRENCE_OPTIONS;
   protected readonly projectLabel = projectLabel;
 
   protected title = signal('');
@@ -52,10 +54,14 @@ export class TaskEditDialog {
   protected estimateMinutes = signal<number | null>(null);
   protected done = signal(false);
   protected project = signal<string | null>(null);
-  protected recurrence = signal<RecurrenceRule | null>(null);
   protected customEstimate = signal('');
 
   constructor() {
+    injectOverlayDismissBinding(() => ({
+      contains: target => this.host.nativeElement.contains(target),
+      close: () => this.cancel.emit(),
+    }));
+
     effect(() => {
       const task = this.task();
       this.title.set(task.title);
@@ -64,7 +70,6 @@ export class TaskEditDialog {
       this.estimateMinutes.set(task.estimateMinutes);
       this.done.set(task.done);
       this.project.set(task.project);
-      this.recurrence.set(task.recurrence);
       this.customEstimate.set(this.formatEstimate(task.estimateMinutes));
     });
   }
@@ -100,8 +105,8 @@ export class TaskEditDialog {
     this.project.set(value);
   }
 
-  protected setRecurrence(value: RecurrenceRule | null): void {
-    this.recurrence.set(value);
+  protected openReminderSettings(): void {
+    this.reminderOverlay.open(this.task());
   }
 
   protected saveTask(): void {
@@ -116,7 +121,6 @@ export class TaskEditDialog {
       estimateMinutes: this.estimateMinutes(),
       done: this.done(),
       project: this.project(),
-      recurrence: this.recurrence(),
     });
   }
 

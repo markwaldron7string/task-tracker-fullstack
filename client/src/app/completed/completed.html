@@ -10,8 +10,6 @@
         (edit)="store.editTask($event.id, $event.title)"
         (update)="store.updateTask($event.id, $event)"
         (cyclePriority)="store.cyclePriority($event)"
-        (dueChange)="store.setDue($event.id, $event.due)"
-        (estimateChange)="store.setEstimateMinutes($event.id, $event.estimateMinutes)"
       />
     } @empty {
       <div class="empty-state">Nothing completed yet — keep going!</div>

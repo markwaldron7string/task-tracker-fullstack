@@ -123,10 +123,12 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.75rem;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.75rem;
 }
 
 .tour-skip,
+.tour-step-skip,
 .tour-next {
   border: none;
   border-radius: 8px;
@@ -144,6 +146,17 @@
 
 .tour-skip:hover {
   color: var(--text);
+}
+
+.tour-step-skip {
+  background: var(--surface-hover);
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+}
+
+.tour-step-skip:hover {
+  color: var(--text);
+  border-color: var(--red-border);
 }
 
 .tour-next {

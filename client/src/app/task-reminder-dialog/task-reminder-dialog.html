@@ -1,0 +1,110 @@
+<div class="dialog-backdrop" (click)="onBackdropClick()">
+  <div class="dialog" role="dialog" aria-labelledby="reminder-title" (click)="onDialogClick($event)">
+    <header class="dialog-head">
+      <h2 id="reminder-title">Remind me on this device</h2>
+      <button type="button" class="close-btn" (click)="cancel.emit()" aria-label="Close">×</button>
+    </header>
+
+    <div class="dialog-body">
+      <label class="toggle-row">
+        <input type="checkbox" [checked]="enabled()" (change)="enabled.set($any($event.target).checked)" />
+        <span>Enable reminder for this task</span>
+      </label>
+
+      <div class="datetime-row">
+        <label class="field">
+          <span class="field-label field-label--plain">Reminder Date</span>
+          <input
+            class="field-input field-input--date"
+            type="date"
+            [value]="remindDate()"
+            (input)="remindDate.set($any($event.target).value)"
+          />
+        </label>
+
+        <label class="field">
+          <span class="field-label field-label--plain">Reminder Time</span>
+          <app-task-time-picker
+            [value]="remindTime()"
+            (select)="remindTime.set($event)"
+          />
+        </label>
+      </div>
+
+      <fieldset class="field repeats-field">
+        <legend class="field-label">Repeats</legend>
+        <div class="option-row">
+          <button
+            type="button"
+            class="option-btn"
+            [class.option-btn--active]="isRecurrenceActive(null)"
+            (click)="setRecurrence(null)"
+          >Never</button>
+          @for (option of recurrenceOptions; track option.value) {
+            <button
+              type="button"
+              class="option-btn"
+              [class.option-btn--active]="isRecurrenceActive(option.value)"
+              (click)="setRecurrence(option.value)"
+            >{{ option.label }}</button>
+          }
+        </div>
+
+        @if (recurrencePopover(); as popover) {
+          <div #popoverPanel class="recurrence-popover" role="dialog" [attr.aria-label]="popover === 'week' ? 'Select days of the week' : 'Select days of the month'">
+            @if (popover === 'week') {
+              <p class="recurrence-popover-title">Repeat on</p>
+              <div class="weekday-grid" role="group" aria-label="Days of the week">
+                @for (label of weekdayLabels; track label; let day = $index) {
+                  <button
+                    type="button"
+                    class="day-toggle"
+                    [class.day-toggle--active]="customDays().includes(day)"
+                    (click)="toggleCustomDay(day)"
+                  >{{ label }}</button>
+                }
+              </div>
+            } @else {
+              <p class="recurrence-popover-title">Repeat on days of the month</p>
+              <div class="weekday-grid weekday-grid--header" aria-hidden="true">
+                @for (label of weekdayLabels; track label) {
+                  <span class="weekday-heading">{{ label }}</span>
+                }
+              </div>
+              <div class="month-grid" role="group" aria-label="Days of the month">
+                @for (day of monthDayCells; track $index) {
+                  @if (day; as monthDay) {
+                    <button
+                      type="button"
+                      class="day-toggle day-toggle--month"
+                      [class.day-toggle--active]="monthDays().includes(monthDay)"
+                      (click)="toggleMonthDay(monthDay)"
+                    >{{ monthDay }}</button>
+                  } @else {
+                    <span class="month-spacer" aria-hidden="true"></span>
+                  }
+                }
+              </div>
+            }
+            <button type="button" class="recurrence-popover-done" (click)="closeRecurrencePopover()">Done</button>
+          </div>
+        }
+      </fieldset>
+
+      @if (notice(); as message) {
+        <p class="notice">{{ message }}</p>
+      } @else if (permissionUnsupported()) {
+        <p class="hint">Notifications are not available in this browser.</p>
+      } @else if (permissionBlocked()) {
+        <p class="hint">Notifications are blocked. Allow them in browser settings to use reminders.</p>
+      } @else {
+        <p class="hint">You'll get a notification on this device at the date and time above.</p>
+      }
+    </div>
+
+    <footer class="dialog-foot">
+      <button type="button" class="btn btn-ghost" (click)="cancel.emit()">Cancel</button>
+      <button type="button" class="btn btn-primary" (click)="saveReminder()">Save reminder</button>
+    </footer>
+  </div>
+</div>

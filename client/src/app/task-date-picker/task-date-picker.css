@@ -202,7 +202,7 @@
   font-family: inherit;
   font-size: 0.82rem;
   color: var(--text);
-  background: var(--overlay-surface-muted, var(--surface));
+  background-color: var(--overlay-surface-muted, var(--surface));
 }
 
 .typed-input:focus {

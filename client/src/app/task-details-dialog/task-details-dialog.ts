@@ -1,4 +1,5 @@
-import { Component, computed, inject, input, output } from '@angular/core';
+import { Component, ElementRef, computed, inject, input, output } from '@angular/core';
+import { injectOverlayDismissBinding } from '../overlay-dismiss.service';
 import { formatScheduleDue } from '../pro-coach';
 import { buildDayTaskGroups, formatDayLabel } from '../task-day-groups';
 import { DetailsView } from '../task-details-overlay.service';
@@ -12,6 +13,7 @@ import { ChecklistItem, TaskStore, countOpenDayTasks } from '../task-store';
 })
 export class TaskDetailsDialog {
   private store = inject(TaskStore);
+  private host = inject(ElementRef<HTMLElement>);
 
   view = input.required<DetailsView>();
 
@@ -20,6 +22,13 @@ export class TaskDetailsDialog {
   planFilterChange = output<string>();
 
   protected formatDue = formatScheduleDue;
+
+  constructor() {
+    injectOverlayDismissBinding(() => ({
+      contains: target => this.host.nativeElement.contains(target),
+      close: () => this.close.emit(),
+    }));
+  }
 
   protected isDayView = computed(() => this.view().kind === 'day');
 

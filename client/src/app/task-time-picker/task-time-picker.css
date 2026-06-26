@@ -1,0 +1,116 @@
+:host {
+  display: block;
+  min-width: 0;
+}
+
+.time-picker {
+  position: relative;
+}
+
+.time-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  width: 100%;
+  border: 2px solid var(--border);
+  border-radius: 6px;
+  padding: 0.55rem 0.65rem;
+  font-family: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text);
+  background: var(--overlay-surface-muted, var(--surface));
+  cursor: pointer;
+  min-height: 2.65rem;
+  text-align: left;
+}
+
+.time-trigger:focus-visible,
+.time-trigger--open {
+  border-color: var(--red);
+  outline: none;
+  box-shadow: var(--focus-ring, none);
+}
+
+.time-value {
+  flex: 1;
+  min-width: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.time-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1rem;
+  height: 1rem;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.time-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.time-dropdown {
+  position: absolute;
+  top: calc(100% + 0.35rem);
+  left: 0;
+  right: 0;
+  z-index: 5;
+  display: grid;
+  grid-template-columns: 1fr 1fr 0.85fr;
+  gap: 0.35rem;
+  padding: 0.45rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background-color: var(--overlay-surface, var(--surface));
+  background-image: var(--overlay-sheen, var(--card-overlay));
+  box-shadow: var(--shadow), 0 12px 28px rgba(0, 0, 0, 0.22);
+}
+
+.time-col {
+  max-height: 9.5rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scroll-snap-type: y proximity;
+  -webkit-overflow-scrolling: touch;
+  border-radius: 8px;
+  background: var(--overlay-surface-muted, var(--surface-hover));
+}
+
+.time-col--period {
+  max-height: 9.5rem;
+}
+
+.time-option {
+  display: block;
+  width: 100%;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  padding: 0.45rem 0.35rem;
+  cursor: pointer;
+  scroll-snap-align: center;
+}
+
+.time-option:hover {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+
+.time-option--selected {
+  background: var(--red-light);
+  color: var(--red-dark);
+}
+
+.time-col--period .time-option {
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+}

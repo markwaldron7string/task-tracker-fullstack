@@ -1,0 +1,50 @@
+<div class="time-picker">
+  <button
+    type="button"
+    class="time-trigger"
+    [class.time-trigger--open]="open()"
+    (click)="toggle($event)"
+    aria-haspopup="listbox"
+    [attr.aria-expanded]="open()"
+  >
+    <span class="time-value">{{ displayValue() }}</span>
+    <span class="time-icon" aria-hidden="true">
+      <svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2Zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8Zm.5-13H11v6l4.75 2.85.75-1.23-4.25-2.57V7Z" fill="currentColor"/></svg>
+    </span>
+  </button>
+
+  @if (open()) {
+    <div class="time-dropdown" role="listbox" aria-label="Choose time">
+      <div class="time-col" #hourCol>
+        @for (hour of hours; track hour) {
+          <button
+            type="button"
+            class="time-option"
+            [class.time-option--selected]="hour12() === hour"
+            (click)="pickHour(hour)"
+          >{{ pad(hour) }}</button>
+        }
+      </div>
+      <div class="time-col" #minuteCol>
+        @for (m of minutes; track m) {
+          <button
+            type="button"
+            class="time-option"
+            [class.time-option--selected]="minute() === m"
+            (click)="pickMinute(m)"
+          >{{ pad(m) }}</button>
+        }
+      </div>
+      <div class="time-col time-col--period" #periodCol>
+        @for (part of periods; track part) {
+          <button
+            type="button"
+            class="time-option"
+            [class.time-option--selected]="period() === part"
+            (click)="pickPeriod(part)"
+          >{{ part }}</button>
+        }
+      </div>
+    </div>
+  }
+</div>

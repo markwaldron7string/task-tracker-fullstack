@@ -1,4 +1,6 @@
-import { Component, ElementRef, HostListener, computed, inject, signal } from '@angular/core';
+import { Component, ElementRef, HostListener, computed, effect, inject, signal } from '@angular/core';
+import { injectOverlayDismissBinding } from '../overlay-dismiss.service';
+import { OnboardingService } from '../onboarding/onboarding.service';
 import { ProUpgrade } from '../pro-upgrade/pro-upgrade';
 import { ProService } from '../pro.service';
 import { CUSTOM_ID, THEMES, ThemeCategory, ThemeService } from '../theme.service';
@@ -17,6 +19,7 @@ const DEFAULT_ACCENT = DEFAULT_ACCENTS[DEFAULT_ACCENTS.length - 1];
 export class ThemePicker {
   protected theme = inject(ThemeService);
   protected pro = inject(ProService);
+  private onboarding = inject(OnboardingService);
   private host = inject(ElementRef<HTMLElement>);
 
   protected open = signal(false);
@@ -47,16 +50,50 @@ export class ThemePicker {
       : THEMES.find(t => t.id === this.theme.active())?.name
   );
 
-  protected toggle(): void {
-    const next = !this.open();
-    if (next) {
-      this.tab.set(this.initialTab());
-      this.open.set(true);
-      queueMicrotask(() => this.alignPanel());
+  protected customTabDisabled = computed(() => this.onboarding.introThemeStepActive());
+
+  constructor() {
+    injectOverlayDismissBinding(() => {
+      if (!this.open()) return null;
+      return {
+        contains: target => this.host.nativeElement.contains(target),
+        close: () => this.closePanel(),
+      };
+    });
+
+    effect(() => {
+      this.onboarding.openThemePickerTick();
+      if (!this.onboarding.introThemeStepActive()) return;
+      this.openPanel();
+      if (this.tab() === 'custom') {
+        this.tab.set(this.initialTab() === 'custom' ? 'dark' : this.initialTab());
+      }
+    });
+  }
+
+  protected openPanel(): void {
+    if (this.open()) return;
+    this.tab.set(this.initialTab() === 'custom' && this.customTabDisabled() ? 'dark' : this.initialTab());
+    this.open.set(true);
+    queueMicrotask(() => this.alignPanel());
+  }
+
+  protected toggle(event: Event): void {
+    event.stopPropagation();
+    if (this.open()) {
+      this.closePanel();
       return;
     }
+    this.openPanel();
+  }
+
+  protected closePanel(): void {
     this.open.set(false);
     this.resetPanelPosition();
+  }
+
+  protected onPanelClick(event: Event): void {
+    event.stopPropagation();
   }
 
   private resetPanelPosition(): void {
@@ -66,12 +103,12 @@ export class ThemePicker {
   }
 
   protected switchTab(tab: Tab): void {
+    if (tab === 'custom' && this.customTabDisabled()) return;
     this.tab.set(tab);
     if (tab === 'custom') {
       if (this.pro.unlocked()) this.applyCustom();
       return;
     }
-    // Carry the current color family across to the new category.
     const current = this.theme.active();
     const color = current !== CUSTOM_ID && current.includes('-') ? current.split('-')[1] : 'ocean';
     const targetId = `${tab}-${color}`;
@@ -92,7 +129,6 @@ export class ThemePicker {
     this.applyCustom();
   }
 
-  /** Fine-tune one swatch to an arbitrary color and apply it as the accent. */
   protected pickAccent(index: number, color: string): void {
     this.accents.update(list => {
       const next = [...list];
@@ -119,7 +155,6 @@ export class ThemePicker {
   private initAccents(): string[] {
     const palette = [...DEFAULT_ACCENTS];
     const current = this.theme.custom()?.accent;
-    // Reflect a saved custom color that isn't one of the defaults.
     if (current && !palette.some(c => c.toLowerCase() === current.toLowerCase())) {
       palette[0] = current;
     }
@@ -131,18 +166,9 @@ export class ThemePicker {
     return THEMES.find(t => t.id === this.theme.active())?.category ?? 'light';
   }
 
-  @HostListener('document:click', ['$event'])
-  protected onDocumentClick(event: MouseEvent): void {
-    if (this.open() && !this.host.nativeElement.contains(event.target as Node)) {
-      this.open.set(false);
-      this.resetPanelPosition();
-    }
-  }
-
   @HostListener('document:keydown.escape')
   protected onEscape(): void {
-    this.open.set(false);
-    this.resetPanelPosition();
+    this.closePanel();
   }
 
   @HostListener('window:resize')

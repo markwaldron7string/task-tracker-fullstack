@@ -27,6 +27,9 @@
       <p class="tour-body">{{ current.body }}</p>
       <div class="tour-actions">
         <button type="button" class="tour-skip" (click)="onboarding.skip()">{{ skipLabel() }}</button>
+        @if (showThemeSkip()) {
+          <button type="button" class="tour-step-skip" (click)="onboarding.skipThemeStep()">Skip color selection</button>
+        }
         <button type="button" class="tour-next" (click)="onboarding.next()">
           {{ isLastStep() ? finishLabel() : 'Next' }}
         </button>
