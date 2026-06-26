@@ -35,7 +35,7 @@ const INTRO_TOUR_STEPS: TourStep[] = [
     id: 'add-task',
     target: 'add-task',
     title: 'Add tasks here',
-    body: 'Type a task and tap Add — try something like “Walk the dog tomorrow”. This field is where new tasks start.',
+    body: 'Tasks are entered into the input above (function is disabled during tutorial).',
     placement: 'bottom',
     route: '/',
   },
