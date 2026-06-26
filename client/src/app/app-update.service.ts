@@ -74,10 +74,15 @@ export class AppUpdateService {
       if (!this.unrecoverable()) {
         await this.swUpdate.activateUpdate().catch(() => false);
       }
+      // Clear all Cache Storage so the browser fetches a fresh build.
       if ('caches' in window) {
         const keys = await caches.keys();
         await Promise.all(keys.map(k => caches.delete(k)));
       }
+      // Wipe all persisted state so the app restarts from defaults —
+      // tutorials will run again, theme resets, tasks cleared locally.
+      try { localStorage.clear(); } catch { /* storage may be unavailable */ }
+      try { sessionStorage.clear(); } catch { /* storage may be unavailable */ }
     } finally {
       window.location.reload();
     }
