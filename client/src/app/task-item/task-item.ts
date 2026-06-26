@@ -65,16 +65,8 @@ export class TaskItem {
     this.detailsOverlay.open(this.task());
   }
 
-  async onBellClick(event: Event): Promise<void> {
+  onBellClick(event: Event): void {
     event.stopPropagation();
-    if (!this.masterEnabled()) {
-      this.reminderOverlay.open(this.task());
-      return;
-    }
-
-    const result = await this.reminders.toggleEnabled(this.task());
-    if (result === 'opened' || result === 'blocked') {
-      this.reminderOverlay.open(this.task());
-    }
+    this.reminderOverlay.open(this.task());
   }
 }
