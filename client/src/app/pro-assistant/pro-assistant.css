@@ -508,38 +508,39 @@
 
 @media (max-width: 768px) {
   .coach-scrim {
+    top: var(--app-header-height, 7.25rem);
+    right: 0;
+    bottom: 0;
+    left: 0;
     z-index: 90;
-    background: rgba(0, 0, 0, 0.4);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
+    background: rgba(0, 0, 0, 0.45);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
   }
 
   .coach-panel {
     z-index: 91;
-    top: 0;
-    left: 0;
+    top: var(--app-header-height, 7.25rem);
     right: 0;
-    bottom: auto;
+    bottom: 0;
+    left: 0;
     width: 100%;
-    max-height: min(92dvh, calc(100dvh - env(safe-area-inset-bottom)));
+    max-height: none;
     height: auto;
+    border: none;
+    border-top: 1px solid var(--border);
     border-radius: 0;
-    border-top: none;
-    border-left: none;
-    border-right: none;
-    border-bottom-left-radius: 12px;
-    border-bottom-right-radius: 12px;
     padding:
-      max(0.85rem, env(safe-area-inset-top))
+      1rem
       max(1rem, env(safe-area-inset-right))
       max(1rem, env(safe-area-inset-bottom))
       max(1rem, env(safe-area-inset-left));
-    box-shadow:
-      var(--shadow),
-      0 16px 48px rgba(0, 0, 0, 0.35);
+    box-shadow: var(--shadow);
+    background-color: var(--overlay-surface, var(--surface));
   }
 
   .coach-fab {
+    z-index: 50;
     right: 0.75rem;
     bottom: 0.75rem;
   }

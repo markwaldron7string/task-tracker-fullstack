@@ -74,16 +74,29 @@ export class ProAssistant {
   protected suggestions = computed(() => buildCoachSuggestions(this.snapshot()));
 
   protected toggleFab(): void {
+    this.syncHeaderHeight();
+    document.body.style.overflow = 'hidden';
     this.open.set(true);
   }
 
   protected minimize(): void {
     this.open.set(false);
+    document.body.style.overflow = '';
   }
 
   protected close(): void {
     this.open.set(false);
+    document.body.style.overflow = '';
     this.resetChat();
+  }
+
+  private syncHeaderHeight(): void {
+    const header = document.querySelector('header');
+    if (!header) return;
+    document.documentElement.style.setProperty(
+      '--app-header-height',
+      `${Math.ceil(header.getBoundingClientRect().height)}px`
+    );
   }
 
   protected toggleOverview(): void {
