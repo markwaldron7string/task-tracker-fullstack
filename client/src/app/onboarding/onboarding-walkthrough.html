@@ -17,6 +17,7 @@
     <article
       class="tour-flag"
       [class.tour-flag--center]="current.placement === 'center'"
+      [class.tour-flag--theme-step]="current.id === 'theme'"
       [style.top.px]="flagPos()?.top"
       [style.left.px]="flagPos()?.left"
       [style.--flag-arrow-x.px]="flagPos()?.arrowX"
@@ -26,11 +27,16 @@
       <h2 class="tour-title">{{ current.title }}</h2>
       <p class="tour-body">{{ current.body }}</p>
       <div class="tour-actions">
-        <button type="button" class="tour-skip" (click)="onboarding.skip()">{{ skipLabel() }}</button>
-        @if (showThemeSkip()) {
-          <button type="button" class="tour-step-skip" (click)="onboarding.skipThemeStep()">Skip color selection</button>
-        }
-        <button type="button" class="tour-next" (click)="onboarding.next()">
+        <div class="tour-actions-left">
+          <button type="button" class="tour-skip" (click)="onboarding.skip()">{{ skipLabel() }}</button>
+          @if (showThemeSkip()) {
+            <button type="button" class="tour-step-skip" (click)="onboarding.skipThemeStep()">Skip color selection</button>
+          }
+          @if (showAddTaskSkip()) {
+            <button type="button" class="tour-step-skip" (click)="onboarding.skipAddTaskStep()">Skip adding a task</button>
+          }
+        </div>
+        <button type="button" class="tour-next" [disabled]="!canAdvance()" (click)="onNext()">
           {{ isLastStep() ? finishLabel() : 'Next' }}
         </button>
       </div>

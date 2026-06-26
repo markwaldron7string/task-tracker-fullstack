@@ -1,8 +1,7 @@
-<div class="picker">
+<div class="picker" data-tour="theme-picker">
   <button
     type="button"
     class="trigger"
-    data-tour="theme-picker"
     [class.trigger--open]="open()"
     (click)="toggle($event)"
     aria-haspopup="true"
@@ -15,14 +14,17 @@
   </button>
 
   @if (open()) {
-    <button
-      type="button"
-      class="panel-scrim"
-      aria-label="Close theme picker"
-      (click)="closePanel()"
-    ></button>
+    @if (!onboarding.introThemeStepActive()) {
+      <button
+        type="button"
+        class="panel-scrim"
+        aria-label="Close theme picker"
+        (click)="closePanel()"
+      ></button>
+    }
     <div
       class="panel"
+      [class.panel--tour]="onboarding.introThemeStepActive()"
       [class.panel--anchored]="useAnchoredPanel()"
       [style.top]="panelTop()"
       [style.left]="panelLeft()"
@@ -35,7 +37,7 @@
         <button type="button" class="tab" [class.tab--active]="tab() === 'light'" (click)="switchTab('light')">Light</button>
         <button type="button" class="tab" [class.tab--active]="tab() === 'dark'" (click)="switchTab('dark')">Dark</button>
         <button type="button" class="tab" [class.tab--active]="tab() === 'neon'" (click)="switchTab('neon')">Neon</button>
-        <button type="button" class="tab" [class.tab--active]="tab() === 'custom'" [class.tab--disabled]="customTabDisabled()" [disabled]="customTabDisabled()" (click)="switchTab('custom')">Custom</button>
+        <button type="button" class="tab" [class.tab--active]="tab() === 'custom'" (click)="switchTab('custom')">Custom</button>
       </div>
 
       @if (tab() === 'custom') {

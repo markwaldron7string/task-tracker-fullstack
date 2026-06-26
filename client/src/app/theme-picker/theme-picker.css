@@ -78,6 +78,15 @@
   transform: rotate(180deg);
 }
 
+.theme-picker--tour .panel,
+.theme-picker--tour .panel--tour {
+  z-index: 125;
+}
+
+.panel--tour {
+  pointer-events: auto;
+}
+
 /* ---- Dropdown panel ---- */
 .panel {
   position: absolute;

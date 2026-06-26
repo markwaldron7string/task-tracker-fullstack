@@ -20,22 +20,22 @@ const INTRO_TOUR_STEPS: TourStep[] = [
   {
     id: 'welcome',
     title: 'Welcome to Task Tracker',
-    body: 'A quick tour of the essentials — first, pick a color you like.',
+    body: 'A quick tour of the essentials — pick a color, add your first task, then see how everything fits together.',
     placement: 'center',
   },
   {
     id: 'theme',
     target: 'theme-picker',
     title: 'Pick your color',
-    body: 'Choose a built-in theme swatch below. Custom accent colors unlock with Pro later in the tour.',
+    body: 'Choose Light, Dark, or Neon, then tap a swatch to apply your theme.',
     placement: 'bottom',
     route: '/',
   },
   {
     id: 'add-task',
     target: 'add-task',
-    title: 'Add tasks in plain English',
-    body: 'Type naturally, like “Review PR tomorrow 30m high”. We parse due dates, duration, and priority for you.',
+    title: 'Add your first task',
+    body: 'Type a task below and press Add or Enter — try “Walk the dog tomorrow”. We parse due dates, duration, and priority for you.',
     placement: 'bottom',
     route: '/',
   },
@@ -67,8 +67,16 @@ const PRO_TOUR_STEPS: TourStep[] = [
   {
     id: 'pro-welcome',
     title: 'Welcome to Pro',
-    body: 'You unlocked the full planning suite. This quick tour shows where everything lives.',
+    body: 'A quick tour of Pro — calendar planning, device reminders, and your AI Planning Coach.',
     placement: 'center',
+  },
+  {
+    id: 'pro-add-task',
+    target: 'add-task',
+    title: 'Add your first task',
+    body: 'Start with one task — type something simple like “Review PR tomorrow” and press Add or Enter.',
+    placement: 'bottom',
+    route: '/',
   },
   {
     id: 'pro-calendar-nav',
@@ -87,46 +95,24 @@ const PRO_TOUR_STEPS: TourStep[] = [
     route: '/calendar',
   },
   {
-    id: 'pro-today-nav',
-    target: 'nav-today',
-    title: 'Today view',
-    body: 'Your daily command center — overdue, due today, and what’s coming next.',
+    id: 'pro-notifications',
+    target: 'notifications-toggle',
+    title: 'Device reminders',
+    body: 'Turn reminders on for the whole list, then tap the bell on any task row to schedule alerts on this device.',
     placement: 'bottom',
-    route: '/today',
-  },
-  {
-    id: 'pro-today-planning',
-    target: 'today-planning',
-    title: 'Realistic day planning',
-    body: 'Set your workday length, see today’s load at a glance, and use “Lighten today” when you’re overcommitted. After 4pm, wrap up rolls unfinished tasks to tomorrow.',
-    placement: 'bottom',
-    route: '/today',
+    route: '/',
   },
   {
     id: 'pro-coach',
     target: 'coach-fab',
     title: 'AI Planning Coach',
-    body: 'Ask what to focus on, check if you’re overcommitted, or build a multi-day schedule with checklists — then apply it to your calendar.',
+    body: 'Ask what to focus on, check if you’re overcommitted, or build a multi-day schedule — then apply it to your calendar.',
     placement: 'top',
     route: '/',
   },
-  {
-    id: 'pro-themes',
-    target: 'theme-picker',
-    title: 'Custom themes',
-    body: 'Pro unlocks custom accent colors on top of every built-in theme.',
-    placement: 'bottom',
-    route: '/',
-  },
-  {
-    id: 'pro-domains',
-    target: 'add-task',
-    title: 'Domains & recurring tasks',
-    body: 'Tag tasks with #work or #health, set repeats like “daily” or “every week” in quick-add or Edit, and use search to find anything fast.',
-    placement: 'bottom',
-    route: '/',
-  },
 ];
+
+const ADD_TASK_STEP_IDS = new Set(['add-task', 'pro-add-task']);
 
 @Injectable({ providedIn: 'root' })
 export class OnboardingService {
@@ -145,13 +131,16 @@ export class OnboardingService {
     const source = this.kind() === 'pro' ? PRO_TOUR_STEPS : INTRO_TOUR_STEPS;
     return source.filter(step => {
       if (step.id === 'upgrade' && this.pro.unlocked()) return false;
+      if (
+        (step.id === 'add-task' || step.id === 'pro-add-task') &&
+        document.querySelector('[data-tour="first-task"]')
+      ) {
+        return false;
+      }
       if (step.id === 'task-controls' && !document.querySelector('[data-tour="first-task"]')) {
         return false;
       }
       if (step.id === 'pro-calendar' && !document.querySelector('[data-tour="calendar-view"]')) {
-        return false;
-      }
-      if (step.id === 'pro-today-planning' && !document.querySelector('[data-tour="today-planning"]')) {
         return false;
       }
       return true;
@@ -165,6 +154,16 @@ export class OnboardingService {
   );
 
   readonly openThemePickerTick = signal(0);
+  readonly addTaskStepSkipped = signal(false);
+
+  readonly addTaskStepActive = computed(() => {
+    const stepId = this.currentStep()?.id;
+    return !!stepId && ADD_TASK_STEP_IDS.has(stepId);
+  });
+
+  readonly taskEntryLocked = computed(
+    () => this.active() && !this.addTaskStepActive()
+  );
 
   readonly progressLabel = computed(() => {
     const total = this.steps().length;
@@ -191,9 +190,7 @@ export class OnboardingService {
 
   startIntro(): void {
     if (!this.shouldShowIntro()) return;
-    this.kind.set('intro');
-    this.stepIndex.set(0);
-    this.active.set(true);
+    this.resetTourState('intro');
   }
 
   startPro(): void {
@@ -208,6 +205,11 @@ export class OnboardingService {
   /** @deprecated Use startIntro */
   start(): void {
     this.startIntro();
+  }
+
+  canAdvance(taskCount: number): boolean {
+    if (!this.addTaskStepActive() || this.addTaskStepSkipped()) return true;
+    return taskCount > 0;
   }
 
   next(): void {
@@ -247,9 +249,7 @@ export class OnboardingService {
     localStorage.removeItem(INTRO_STORAGE_KEY);
     localStorage.removeItem(PRO_TOUR_STORAGE_KEY);
     this.pendingProTour.set(false);
-    this.kind.set('intro');
-    this.stepIndex.set(0);
-    this.active.set(true);
+    this.resetTourState('intro');
   }
 
   refreshLayout(): void {
@@ -266,9 +266,25 @@ export class OnboardingService {
     }
   }
 
+  skipAddTaskStep(): void {
+    if (this.addTaskStepActive()) {
+      this.addTaskStepSkipped.set(true);
+      this.next();
+    }
+  }
+
+  notifyTaskAdded(): void {
+    this.refreshLayout();
+  }
+
   private beginProTour(): void {
-    this.kind.set('pro');
+    this.resetTourState('pro');
+  }
+
+  private resetTourState(kind: TourKind): void {
+    this.kind.set(kind);
     this.stepIndex.set(0);
+    this.addTaskStepSkipped.set(false);
     this.active.set(true);
   }
 

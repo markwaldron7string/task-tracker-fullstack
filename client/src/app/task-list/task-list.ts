@@ -1,5 +1,6 @@
 import { Component, ElementRef, computed, inject, signal } from '@angular/core';
 import { injectOverlayDismissBinding } from '../overlay-dismiss.service';
+import { OnboardingService } from '../onboarding/onboarding.service';
 import { TaskItem } from '../task-item/task-item';
 import { TaskSummary } from '../task-summary/task-summary';
 import { TASK_DOMAINS, projectLabel } from '../task-domains';
@@ -15,8 +16,11 @@ import { TaskStore } from '../task-store';
 export class TaskList {
   store = inject(TaskStore);
   protected reminders = inject(TaskReminderService);
+  protected onboarding = inject(OnboardingService);
   private host = inject(ElementRef<HTMLElement>);
   protected confirmClearOpen = signal(false);
+
+  protected taskEntryLocked = this.onboarding.taskEntryLocked;
 
   constructor() {
     injectOverlayDismissBinding(() => {
@@ -62,5 +66,16 @@ export class TaskList {
 
   protected toggleMasterNotifications(): void {
     this.reminders.setMasterEnabled(!this.reminders.isMasterEnabled());
+  }
+
+  protected tryAddTask(input: HTMLInputElement): void {
+    if (this.taskEntryLocked()) return;
+    const value = input.value.trim();
+    if (!value) return;
+    this.store.addTask(value);
+    input.value = '';
+    if (this.onboarding.addTaskStepActive()) {
+      this.onboarding.notifyTaskAdded();
+    }
   }
 }

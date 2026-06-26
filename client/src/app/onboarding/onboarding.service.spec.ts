@@ -70,6 +70,32 @@ describe('OnboardingService', () => {
   it('should omit upgrade step when Pro is locked', () => {
     expect(service.steps().some(step => step.id === 'upgrade')).toBe(true);
   });
+
+  it('should block advance on add-task step until a task exists', () => {
+    service.startIntro();
+    while (service.currentStep()?.id !== 'add-task') {
+      service.next();
+    }
+    expect(service.canAdvance(0)).toBe(false);
+    expect(service.canAdvance(1)).toBe(true);
+  });
+
+  it('should allow skipping the add-task step', () => {
+    service.startIntro();
+    while (service.currentStep()?.id !== 'add-task') {
+      service.next();
+    }
+    service.skipAddTaskStep();
+    expect(service.currentStep()?.id).not.toBe('add-task');
+    expect(service.canAdvance(0)).toBe(true);
+  });
+
+  it('should include pro notifications step in pro tour', () => {
+    proUnlocked.set(true);
+    storage.setItem('ttf-onboarding-complete', '1');
+    service.startPro();
+    expect(service.steps().some(step => step.id === 'pro-notifications')).toBe(true);
+  });
 });
 
 function createStorage(): Storage {

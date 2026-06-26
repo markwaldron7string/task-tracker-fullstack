@@ -5,6 +5,7 @@
       <button
         type="button"
         class="notifications-toggle"
+        data-tour="notifications-toggle"
         [class.notifications-toggle--off]="!reminders.isMasterEnabled()"
         (click)="toggleMasterNotifications()"
         [attr.aria-pressed]="reminders.isMasterEnabled()"
@@ -52,15 +53,24 @@
     }
   </div>
 
-  <div class="add-task-row" data-tour="add-task">
+  <div class="add-task-row" data-tour="add-task" [class.add-task-row--locked]="taskEntryLocked()">
     <input
       #taskInput
       class="task-input"
       placeholder="Add a task (i.e. Walk the dog)"
-      (keydown.enter)="store.addTask(taskInput.value); taskInput.value = ''"
+      [readonly]="taskEntryLocked()"
+      [attr.aria-disabled]="taskEntryLocked()"
+      (keydown.enter)="tryAddTask(taskInput)"
     />
-    <button type="button" class="btn btn-primary" (click)="store.addTask(taskInput.value); taskInput.value = ''">Add</button>
-    <button type="button" class="btn btn-ghost" (click)="requestClearAll()">Clear all</button>
+    <button
+      type="button"
+      class="btn btn-primary"
+      [disabled]="taskEntryLocked()"
+      (click)="tryAddTask(taskInput)"
+    >Add</button>
+    @if (!onboarding.active()) {
+      <button type="button" class="btn btn-ghost" (click)="requestClearAll()">Clear all</button>
+    }
   </div>
 
   @if (confirmClearOpen()) {

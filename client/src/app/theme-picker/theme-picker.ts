@@ -15,11 +15,14 @@ const DEFAULT_ACCENT = DEFAULT_ACCENTS[DEFAULT_ACCENTS.length - 1];
   imports: [ProUpgrade],
   templateUrl: './theme-picker.html',
   styleUrl: './theme-picker.css',
+  host: {
+    '[class.theme-picker--tour]': 'onboarding.introThemeStepActive()',
+  },
 })
 export class ThemePicker {
   protected theme = inject(ThemeService);
   protected pro = inject(ProService);
-  private onboarding = inject(OnboardingService);
+  protected onboarding = inject(OnboardingService);
   private host = inject(ElementRef<HTMLElement>);
 
   protected open = signal(false);
@@ -50,11 +53,9 @@ export class ThemePicker {
       : THEMES.find(t => t.id === this.theme.active())?.name
   );
 
-  protected customTabDisabled = computed(() => this.onboarding.introThemeStepActive());
-
   constructor() {
     injectOverlayDismissBinding(() => {
-      if (!this.open()) return null;
+      if (!this.open() || this.onboarding.introThemeStepActive()) return null;
       return {
         contains: target => this.host.nativeElement.contains(target),
         close: () => this.closePanel(),
@@ -65,22 +66,26 @@ export class ThemePicker {
       this.onboarding.openThemePickerTick();
       if (!this.onboarding.introThemeStepActive()) return;
       this.openPanel();
-      if (this.tab() === 'custom') {
-        this.tab.set(this.initialTab() === 'custom' ? 'dark' : this.initialTab());
-      }
     });
   }
 
   protected openPanel(): void {
-    if (this.open()) return;
-    this.tab.set(this.initialTab() === 'custom' && this.customTabDisabled() ? 'dark' : this.initialTab());
+    if (this.open()) {
+      this.refreshTourLayout();
+      return;
+    }
+    this.tab.set(this.initialTab());
     this.open.set(true);
-    queueMicrotask(() => this.alignPanel());
+    queueMicrotask(() => {
+      this.alignPanel();
+      this.refreshTourLayout();
+    });
   }
 
   protected toggle(event: Event): void {
     event.stopPropagation();
     if (this.open()) {
+      if (this.onboarding.introThemeStepActive()) return;
       this.closePanel();
       return;
     }
@@ -88,12 +93,25 @@ export class ThemePicker {
   }
 
   protected closePanel(): void {
+    if (this.onboarding.introThemeStepActive()) return;
     this.open.set(false);
     this.resetPanelPosition();
   }
 
   protected onPanelClick(event: Event): void {
     event.stopPropagation();
+    this.refreshTourLayout();
+  }
+
+  protected select(id: string): void {
+    this.theme.set(id);
+    this.refreshTourLayout();
+  }
+
+  private refreshTourLayout(): void {
+    if (this.onboarding.introThemeStepActive()) {
+      this.onboarding.refreshLayout();
+    }
   }
 
   private resetPanelPosition(): void {
@@ -103,20 +121,17 @@ export class ThemePicker {
   }
 
   protected switchTab(tab: Tab): void {
-    if (tab === 'custom' && this.customTabDisabled()) return;
     this.tab.set(tab);
     if (tab === 'custom') {
       if (this.pro.unlocked()) this.applyCustom();
+      this.refreshTourLayout();
       return;
     }
     const current = this.theme.active();
     const color = current !== CUSTOM_ID && current.includes('-') ? current.split('-')[1] : 'ocean';
     const targetId = `${tab}-${color}`;
     this.theme.set(THEMES.some(t => t.id === targetId) ? targetId : `${tab}-red`);
-  }
-
-  protected select(id: string): void {
-    this.theme.set(id);
+    this.refreshTourLayout();
   }
 
   protected setBase(base: ThemeCategory): void {
@@ -168,13 +183,17 @@ export class ThemePicker {
 
   @HostListener('document:keydown.escape')
   protected onEscape(): void {
+    if (this.onboarding.introThemeStepActive()) return;
     this.closePanel();
   }
 
   @HostListener('window:resize')
   @HostListener('window:scroll')
   protected onViewportChange(): void {
-    if (this.open()) this.alignPanel();
+    if (this.open()) {
+      this.alignPanel();
+      this.refreshTourLayout();
+    }
   }
 
   private alignPanel(): void {

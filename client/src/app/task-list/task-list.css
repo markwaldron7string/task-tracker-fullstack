@@ -90,6 +90,16 @@ h2 {
   margin-bottom: 1.5rem;
 }
 
+.add-task-row--locked .task-input {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.add-task-row--locked .btn-primary:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 .task-toolbar {
   display: flex;
   flex-direction: column;

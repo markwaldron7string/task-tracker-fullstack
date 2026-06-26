@@ -13,6 +13,7 @@ import { filter } from 'rxjs';
 import { TaskStore } from '../task-store';
 import {
   buildSpotlightBox,
+  computeThemeStepFlagPosition,
   resolveTourTarget,
   SpotlightBox,
 } from './onboarding-layout';
@@ -59,6 +60,10 @@ export class OnboardingWalkthrough {
 
   protected showThemeSkip = computed(() => this.onboarding.introThemeStepActive());
 
+  protected showAddTaskSkip = computed(() => this.onboarding.addTaskStepActive());
+
+  protected canAdvance = computed(() => this.onboarding.canAdvance(this.store.tasks().length));
+
   private lastStepId: string | null = null;
   private layoutAttempts = 0;
   private scrollLockY = 0;
@@ -90,13 +95,27 @@ export class OnboardingWalkthrough {
 
       this.lockScroll();
       const current = this.onboarding.currentStep();
+      const layoutRevision = this.onboarding.layoutRevision();
       const taskCount = this.store.tasks().length;
       untracked(() => {
+        void layoutRevision;
         void taskCount;
-        this.onboarding.refreshLayout();
         void this.syncStep(current);
+        if (
+          current &&
+          (current.id === 'add-task' ||
+            current.id === 'pro-add-task' ||
+            current.id === 'task-controls')
+        ) {
+          queueMicrotask(() => this.layoutCurrentStep());
+        }
       });
     });
+  }
+
+  protected onNext(): void {
+    if (!this.onboarding.canAdvance(this.store.tasks().length)) return;
+    this.onboarding.next();
   }
 
   @HostListener('window:resize')
@@ -147,6 +166,21 @@ export class OnboardingWalkthrough {
 
     if (stepChanged && step.id === 'theme') {
       this.onboarding.requestOpenThemePicker();
+      queueMicrotask(() => this.layoutCurrentStep());
+      window.setTimeout(() => this.layoutCurrentStep(), 80);
+      window.setTimeout(() => this.layoutCurrentStep(), 220);
+      return;
+    }
+
+    if (stepChanged && (step.id === 'add-task' || step.id === 'pro-add-task')) {
+      queueMicrotask(() => {
+        const input = document.querySelector(
+          '[data-tour="add-task"] .task-input'
+        ) as HTMLInputElement | null;
+        input?.focus();
+        this.layoutCurrentStep();
+      });
+      return;
     }
 
     queueMicrotask(() => this.layoutCurrentStep());
@@ -184,6 +218,20 @@ export class OnboardingWalkthrough {
     const box = buildSpotlightBox(step, target, VIEWPORT_PAD);
 
     this.spotlight.set(box);
+
+    if (step.id === 'theme') {
+      const themeFlag = computeThemeStepFlagPosition(
+        box,
+        FLAG_WIDTH,
+        FLAG_HEIGHT_EST,
+        VIEWPORT_PAD,
+        FLAG_GAP
+      );
+      this.flagPlacement.set(themeFlag.placement);
+      this.flagPos.set({ top: themeFlag.top, left: themeFlag.left, arrowX: themeFlag.arrowX });
+      return;
+    }
+
     this.flagPlacement.set(step.placement);
     this.flagPos.set(this.computeFlagPosition(box, step.placement));
   }
@@ -212,7 +260,7 @@ export class OnboardingWalkthrough {
     top = Math.min(Math.max(top, VIEWPORT_PAD), vh - flagH - VIEWPORT_PAD);
 
     const targetCenterX = box.left + box.width / 2;
-    const arrowX = Math.min(Math.max(targetCenterX - left, 18), flagW - 18);
+    const arrowX = Math.min(Math.max(targetCenterX - left, 28), flagW - 28);
 
     this.flagPlacement.set(resolvedPlacement);
     return { top, left, arrowX };
