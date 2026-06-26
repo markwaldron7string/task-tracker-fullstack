@@ -109,6 +109,14 @@ export class TaskReminderDialog {
     event.stopPropagation();
   }
 
+  protected onEnabledChange(checked: boolean): void {
+    this.enabled.set(checked);
+    if (!checked) {
+      this.recurrence.set(null);
+      this.recurrencePopover.set(null);
+    }
+  }
+
   protected setRecurrence(value: RecurrenceRule | null): void {
     // Tapping an already-active non-null option toggles it off and disables the reminder.
     if (value !== null && this.isRecurrenceActive(value)) {

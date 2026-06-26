@@ -7,7 +7,7 @@
 
     <div class="dialog-body">
       <label class="toggle-row">
-        <input type="checkbox" [checked]="enabled()" (change)="enabled.set($any($event.target).checked)" />
+        <input type="checkbox" [checked]="enabled()" (change)="onEnabledChange($any($event.target).checked)" />
         <span>Enable reminder for this task</span>
       </label>
 
