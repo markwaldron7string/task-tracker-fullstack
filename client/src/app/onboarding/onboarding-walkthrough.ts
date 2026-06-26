@@ -353,7 +353,7 @@ export class OnboardingWalkthrough {
     box: SpotlightBox,
   ): TourPointer | null {
     if (!this.shouldShowPointer(step)) return null;
-    if (step.id === 'theme') {
+    if (step.id === 'theme' || step.id === 'pro-coach') {
       return computeRightwardPointerLeftOfTarget(spotlightDomRect(box));
     }
     if (step.id === 'task-controls') {
