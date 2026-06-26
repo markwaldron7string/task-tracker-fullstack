@@ -284,7 +284,15 @@ export class OnboardingService {
   }
 
   notifyTaskAdded(): void {
-    this.refreshLayout();
+    // Delay so Angular renders the new task row before we re-query the DOM.
+    // refreshLayout() recomputes steps; once add-task is filtered out,
+    // stepIndex=2 naturally points to task-controls with no manual next() call.
+    window.setTimeout(() => {
+      this.refreshLayout();
+      if (this.addTaskStepActive()) {
+        this.next();
+      }
+    }, 100);
   }
 
   private beginProTour(): void {

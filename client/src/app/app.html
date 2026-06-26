@@ -15,7 +15,7 @@
       @if (pro.unlocked()) {
         <span class="pro-badge" aria-label="Pro unlocked">Pro</span>
       } @else if (onboarding.introUpgradeLocked()) {
-        <span class="upgrade-btn upgrade-btn--disabled" aria-disabled="true">Upgrade</span>
+        <span class="upgrade-btn upgrade-btn--disabled" aria-disabled="true" data-tour="upgrade">Upgrade</span>
       } @else {
         <a routerLink="/upgrade" class="upgrade-btn" data-tour="upgrade">Upgrade</a>
       }
