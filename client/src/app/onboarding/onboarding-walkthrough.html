@@ -16,10 +16,11 @@
 
     <article
       class="tour-flag"
-      [class.tour-flag--center]="current.placement === 'center'"
+      [class.tour-flag--center]="flagPlacement() === 'center'"
+      [class.tour-flag--anchored]="flagPos() !== null"
       [class.tour-flag--theme-step]="current.id === 'theme'"
-      [style.top.px]="flagPos()?.top"
-      [style.left.px]="flagPos()?.left"
+      [style.--flag-top.px]="flagPos()?.top"
+      [style.--flag-left.px]="flagPos()?.left"
       [style.--flag-arrow-x.px]="flagPos()?.arrowX"
       [attr.data-placement]="flagPlacement()"
     >

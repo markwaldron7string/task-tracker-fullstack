@@ -95,9 +95,21 @@
 }
 
 .tour-flag--center {
-  top: 50% !important;
-  left: 50% !important;
+  top: 50%;
+  left: 50%;
   transform: translate(-50%, -50%);
+}
+
+.tour-flag--anchored {
+  top: var(--flag-top) !important;
+  left: var(--flag-left) !important;
+  right: auto !important;
+  bottom: auto !important;
+  transform: none !important;
+}
+
+.tour-flag:not(.tour-flag--center):not(.tour-flag--anchored) {
+  transform: none;
 }
 
 .tour-progress {

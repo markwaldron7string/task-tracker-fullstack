@@ -32,6 +32,7 @@ export class TaskReminderService {
   private store = inject(TaskStore);
   private settings = new Map<number, TaskReminderConfig>(this.loadSettings());
   private firedKeys = new Set<string>(this.loadFired());
+  private firingKeys = new Set<string>();
   private timerId: ReturnType<typeof setTimeout> | null = null;
   private intervalId: ReturnType<typeof setInterval> | null = null;
 
@@ -159,9 +160,14 @@ export class TaskReminderService {
 
       const fireAt = configToTimestamp(config);
       if (fireAt <= now) {
-        this.fireReminder(task, config);
-        this.firedKeys.add(firedKey);
-        this.persistFired();
+        if (this.firingKeys.has(firedKey)) continue;
+        this.firingKeys.add(firedKey);
+        void this.fireReminder(task, config).then(delivered => {
+          this.firingKeys.delete(firedKey);
+          if (!delivered) return;
+          this.firedKeys.add(firedKey);
+          this.persistFired();
+        });
       } else if (fireAt < nextFire) {
         nextFire = fireAt;
       }
@@ -178,19 +184,48 @@ export class TaskReminderService {
     this.reschedule(this.store.tasks());
   }
 
-  private fireReminder(task: Task, config: TaskReminderConfig): void {
-    if (typeof window === 'undefined' || !('Notification' in window)) return;
-    if (Notification.permission !== 'granted') return;
+  private async fireReminder(task: Task, config: TaskReminderConfig): Promise<boolean> {
+    if (typeof window === 'undefined' || !('Notification' in window)) return false;
+    if (Notification.permission !== 'granted') return false;
 
     const when = formatReminderWhen(config);
+    const options: NotificationOptions = {
+      body: `${task.title} · ${when}`,
+      icon: '/favicon.svg',
+      tag: firedKeyFor(task.id, config),
+    };
+
     try {
-      new Notification('Task reminder', {
-        body: `${task.title} · ${when}`,
-        icon: '/favicon.svg',
-        tag: firedKeyFor(task.id, config),
-      });
+      const registration = await this.notificationRegistration();
+      if (registration) {
+        await registration.showNotification('Task reminder', options);
+        return true;
+      }
     } catch {
-      // Ignore blocked notification environments.
+      // Fall through to the page-level Notification constructor.
+    }
+
+    try {
+      new Notification('Task reminder', options);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  private async notificationRegistration(): Promise<ServiceWorkerRegistration | null> {
+    if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) return null;
+    try {
+      const existing = await navigator.serviceWorker.getRegistration();
+      if (existing && 'showNotification' in existing) return existing;
+
+      const ready = await Promise.race([
+        navigator.serviceWorker.ready,
+        new Promise<null>(resolve => window.setTimeout(() => resolve(null), 1000)),
+      ]);
+      return ready && 'showNotification' in ready ? ready : null;
+    } catch {
+      return null;
     }
   }
 

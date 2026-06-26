@@ -317,6 +317,10 @@
   background: var(--red-light);
 }
 
+:host([data-tour='first-task']) .task-actions {
+  opacity: 1;
+}
+
 @media (hover: none) {
   .task-actions {
     opacity: 1;

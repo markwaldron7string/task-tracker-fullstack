@@ -8,13 +8,12 @@ export interface SpotlightBox {
   radius: string;
 }
 
-const PAD_TIGHT = 2;
+const PAD_TIGHT = 3;
 const PAD_DEFAULT = 4;
 const PAD_ROOMY = 6;
 const PAD_THEME = 5;
 
 const ROOMY_TARGETS = new Set(['nav', 'add-task', 'calendar-view', 'today-planning']);
-const COMPACT_TARGETS = new Set(['first-task-actions']);
 
 export function resolveTourTarget(root: Element, targetId: string): Element {
   if (targetId === 'theme-picker') {
@@ -25,7 +24,7 @@ export function resolveTourTarget(root: Element, targetId: string): Element {
 
 export function spotlightPadding(targetId: string, rect: DOMRect): number {
   if (targetId === 'theme-picker') return PAD_THEME;
-  if (COMPACT_TARGETS.has(targetId)) return PAD_DEFAULT;
+  if (targetId === 'first-task-actions') return PAD_TIGHT;
   if (ROOMY_TARGETS.has(targetId)) {
     return rect.height > 100 ? PAD_ROOMY : PAD_DEFAULT;
   }
@@ -46,7 +45,51 @@ export function unionDomRects(a: DOMRect, b: DOMRect): DOMRect {
   return new DOMRect(left, top, right - left, bottom - top);
 }
 
-export function buildThemePickerSpotlight(root: Element, viewportPad = 12): SpotlightBox | null {
+function unionElementRects(elements: Element[]): DOMRect | null {
+  if (elements.length === 0) return null;
+  let rect = elements[0].getBoundingClientRect();
+  for (let i = 1; i < elements.length; i += 1) {
+    rect = unionDomRects(rect, elements[i].getBoundingClientRect());
+  }
+  return rect;
+}
+
+/** Exact viewport box for a measured rect — no clamping that can shift the highlight. */
+export function boxFromRect(rect: DOMRect, pad: number, radius: string): SpotlightBox {
+  return {
+    top: rect.top - pad,
+    left: rect.left - pad,
+    width: rect.width + pad * 2,
+    height: rect.height + pad * 2,
+    radius,
+  };
+}
+
+function buildAddTaskSpotlight(root: Element): SpotlightBox {
+  const controls = [
+    root.querySelector('.task-input'),
+    root.querySelector('.btn-primary'),
+  ].filter((el): el is Element => !!el);
+  const rect = unionElementRects(controls) ?? root.getBoundingClientRect();
+  return boxFromRect(rect, PAD_DEFAULT, readBorderRadius(root as HTMLElement));
+}
+
+function buildTaskActionsSpotlight(root: Element): SpotlightBox {
+  const host = root.closest('app-task-item') ?? root;
+  const buttons = [
+    ...host.querySelectorAll('.task-actions .bell-btn, .task-actions .action-btn'),
+  ];
+  const rect = unionElementRects(buttons) ?? root.getBoundingClientRect();
+  return boxFromRect(rect, PAD_TIGHT, '8px');
+}
+
+function buildNavSpotlight(root: Element): SpotlightBox {
+  const links = [...root.querySelectorAll('a')];
+  const rect = unionElementRects(links) ?? root.getBoundingClientRect();
+  return boxFromRect(rect, PAD_DEFAULT, readBorderRadius(root as HTMLElement));
+}
+
+export function buildThemePickerSpotlight(root: Element): SpotlightBox | null {
   const trigger = root.querySelector('.trigger') as HTMLElement | null;
   if (!trigger) return null;
 
@@ -56,39 +99,36 @@ export function buildThemePickerSpotlight(root: Element, viewportPad = 12): Spot
     rect = unionDomRects(rect, panel.getBoundingClientRect());
   }
 
-  const pad = PAD_THEME;
   const radiusEl = panel ?? trigger;
-
-  return {
-    top: Math.max(viewportPad, rect.top - pad),
-    left: Math.max(viewportPad, rect.left - pad),
-    width: rect.width + pad * 2,
-    height: rect.height + pad * 2,
-    radius: readBorderRadius(radiusEl),
-  };
+  return boxFromRect(rect, PAD_THEME, readBorderRadius(radiusEl));
 }
 
-export function buildSpotlightBox(
-  step: TourStep,
-  target: Element,
-  viewportPad = 12
-): SpotlightBox {
+export function buildSpotlightBox(step: TourStep, target: Element): SpotlightBox {
   if (step.target === 'theme-picker') {
-    const themeBox = buildThemePickerSpotlight(target, viewportPad);
+    const themeBox = buildThemePickerSpotlight(target);
     if (themeBox) return themeBox;
   }
 
-  const rect = target.getBoundingClientRect();
+  if (step.target === 'add-task') {
+    return buildAddTaskSpotlight(target);
+  }
 
+  if (step.target === 'first-task-actions') {
+    return buildTaskActionsSpotlight(target);
+  }
+
+  if (step.target === 'nav') {
+    return buildNavSpotlight(target);
+  }
+
+  const rect = target.getBoundingClientRect();
   const pad = spotlightPadding(step.target ?? '', rect);
 
-  return {
-    top: Math.max(viewportPad, rect.top - pad),
-    left: Math.max(viewportPad, rect.left - pad),
-    width: rect.width + pad * 2,
-    height: rect.height + pad * 2,
-    radius: readBorderRadius(target as HTMLElement),
-  };
+  if (step.target === 'upgrade') {
+    return boxFromRect(rect, pad, '999px');
+  }
+
+  return boxFromRect(rect, pad, readBorderRadius(target as HTMLElement));
 }
 
 export const FLAG_ARROW_INSET = 28;
@@ -111,6 +151,53 @@ export function computeThemeStepFlagPosition(
   top = Math.min(Math.max(top, viewportPad), vh - flagHeight - viewportPad);
 
   const targetCenterX = box.left + box.width / 2;
+  const arrowX = Math.min(
+    Math.max(targetCenterX - left, FLAG_ARROW_INSET),
+    flagW - FLAG_ARROW_INSET
+  );
+
+  return { top, left, arrowX, placement: 'bottom' };
+}
+
+/** Pin the tour card just below the sticky header with the arrow aimed at the target. */
+export function computeHeaderPinnedFlagPosition(
+  targetRect: DOMRect,
+  headerBottom: number,
+  flagWidth: number,
+  viewportPad = 12,
+  gap = 0
+): { top: number; left: number; arrowX: number; placement: 'bottom' | 'top' } {
+  const vw = window.innerWidth;
+  const flagW = Math.min(flagWidth, vw - viewportPad * 2);
+  const top = headerBottom + gap;
+  const left = Math.max(viewportPad, Math.min(vw / 2 - flagW / 2, vw - flagW - viewportPad));
+  const targetCenterX = targetRect.left + targetRect.width / 2;
+  const arrowX = Math.min(
+    Math.max(targetCenterX - left, FLAG_ARROW_INSET),
+    flagW - FLAG_ARROW_INSET
+  );
+  const placement: 'bottom' | 'top' = targetRect.top < top ? 'bottom' : 'top';
+  return { top, left, arrowX, placement };
+}
+
+/** Place the tour card immediately after a containing card while aiming at a target above. */
+export function computeBelowAnchorFlagPosition(
+  targetRect: DOMRect,
+  anchorRect: DOMRect,
+  flagWidth: number,
+  flagHeight: number,
+  viewportPad = 12,
+  gap = 0
+): { top: number; left: number; arrowX: number; placement: 'bottom' } {
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+  const flagW = Math.min(flagWidth, vw - viewportPad * 2);
+  const maxTop = Math.max(viewportPad, vh - flagHeight - viewportPad);
+  const top = Math.min(Math.max(anchorRect.bottom + gap, viewportPad), maxTop);
+  let left = targetRect.left + targetRect.width / 2 - flagW / 2;
+  left = Math.min(Math.max(left, viewportPad), vw - flagW - viewportPad);
+
+  const targetCenterX = targetRect.left + targetRect.width / 2;
   const arrowX = Math.min(
     Math.max(targetCenterX - left, FLAG_ARROW_INSET),
     flagW - FLAG_ARROW_INSET
