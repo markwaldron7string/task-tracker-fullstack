@@ -195,8 +195,28 @@ export class OnboardingWalkthrough {
     const step = this.onboarding.currentStep();
     if (!step) return;
 
-    if (step.placement === 'center' || !step.target) {
+    if (!step.target) {
       this.spotlight.set(null);
+      this.flagPos.set(null);
+      this.flagPlacement.set('center');
+      return;
+    }
+
+    if (step.placement === 'center') {
+      // Spotlight the target element but keep the tour card centered.
+      const el = document.querySelector(`[data-tour="${step.target}"]`);
+      if (el) {
+        this.layoutAttempts = 0;
+        const target = resolveTourTarget(el, step.target!);
+        const box = buildSpotlightBox(step, target, VIEWPORT_PAD);
+        this.spotlight.set(box);
+      } else if (this.layoutAttempts < 8) {
+        this.layoutAttempts += 1;
+        window.setTimeout(() => this.layoutCurrentStep(), 60);
+        return;
+      } else {
+        this.spotlight.set(null);
+      }
       this.flagPos.set(null);
       this.flagPlacement.set('center');
       return;

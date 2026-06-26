@@ -56,6 +56,7 @@ const INTRO_TOUR_STEPS: TourStep[] = [
   },
   {
     id: 'upgrade',
+    target: 'upgrade',
     title: 'Unlock Pro features',
     body: 'Upgrade for calendar planning, recurring tasks, and the AI Planning Coach — tap Upgrade in the header anytime to unlock Pro.',
     placement: 'center',

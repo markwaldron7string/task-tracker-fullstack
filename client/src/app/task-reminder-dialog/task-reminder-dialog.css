@@ -129,6 +129,8 @@
 
 .field-input {
   width: 100%;
+  max-width: 100%;
+  min-width: 0;
   border: 2px solid var(--border);
   border-radius: 6px;
   padding: 0.55rem 0.65rem;
@@ -137,6 +139,7 @@
   color: var(--text);
   background: var(--overlay-surface-muted, var(--surface));
   min-height: 2.65rem;
+  box-sizing: border-box;
 }
 
 .field-input:focus {
@@ -336,7 +339,7 @@
   }
 }
 
-@media (max-width: 420px) {
+@media (max-width: 640px) {
   .datetime-row {
     grid-template-columns: 1fr;
   }
