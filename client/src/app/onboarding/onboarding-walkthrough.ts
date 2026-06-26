@@ -166,6 +166,8 @@ export class OnboardingWalkthrough {
     this.positionObserver.observe(el);
     const header = document.querySelector('header');
     if (header) this.positionObserver.observe(header);
+    const flag = document.querySelector('.tour-flag');
+    if (flag) this.positionObserver.observe(flag);
   }
 
   private unwatchLayoutTarget(): void {
@@ -296,7 +298,7 @@ export class OnboardingWalkthrough {
     }
 
     if (step.id === 'task-controls') {
-      const targetRect = target.getBoundingClientRect();
+      const targetRect = new DOMRect(box.left, box.top, box.width, box.height);
       const aboveTarget = computeAboveAnchorFlagPosition(
         targetRect,
         flagW,

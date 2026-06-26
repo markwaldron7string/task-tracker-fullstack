@@ -73,7 +73,7 @@ describe('onboarding-layout', () => {
       12
     );
 
-    expect(flag.top + flagHeight).toBeLessThan(targetRect.top);
+    expect(targetRect.top - (flag.top + flagHeight)).toBeGreaterThanOrEqual(44);
     expect(flag.placement).toBe('top');
   });
 

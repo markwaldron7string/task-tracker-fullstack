@@ -186,7 +186,7 @@ export function computeAboveAnchorFlagPosition(
   flagWidth: number,
   flagHeight: number,
   viewportPad = 12,
-  gap = 12
+  gap = 44
 ): { top: number; left: number; arrowX: number; placement: 'top' } {
   const vw = window.innerWidth;
   const flagW = Math.min(flagWidth, vw - viewportPad * 2);
