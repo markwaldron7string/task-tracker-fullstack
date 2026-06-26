@@ -1,4 +1,4 @@
-import { Component, ElementRef, computed, inject, signal } from '@angular/core';
+import { Component, ElementRef, computed, effect, inject, signal } from '@angular/core';
 import { injectOverlayDismissBinding } from '../overlay-dismiss.service';
 import { OnboardingService } from '../onboarding/onboarding.service';
 import { ProService } from '../pro.service';
@@ -20,6 +20,8 @@ const TOUR_DEMO_TASK: Task = {
   checklist: [],
 };
 
+const SEARCH_MIN_TASKS = 10;
+
 @Component({
   selector: 'app-task-list',
   imports: [TaskItem, TaskSummary],
@@ -38,6 +40,7 @@ export class TaskList {
   protected introAddTaskStepActive = this.onboarding.introAddTaskStepActive;
   protected introTaskControlsStepActive = this.onboarding.introTaskControlsStepActive;
   protected tourDemoTask = TOUR_DEMO_TASK;
+  protected showSearch = computed(() => this.store.tasks().length >= SEARCH_MIN_TASKS);
 
   constructor() {
     injectOverlayDismissBinding(() => {
@@ -49,6 +52,12 @@ export class TaskList {
         },
         close: () => this.cancelClearAll(),
       };
+    });
+
+    effect(() => {
+      if (this.store.tasks().length < SEARCH_MIN_TASKS && this.store.searchQuery()) {
+        this.store.setSearchQuery('');
+      }
     });
   }
 

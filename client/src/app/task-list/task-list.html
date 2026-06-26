@@ -36,17 +36,9 @@
     }
   </div>
 
-  <div class="task-toolbar">
-    <input
-      class="search-input"
-      type="search"
-      placeholder="Search tasks…"
-      [value]="store.searchQuery()"
-      (input)="store.setSearchQuery($any($event.target).value)"
-      aria-label="Search tasks"
-    />
-    @if (domainOptions().length > 0) {
-    <div class="domain-filters" role="group" aria-label="Filter by domain">
+  @if (domainOptions().length > 0) {
+  <div class="task-toolbar" role="group" aria-label="Filter by domain">
+    <div class="domain-filters">
       @for (domain of domainOptions(); track domain) {
         <button
           type="button"
@@ -56,8 +48,8 @@
         >{{ domainLabel(domain) }}</button>
       }
     </div>
-    }
   </div>
+  }
 
   <div
     class="add-task-row"
@@ -68,7 +60,7 @@
     <input
       #taskInput
       class="task-input"
-      placeholder="Walk the dog tomorrow"
+      placeholder="Enter task (i.e. 'Walk the dog')"
       [readonly]="taskEntryLocked()"
       [attr.aria-disabled]="taskEntryLocked()"
       [attr.tabindex]="introAddTaskStepActive() ? -1 : null"
@@ -84,6 +76,19 @@
       <button type="button" class="btn btn-ghost" (click)="requestClearAll()">Clear all</button>
     }
   </div>
+
+  @if (showSearch()) {
+  <div class="search-row">
+    <input
+      class="search-input"
+      type="search"
+      placeholder="Search tasks…"
+      [value]="store.searchQuery()"
+      (input)="store.setSearchQuery($any($event.target).value)"
+      aria-label="Search tasks"
+    />
+  </div>
+  }
 
   @if (confirmClearOpen()) {
     <button type="button" class="confirm-scrim" aria-label="Close confirmation" (click)="cancelClearAll()"></button>

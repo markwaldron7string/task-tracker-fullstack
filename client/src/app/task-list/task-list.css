@@ -98,7 +98,15 @@ h2 {
 .add-task-row {
   display: flex;
   gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.add-task-row:not(:has(+ .search-row)) {
   margin-bottom: 1.5rem;
+}
+
+.search-row {
+  margin-bottom: 1.25rem;
 }
 
 .add-task-row--locked .task-input {

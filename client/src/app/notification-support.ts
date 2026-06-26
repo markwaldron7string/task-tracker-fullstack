@@ -39,7 +39,7 @@ export function getNotificationSupport(): NotificationSupport {
     return {
       status: 'ios-needs-install',
       message:
-        'On iPhone and iPad, add Task Tracker to your Home Screen first, then open the app from that icon to enable reminders.',
+        'On smartphone and tablet, add Task Tracker to your Home Screen first, then open the app from that icon to enable reminders.',
     };
   }
 
