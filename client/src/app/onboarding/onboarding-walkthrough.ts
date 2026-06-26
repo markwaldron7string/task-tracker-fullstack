@@ -19,7 +19,7 @@ import {
   computeRightwardPointerLeftOfTarget,
   computeThemeStepFlagPosition,
   computeTourPointer,
-  computeUpwardPointerBelowTarget,
+  computeUpwardPointerBelowSpotlight,
   computeViewportTopFlagPosition,
   FlagLayout,
   getVisualViewportHeight,
@@ -359,8 +359,8 @@ export class OnboardingWalkthrough {
     if (step.id === 'task-controls') {
       return computeDownwardPointerAboveTarget(targetRect);
     }
-    if (step.id === 'nav') {
-      return computeUpwardPointerBelowTarget(spotlightDomRect(box), 10);
+    if (step.id === 'nav' || step.id === 'upgrade') {
+      return computeUpwardPointerBelowSpotlight(box);
     }
     return computeTourPointer(flag, flagW, flagH, targetRect);
   }

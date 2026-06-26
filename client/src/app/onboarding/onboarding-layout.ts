@@ -315,6 +315,9 @@ export function computeDownwardPointerAboveTarget(
   return { x, y, rotation: 180 };
 }
 
+/** Clears 16px triangle height + 5px bob animation + small margin. */
+export const UPWARD_POINTER_BELOW_SPOTLIGHT_GAP = 28;
+
 /** Place an upward arrow centered just below a highlighted target. */
 export function computeUpwardPointerBelowTarget(
   targetRect: DOMRect,
@@ -323,6 +326,14 @@ export function computeUpwardPointerBelowTarget(
   const x = targetRect.left + targetRect.width / 2;
   const y = targetRect.bottom + gap;
   return { x, y, rotation: 0 };
+}
+
+/** Place an upward arrow below a spotlight box without overlapping its border. */
+export function computeUpwardPointerBelowSpotlight(
+  box: SpotlightBox,
+  gap = UPWARD_POINTER_BELOW_SPOTLIGHT_GAP,
+): TourPointer {
+  return computeUpwardPointerBelowTarget(spotlightDomRect(box), gap);
 }
 
 /** Place a rightward arrow centered just left of a highlighted target. */

@@ -5,6 +5,7 @@ import {
   computeDownwardPointerAboveTarget,
   computeHeaderPinnedFlagPosition,
   computeRightwardPointerLeftOfTarget,
+  computeUpwardPointerBelowSpotlight,
   computeUpwardPointerBelowTarget,
   resolveTourTarget,
   spotlightDomRect,
@@ -110,6 +111,15 @@ describe('onboarding-layout', () => {
     expect(pointer.x).toBe(92);
     expect(pointer.y).toBe(154);
     expect(pointer.rotation).toBe(90);
+  });
+
+  it('positions an upward pointer below a spotlight without overlapping it', () => {
+    const box = { top: 64, left: 280, width: 88, height: 32, radius: '999px' };
+    const pointer = computeUpwardPointerBelowSpotlight(box);
+
+    expect(pointer.x).toBe(324);
+    expect(pointer.y).toBe(124);
+    expect(pointer.rotation).toBe(0);
   });
 
   it('builds a nav spotlight from the actual nav links', () => {
