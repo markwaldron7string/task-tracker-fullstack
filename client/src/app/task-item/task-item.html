@@ -23,9 +23,6 @@
         <span class="project-chip">{{ projectLabel(domain) }}</span>
       }
     }
-    @if (task().recurrence; as rule) {
-      <span class="recurrence-chip" [title]="recurrenceLabel(rule)">↻</span>
-    }
     @if (task().pending) {
       <span class="pending-pill">Pending</span>
     }
