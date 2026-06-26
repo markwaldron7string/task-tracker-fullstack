@@ -166,11 +166,9 @@ main {
     top: 0;
     z-index: 100;
     padding: 0 1rem;
-    background:
-      var(--header-frost),
-      var(--header-gradient);
-    backdrop-filter: blur(24px) saturate(1.35);
+    background: var(--header-gradient);
     -webkit-backdrop-filter: blur(24px) saturate(1.35);
+    backdrop-filter: blur(24px) saturate(1.35);
   }
 
   .header-content {
