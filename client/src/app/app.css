@@ -189,24 +189,6 @@ nav a.active-link {
   box-shadow: var(--nav-active-glow, none);
 }
 
-.nav-pro-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-}
-
-.nav-pro-tag {
-  display: inline-flex;
-  align-items: center;
-  padding: 0.08rem 0.35rem;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.18);
-  font-size: 0.62rem;
-  font-weight: 800;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
 .nav-short {
   display: none;
 }
