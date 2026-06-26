@@ -279,6 +279,10 @@
     #0A101E 52%
   );
 
+  /* Theme-picker panel: more opaque + stronger blur so glowing bg doesn't bleed through */
+  --picker-surface: rgba(11, 16, 30, 0.92);
+  --picker-backdrop: blur(36px);
+
   /* Focus ring: solid edge + wide diffuse halo */
   --focus-ring:
     0 0 0 1px var(--red),

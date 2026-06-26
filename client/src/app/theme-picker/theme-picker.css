@@ -103,13 +103,13 @@
   padding: 0.85rem;
   min-width: 264px;
   max-width: min(264px, calc(100vw - 1.5rem));
-  background: var(--surface);
+  background: var(--picker-surface, var(--surface));
   background-image: var(--card-overlay);
   border: 1px solid var(--border);
   border-radius: 12px;
   box-shadow: var(--shadow), 0 16px 40px rgba(0, 0, 0, 0.4);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: var(--picker-backdrop, blur(12px));
+  backdrop-filter: var(--picker-backdrop, blur(12px));
   animation: panel-in 0.16s ease;
 }
 
