@@ -75,6 +75,7 @@ export class TaskList {
     this.store.addTask(value);
     input.value = '';
     if (this.onboarding.addTaskStepActive()) {
+      input.blur();
       this.onboarding.notifyTaskAdded();
     }
   }

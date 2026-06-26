@@ -9,6 +9,7 @@ export interface SpotlightBox {
 }
 
 const PAD_TIGHT = 3;
+const PAD_UPGRADE = 1;
 const PAD_DEFAULT = 4;
 const PAD_ROOMY = 6;
 const PAD_THEME = 5;
@@ -24,6 +25,7 @@ export function resolveTourTarget(root: Element, targetId: string): Element {
 
 export function spotlightPadding(targetId: string, rect: DOMRect): number {
   if (targetId === 'theme-picker') return PAD_THEME;
+  if (targetId === 'upgrade') return PAD_UPGRADE;
   if (targetId === 'first-task-actions') return PAD_TIGHT;
   if (ROOMY_TARGETS.has(targetId)) {
     return rect.height > 100 ? PAD_ROOMY : PAD_DEFAULT;

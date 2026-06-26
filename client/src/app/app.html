@@ -52,6 +52,15 @@
   </aside>
 }
 
+@if (appUpdate.enabled && !appUpdate.updateReady()) {
+  <button
+    type="button"
+    class="app-manual-refresh"
+    [disabled]="appUpdate.activating()"
+    (click)="appUpdate.refresh()"
+  >{{ appUpdate.activating() ? 'Refreshing...' : 'Refresh app' }}</button>
+}
+
 @if (pickerOverlay.bulkReschedule()) {
   <button
     type="button"

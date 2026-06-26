@@ -31,7 +31,7 @@ const FLAG_GAP = 14;
 const FLAG_WIDTH = 320;
 const FLAG_HEIGHT_EST = 240;
 const VIEWPORT_PAD = 12;
-const HEADER_PINNED_STEPS = new Set(['add-task', 'pro-add-task']);
+const ADD_TASK_STEP_IDS = new Set(['add-task', 'pro-add-task']);
 
 @Component({
   selector: 'app-onboarding-walkthrough',
@@ -223,6 +223,7 @@ export class OnboardingWalkthrough {
 
     if (stepChanged && (step.id === 'add-task' || step.id === 'pro-add-task')) {
       window.setTimeout(() => {
+        if (window.matchMedia('(hover: none), (pointer: coarse)').matches) return;
         const input = document.querySelector(
           '[data-tour="add-task"] .task-input'
         ) as HTMLInputElement | null;
@@ -282,18 +283,17 @@ export class OnboardingWalkthrough {
       return;
     }
 
-    if (HEADER_PINNED_STEPS.has(step.id)) {
-      const targetRect = target.getBoundingClientRect();
-      const pinned = computeHeaderPinnedFlagPosition(
+    if (ADD_TASK_STEP_IDS.has(step.id)) {
+      const targetRect = new DOMRect(box.left, box.top, box.width, box.height);
+      const aboveTarget = computeAboveAnchorFlagPosition(
         targetRect,
-        headerBottom,
         flagW,
-        VIEWPORT_PAD,
-        6
+        flagH,
+        VIEWPORT_PAD
       );
       this.spotlight.set(box);
-      this.flagPlacement.set(pinned.placement);
-      this.flagPos.set({ top: pinned.top, left: pinned.left, arrowX: pinned.arrowX });
+      this.flagPlacement.set(aboveTarget.placement);
+      this.flagPos.set({ top: aboveTarget.top, left: aboveTarget.left, arrowX: aboveTarget.arrowX });
       return;
     }
 

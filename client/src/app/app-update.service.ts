@@ -10,6 +10,7 @@ export class AppUpdateService {
   private ngZone = inject(NgZone);
   private destroyRef = inject(DestroyRef);
 
+  readonly enabled = this.swUpdate.isEnabled;
   readonly updateReady = signal(false);
   readonly activating = signal(false);
   readonly unrecoverable = signal(false);

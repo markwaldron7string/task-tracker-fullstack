@@ -10,7 +10,7 @@ import {
 
 describe('onboarding-layout', () => {
   it('uses tight padding for compact controls', () => {
-    expect(spotlightPadding('upgrade', { height: 32, width: 88 } as DOMRect)).toBe(3);
+    expect(spotlightPadding('upgrade', { height: 32, width: 88 } as DOMRect)).toBe(1);
   });
 
   it('uses roomy padding for large tour sections', () => {
