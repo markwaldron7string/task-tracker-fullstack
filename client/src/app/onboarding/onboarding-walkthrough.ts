@@ -27,7 +27,7 @@ interface FlagPosition {
 
 const FLAG_GAP = 14;
 const FLAG_WIDTH = 320;
-const FLAG_HEIGHT_EST = 190;
+const FLAG_HEIGHT_EST = 240;
 const VIEWPORT_PAD = 12;
 
 @Component({
