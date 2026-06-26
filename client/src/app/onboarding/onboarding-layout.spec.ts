@@ -2,6 +2,7 @@ import {
   buildSpotlightBox,
   buildThemePickerSpotlight,
   computeCardNearTarget,
+  computeDownwardPointerAboveTarget,
   computeHeaderPinnedFlagPosition,
   resolveTourTarget,
   spotlightPadding,
@@ -70,6 +71,15 @@ describe('onboarding-layout', () => {
 
     expect(targetRect.top - (flag.top + flagHeight)).toBeGreaterThanOrEqual(18);
     expect(flag.placement).toBe('top');
+  });
+
+  it('positions a downward pointer just above compact controls', () => {
+    const targetRect = new DOMRect(520, 420, 180, 36);
+    const pointer = computeDownwardPointerAboveTarget(targetRect, 12);
+
+    expect(pointer.x).toBe(610);
+    expect(pointer.y).toBe(408);
+    expect(pointer.rotation).toBe(0);
   });
 
   it('builds a nav spotlight from the actual nav links', () => {

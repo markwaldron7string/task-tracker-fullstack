@@ -14,6 +14,7 @@ import { TaskStore } from '../task-store';
 import {
   buildSpotlightBox,
   computeCardNearTarget,
+  computeDownwardPointerAboveTarget,
   computeHeaderPinnedFlagPosition,
   computeThemeStepFlagPosition,
   computeTourPointer,
@@ -337,9 +338,21 @@ export class OnboardingWalkthrough {
     this.spotlight.set(box);
     this.flagPlacement.set(flag.placement);
     this.flagPos.set({ top: flag.top, left: flag.left, arrowX: flag.arrowX });
-    this.pointer.set(
-      this.shouldShowPointer(step) ? computeTourPointer(flag, flagW, flagH, targetRect) : null,
-    );
+    this.pointer.set(this.computePointerForStep(step, flag, flagW, flagH, targetRect));
+  }
+
+  private computePointerForStep(
+    step: TourStep,
+    flag: FlagLayout,
+    flagW: number,
+    flagH: number,
+    targetRect: DOMRect,
+  ): TourPointer | null {
+    if (!this.shouldShowPointer(step)) return null;
+    if (step.id === 'task-controls') {
+      return computeDownwardPointerAboveTarget(targetRect);
+    }
+    return computeTourPointer(flag, flagW, flagH, targetRect);
   }
 
   private syncViewportCssVars(): void {
@@ -359,8 +372,7 @@ export class OnboardingWalkthrough {
     if (
       step.id === 'pro-calendar-nav' ||
       step.id === 'pro-calendar' ||
-      step.id === 'add-task' ||
-      step.id === 'task-controls'
+      step.id === 'add-task'
     ) {
       return false;
     }
