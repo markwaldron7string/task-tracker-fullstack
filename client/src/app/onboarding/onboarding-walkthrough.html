@@ -23,6 +23,7 @@
       <div
         class="tour-pointer"
         [class.tour-pointer--upward]="arrow.rotation === 0"
+        [class.tour-pointer--rightward]="arrow.rotation === 90"
         aria-hidden="true"
         [style.left.px]="arrow.x"
         [style.top.px]="arrow.y"

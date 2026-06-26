@@ -325,6 +325,16 @@ export function computeUpwardPointerBelowTarget(
   return { x, y, rotation: 0 };
 }
 
+/** Place a rightward arrow centered just left of a highlighted target. */
+export function computeRightwardPointerLeftOfTarget(
+  targetRect: DOMRect,
+  gap = 28,
+): TourPointer {
+  const x = targetRect.left - gap;
+  const y = targetRect.top + targetRect.height / 2;
+  return { x, y, rotation: 90 };
+}
+
 export function spotlightDomRect(box: SpotlightBox): DOMRect {
   return new DOMRect(box.left, box.top, box.width, box.height);
 }

@@ -88,6 +88,23 @@
   animation: tour-pointer-bob-up 1.4s ease-in-out infinite;
 }
 
+.tour-pointer--rightward {
+  animation: tour-pointer-bob-right 1.4s ease-in-out infinite;
+}
+
+@keyframes tour-pointer-bob-right {
+  0%,
+  100% {
+    translate: 0 0;
+    opacity: 0.75;
+  }
+
+  50% {
+    translate: 5px 0;
+    opacity: 1;
+  }
+}
+
 @keyframes tour-pointer-bob-up {
   0%,
   100% {

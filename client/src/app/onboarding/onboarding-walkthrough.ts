@@ -16,6 +16,7 @@ import {
   computeCardNearTarget,
   computeDownwardPointerAboveTarget,
   computeHeaderPinnedFlagPosition,
+  computeRightwardPointerLeftOfTarget,
   computeThemeStepFlagPosition,
   computeTourPointer,
   computeUpwardPointerBelowTarget,
@@ -352,6 +353,9 @@ export class OnboardingWalkthrough {
     box: SpotlightBox,
   ): TourPointer | null {
     if (!this.shouldShowPointer(step)) return null;
+    if (step.id === 'theme') {
+      return computeRightwardPointerLeftOfTarget(spotlightDomRect(box));
+    }
     if (step.id === 'task-controls') {
       return computeDownwardPointerAboveTarget(targetRect);
     }

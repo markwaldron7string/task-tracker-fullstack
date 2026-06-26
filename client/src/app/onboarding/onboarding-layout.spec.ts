@@ -4,6 +4,7 @@ import {
   computeCardNearTarget,
   computeDownwardPointerAboveTarget,
   computeHeaderPinnedFlagPosition,
+  computeRightwardPointerLeftOfTarget,
   computeUpwardPointerBelowTarget,
   resolveTourTarget,
   spotlightDomRect,
@@ -100,6 +101,15 @@ describe('onboarding-layout', () => {
     expect(pointer.x).toBe(156);
     expect(pointer.y).toBe(114);
     expect(pointer.rotation).toBe(0);
+  });
+
+  it('positions a rightward pointer just left of a highlighted target', () => {
+    const targetRect = new DOMRect(120, 64, 264, 180);
+    const pointer = computeRightwardPointerLeftOfTarget(targetRect);
+
+    expect(pointer.x).toBe(92);
+    expect(pointer.y).toBe(154);
+    expect(pointer.rotation).toBe(90);
   });
 
   it('builds a nav spotlight from the actual nav links', () => {
