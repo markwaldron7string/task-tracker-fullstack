@@ -75,10 +75,10 @@ describe('onboarding-layout', () => {
 
   it('positions a downward pointer just above compact controls', () => {
     const targetRect = new DOMRect(520, 420, 180, 36);
-    const pointer = computeDownwardPointerAboveTarget(targetRect, 12);
+    const pointer = computeDownwardPointerAboveTarget(targetRect);
 
     expect(pointer.x).toBe(610);
-    expect(pointer.y).toBe(408);
+    expect(pointer.y).toBe(392);
     expect(pointer.rotation).toBe(180);
   });
 

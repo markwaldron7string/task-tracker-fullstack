@@ -304,7 +304,7 @@ export function computeTourPointer(
 /** Place a downward arrow centered just above a highlighted target. */
 export function computeDownwardPointerAboveTarget(
   targetRect: DOMRect,
-  gap = 12,
+  gap = 28,
 ): TourPointer {
   const x = targetRect.left + targetRect.width / 2;
   const y = targetRect.top - gap;
