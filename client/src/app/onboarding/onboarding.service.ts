@@ -218,6 +218,8 @@ export class OnboardingService {
   }
 
   canAdvance(taskCount: number): boolean {
+    // Intro tour uses a centered card that covers the input, so never block.
+    if (this.kind() === 'intro') return true;
     if (!this.addTaskStepActive() || this.addTaskStepSkipped()) return true;
     return taskCount > 0;
   }

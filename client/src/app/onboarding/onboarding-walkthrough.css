@@ -2,52 +2,108 @@
   display: contents;
 }
 
-/* Full-viewport container — flex aligns the sheet to the bottom */
 .tour-root {
   position: fixed;
   inset: 0;
   z-index: 120;
   pointer-events: none;
-  display: flex;
-  align-items: flex-end;
 }
 
-/* Translucent backdrop for informational steps.
-   pointer-events: none lets touches reach the app beneath. */
-.tour-scrim {
+.tour-scrim--full {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.48);
-  pointer-events: none;
+  background: rgba(0, 0, 0, 0.62);
+  pointer-events: auto;
 }
 
-/* Bottom sheet — always anchored to the bottom edge, never overlaps UI */
-.tour-sheet {
-  position: relative;
+.tour-spotlight {
+  position: fixed;
+  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.62);
+  pointer-events: none;
   z-index: 1;
-  width: 100%;
-  padding: 0 1.5rem calc(1.75rem + env(safe-area-inset-bottom, 0px));
+}
+
+.tour-spotlight--pulse::after {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border: 1.5px solid var(--red);
+  border-radius: inherit;
+  animation: tour-pulse 1.6s ease-in-out infinite;
+  box-shadow: 0 0 10px color-mix(in srgb, var(--red) 45%, transparent);
+}
+
+@keyframes tour-pulse {
+  0%, 100% { opacity: 0.55; }
+  50%       { opacity: 1; }
+}
+
+.tour-flag {
+  --flag-arrow-size: 12px;
+  position: fixed;
+  z-index: 2;
+  width: min(20rem, calc(100vw - 2rem));
+  margin: 0;
+  padding: 1rem 1rem 0.85rem;
+  border-radius: 12px;
+  border: 1px solid var(--border);
   background-color: var(--overlay-surface);
   background-image: var(--overlay-sheen);
-  border-top: 1px solid var(--border);
-  border-radius: 20px 20px 0 0;
-  box-shadow: 0 -6px 32px rgba(0, 0, 0, 0.22);
+  box-shadow:
+    var(--shadow),
+    0 18px 40px rgba(0, 0, 0, 0.35);
   pointer-events: auto;
-  animation: tour-sheet-up 0.28s cubic-bezier(0.25, 0.8, 0.25, 1) both;
+  overflow: visible;
 }
 
-@keyframes tour-sheet-up {
-  from { transform: translateY(100%); }
-  to   { transform: translateY(0); }
+.tour-flag::before {
+  content: '';
+  position: absolute;
+  width: var(--flag-arrow-size);
+  height: var(--flag-arrow-size);
+  background-color: var(--overlay-surface);
+  background-image: var(--overlay-sheen);
+  border: 1px solid var(--border);
+  transform: rotate(45deg);
+  z-index: -1;
 }
 
-/* Drag-handle pill */
-.tour-handle {
-  width: 40px;
-  height: 4px;
-  background: var(--border);
-  border-radius: 2px;
-  margin: 0.85rem auto 1.1rem;
+.tour-flag[data-placement='bottom']::before {
+  top: calc(var(--flag-arrow-size) / -2 + 1px);
+  left: var(--flag-arrow-x, 50%);
+  margin-left: calc(var(--flag-arrow-size) / -2);
+  border-bottom-color: transparent;
+  border-right-color: transparent;
+}
+
+.tour-flag[data-placement='top']::before {
+  bottom: calc(var(--flag-arrow-size) / -2 + 1px);
+  left: var(--flag-arrow-x, 50%);
+  margin-left: calc(var(--flag-arrow-size) / -2);
+  border-top-color: transparent;
+  border-left-color: transparent;
+}
+
+.tour-flag--center::before {
+  display: none;
+}
+
+.tour-flag--center {
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.tour-flag--anchored {
+  top: var(--flag-top) !important;
+  left: var(--flag-left) !important;
+  right: auto !important;
+  bottom: auto !important;
+  transform: none !important;
+}
+
+.tour-flag--theme-step {
+  z-index: 1;
 }
 
 .tour-progress {
@@ -67,15 +123,15 @@
 }
 
 .tour-body {
-  margin: 0 0 1rem;
-  font-size: 0.87rem;
-  line-height: 1.55;
+  margin: 0 0 0.85rem;
+  font-size: 0.84rem;
+  line-height: 1.5;
   color: var(--text-muted);
 }
 
 .tour-actions {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: space-between;
   gap: 0.75rem;
 }
@@ -124,7 +180,6 @@
   background: var(--red);
   color: var(--on-primary, white);
   box-shadow: var(--btn-glow, none);
-  padding: 0.55rem 1.1rem;
 }
 
 .tour-next:hover {
@@ -135,4 +190,19 @@
   opacity: 0.45;
   cursor: not-allowed;
   filter: none;
+}
+
+@media (max-width: 480px) {
+  .tour-flag {
+    width: min(18rem, calc(100vw - 1.25rem));
+    padding: 0.85rem;
+  }
+
+  .tour-title {
+    font-size: 0.98rem;
+  }
+
+  .tour-body {
+    font-size: 0.8rem;
+  }
 }

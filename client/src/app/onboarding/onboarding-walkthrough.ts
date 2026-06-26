@@ -3,19 +3,35 @@ import {
   Component,
   computed,
   effect,
+  HostListener,
   inject,
+  NgZone,
+  signal,
   untracked,
 } from '@angular/core';
 import { Router } from '@angular/router';
 import { TaskStore } from '../task-store';
-import { OnboardingService, TourStep } from './onboarding.service';
+import {
+  buildSpotlightBox,
+  computeAboveAnchorFlagPosition,
+  computeHeaderPinnedFlagPosition,
+  computeThemeStepFlagPosition,
+  resolveTourTarget,
+  SpotlightBox,
+} from './onboarding-layout';
+import { OnboardingService, TourPlacement, TourStep } from './onboarding.service';
 
-// Show a translucent scrim for purely informational steps.
-// Hide it for steps where the user must interact with something above the sheet.
-const NO_SCRIM_STEP_IDS = new Set([
-  'theme', 'add-task', 'nav',
-  'pro-add-task', 'pro-calendar-nav', 'pro-notifications', 'pro-coach',
-]);
+interface FlagPosition {
+  top: number;
+  left: number;
+  arrowX: number;
+}
+
+const FLAG_GAP = 14;
+const FLAG_WIDTH = 320;
+const FLAG_HEIGHT_EST = 240;
+const VIEWPORT_PAD = 12;
+const ADD_TASK_STEP_IDS = new Set(['add-task', 'pro-add-task']);
 
 @Component({
   selector: 'app-onboarding-walkthrough',
@@ -26,8 +42,12 @@ export class OnboardingWalkthrough {
   protected onboarding = inject(OnboardingService);
   private router = inject(Router);
   private store = inject(TaskStore);
+  private ngZone = inject(NgZone);
 
   protected step = this.onboarding.currentStep;
+  protected spotlight = signal<SpotlightBox | null>(null);
+  protected flagPos = signal<FlagPosition | null>(null);
+  protected flagPlacement = signal<TourPlacement>('bottom');
 
   protected isLastStep = computed(() => {
     const steps = this.onboarding.steps();
@@ -43,24 +63,28 @@ export class OnboardingWalkthrough {
   );
 
   protected showThemeSkip = computed(() => this.onboarding.introThemeStepActive());
-  protected showAddTaskSkip = computed(() => this.onboarding.addTaskStepActive());
+
+  // "Skip adding a task" only makes sense in the pro tour where the step
+  // blocks until a task is added. Intro tour always allows Next.
+  protected showAddTaskSkip = computed(() =>
+    this.onboarding.addTaskStepActive() && this.onboarding.isProTour()
+  );
+
   protected canAdvance = computed(() => this.onboarding.canAdvance(this.store.tasks().length));
 
-  protected showScrim = computed(() => {
-    const id = this.onboarding.currentStep()?.id;
-    return !id || !NO_SCRIM_STEP_IDS.has(id);
-  });
-
   private lastStepId: string | null = null;
+  private layoutAttempts = 0;
   private scrollLockY = 0;
-
+  private layoutTarget: Element | null = null;
+  private positionObserver: ResizeObserver | null = null;
+  private readonly onViewportChange = () => this.scheduleLayout();
   private readonly onTouchMove = (event: TouchEvent) => {
     if (!this.onboarding.active()) return;
     const target = event.target as Node | null;
     if (!target) return;
-    const sheet = document.querySelector('.tour-sheet');
+    const flag = document.querySelector('.tour-flag');
     const themePanel = document.querySelector('.theme-picker--tour .panel');
-    if (sheet?.contains(target) || themePanel?.contains(target)) return;
+    if (flag?.contains(target) || themePanel?.contains(target)) return;
     event.preventDefault();
   };
 
@@ -84,17 +108,76 @@ export class OnboardingWalkthrough {
     effect(() => {
       if (!this.onboarding.active()) {
         this.unlockScroll();
+        this.unwatchLayoutTarget();
+        this.ngZone.run(() => {
+          this.spotlight.set(null);
+          this.flagPos.set(null);
+        });
         return;
       }
+
       this.lockScroll();
+      this.bindViewportListeners();
       const current = this.onboarding.currentStep();
-      untracked(() => void this.syncStep(current));
+      const layoutRevision = this.onboarding.layoutRevision();
+      const taskCount = this.store.tasks().length;
+      const upgradeLocked = this.onboarding.introUpgradeLocked();
+      untracked(() => {
+        void layoutRevision;
+        void taskCount;
+        void upgradeLocked;
+        void this.syncStep(current);
+      });
     });
   }
 
   protected onNext(): void {
     if (!this.onboarding.canAdvance(this.store.tasks().length)) return;
     this.onboarding.next();
+  }
+
+  @HostListener('window:resize')
+  protected onWindowResize(): void {
+    this.scheduleLayout();
+  }
+
+  private scheduleLayout(): void {
+    if (!this.onboarding.active()) return;
+    this.ngZone.runOutsideAngular(() => {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          this.ngZone.run(() => this.layoutCurrentStep());
+        });
+      });
+    });
+  }
+
+  private bindViewportListeners(): void {
+    window.visualViewport?.addEventListener('resize', this.onViewportChange);
+    window.visualViewport?.addEventListener('scroll', this.onViewportChange);
+  }
+
+  private unbindViewportListeners(): void {
+    window.visualViewport?.removeEventListener('resize', this.onViewportChange);
+    window.visualViewport?.removeEventListener('scroll', this.onViewportChange);
+  }
+
+  private watchLayoutTarget(el: Element): void {
+    if (this.layoutTarget === el && this.positionObserver) return;
+    this.unwatchLayoutTarget();
+    this.layoutTarget = el;
+    this.positionObserver = new ResizeObserver(() => this.scheduleLayout());
+    this.positionObserver.observe(el);
+    const header = document.querySelector('header');
+    if (header) this.positionObserver.observe(header);
+    const flag = document.querySelector('.tour-flag');
+    if (flag) this.positionObserver.observe(flag);
+  }
+
+  private unwatchLayoutTarget(): void {
+    this.positionObserver?.disconnect();
+    this.positionObserver = null;
+    this.layoutTarget = null;
   }
 
   private lockScroll(): void {
@@ -114,6 +197,7 @@ export class OnboardingWalkthrough {
     document.body.style.overflow = '';
     document.body.style.touchAction = '';
     document.removeEventListener('touchmove', this.onTouchMove);
+    this.unbindViewportListeners();
     window.scrollTo(0, this.scrollLockY);
   }
 
@@ -123,6 +207,8 @@ export class OnboardingWalkthrough {
     const stepChanged = step.id !== this.lastStepId;
     if (stepChanged) {
       this.lastStepId = step.id;
+      this.layoutAttempts = 0;
+      this.unwatchLayoutTarget();
     }
 
     if (stepChanged && step.route && !this.isCurrentRoute(step.route)) {
@@ -131,6 +217,12 @@ export class OnboardingWalkthrough {
 
     if (stepChanged && step.id === 'theme') {
       this.onboarding.requestOpenThemePicker();
+    }
+
+    this.scheduleLayout();
+    if (stepChanged && (step.id === 'theme' || step.id === 'task-controls' || step.id === 'upgrade')) {
+      window.setTimeout(() => this.scheduleLayout(), 80);
+      window.setTimeout(() => this.scheduleLayout(), 200);
     }
 
     if (stepChanged && (step.id === 'add-task' || step.id === 'pro-add-task')) {
@@ -147,5 +239,130 @@ export class OnboardingWalkthrough {
   private isCurrentRoute(route: string): boolean {
     const path = this.router.url.split('?')[0];
     return route === '/' ? path === '/' : path.startsWith(route);
+  }
+
+  private layoutCurrentStep(): void {
+    const step = this.onboarding.currentStep();
+    if (!step) return;
+
+    // Intro tour: always use a centered card — no getBoundingClientRect() math
+    // that breaks on iOS when the keyboard or address bar shifts the viewport.
+    if (!this.onboarding.isProTour()) {
+      this.spotlight.set(null);
+      this.flagPos.set(null);
+      this.flagPlacement.set('center');
+      return;
+    }
+
+    // Pro tour: full spotlight + anchored-card positioning (unchanged).
+    if (!step.target) {
+      this.spotlight.set(null);
+      this.flagPos.set(null);
+      this.flagPlacement.set('center');
+      return;
+    }
+
+    const el = document.querySelector(`[data-tour="${step.target}"]`);
+    if (!el) {
+      if (this.layoutAttempts < 12) {
+        this.layoutAttempts += 1;
+        window.setTimeout(() => this.scheduleLayout(), 60);
+        return;
+      }
+      this.onboarding.next();
+      return;
+    }
+
+    this.layoutAttempts = 0;
+    this.watchLayoutTarget(el);
+
+    const target = resolveTourTarget(el, step.target!);
+    const box = buildSpotlightBox(step, target);
+    const headerBottom = document.querySelector('header')?.getBoundingClientRect().bottom ?? 0;
+    const navBottom = document.querySelector('[data-tour="nav"]')?.getBoundingClientRect().bottom ?? headerBottom;
+    const flagW = this.currentFlagWidth();
+    const flagH = this.currentFlagHeight();
+
+    if (step.id === 'theme') {
+      const themeFlag = computeThemeStepFlagPosition(
+        box, flagW, FLAG_HEIGHT_EST, VIEWPORT_PAD, FLAG_GAP
+      );
+      this.spotlight.set(box);
+      this.flagPlacement.set(themeFlag.placement);
+      this.flagPos.set({ top: themeFlag.top, left: themeFlag.left, arrowX: themeFlag.arrowX });
+      return;
+    }
+
+    if (ADD_TASK_STEP_IDS.has(step.id)) {
+      const targetRect = new DOMRect(box.left, box.top, box.width, box.height);
+      const aboveTarget = computeAboveAnchorFlagPosition(targetRect, flagW, flagH, VIEWPORT_PAD);
+      this.spotlight.set(box);
+      this.flagPlacement.set(aboveTarget.placement);
+      this.flagPos.set({ top: aboveTarget.top, left: aboveTarget.left, arrowX: aboveTarget.arrowX });
+      return;
+    }
+
+    if (step.id === 'task-controls') {
+      const targetRect = new DOMRect(box.left, box.top, box.width, box.height);
+      const aboveTarget = computeAboveAnchorFlagPosition(targetRect, flagW, flagH, VIEWPORT_PAD);
+      this.spotlight.set(box);
+      this.flagPlacement.set(aboveTarget.placement);
+      this.flagPos.set({ top: aboveTarget.top, left: aboveTarget.left, arrowX: aboveTarget.arrowX });
+      return;
+    }
+
+    if (step.id === 'upgrade') {
+      const targetRect = target.getBoundingClientRect();
+      const pinned = computeHeaderPinnedFlagPosition(targetRect, navBottom, flagW, VIEWPORT_PAD);
+      this.spotlight.set(box);
+      this.flagPlacement.set(pinned.placement);
+      this.flagPos.set({ top: pinned.top, left: pinned.left, arrowX: pinned.arrowX });
+      return;
+    }
+
+    this.spotlight.set(box);
+    this.flagPlacement.set(step.placement);
+    this.flagPos.set(this.computeFlagPosition(box, step.placement));
+  }
+
+  private computeFlagPosition(box: SpotlightBox, placement: TourPlacement): FlagPosition {
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const flagW = this.currentFlagWidth();
+    const flagH = this.currentFlagHeight();
+
+    let top = box.top + box.height + FLAG_GAP;
+    let left = box.left + box.width / 2 - flagW / 2;
+    let resolvedPlacement = placement;
+
+    if (placement === 'top' || (placement === 'bottom' && top + flagH > vh - VIEWPORT_PAD)) {
+      top = box.top - flagH - FLAG_GAP;
+      resolvedPlacement = 'top';
+    }
+
+    if (top < VIEWPORT_PAD) {
+      top = box.top + box.height + FLAG_GAP;
+      resolvedPlacement = 'bottom';
+    }
+
+    left = Math.min(Math.max(left, VIEWPORT_PAD), vw - flagW - VIEWPORT_PAD);
+    top = Math.min(Math.max(top, VIEWPORT_PAD), vh - flagH - VIEWPORT_PAD);
+
+    const targetCenterX = box.left + box.width / 2;
+    const arrowX = Math.min(Math.max(targetCenterX - left, 28), flagW - 28);
+
+    this.flagPlacement.set(resolvedPlacement);
+    return { top, left, arrowX };
+  }
+
+  private currentFlagWidth(): number {
+    const vw = window.innerWidth;
+    if (vw <= 480) return Math.min(288, vw - 20);
+    return Math.min(FLAG_WIDTH, vw - VIEWPORT_PAD * 2);
+  }
+
+  private currentFlagHeight(): number {
+    const flag = document.querySelector('.tour-flag') as HTMLElement | null;
+    return flag?.getBoundingClientRect().height || FLAG_HEIGHT_EST;
   }
 }
