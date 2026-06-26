@@ -26,22 +26,62 @@
 .tour-spotlight--pulse::after {
   content: '';
   position: absolute;
-  inset: -1px;
-  border: 1.5px solid var(--red);
+  inset: -2px;
+  border: 2px solid var(--red);
   border-radius: inherit;
-  animation: tour-pulse 1.6s ease-in-out infinite;
-  box-shadow: 0 0 10px color-mix(in srgb, var(--red) 45%, transparent);
+  animation: tour-pulse 1.4s ease-in-out infinite;
+  box-shadow: 0 0 14px color-mix(in srgb, var(--red) 50%, transparent);
+}
+
+.tour-pointer {
+  position: fixed;
+  z-index: 2;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+  transform: translate(-50%, -50%) rotate(var(--pointer-rotate, 0deg));
+  animation: tour-pointer-bob 1.4s ease-in-out infinite;
+}
+
+.tour-pointer::before {
+  content: '';
+  position: absolute;
+  left: -9px;
+  top: -16px;
+  border-left: 9px solid transparent;
+  border-right: 9px solid transparent;
+  border-bottom: 16px solid var(--red);
+  filter: drop-shadow(0 0 8px color-mix(in srgb, var(--red) 55%, transparent));
 }
 
 @keyframes tour-pulse {
-  0%, 100% { opacity: 0.55; }
-  50%       { opacity: 1; }
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes tour-pointer-bob {
+  0%,
+  100% {
+    translate: 0 0;
+    opacity: 0.75;
+  }
+
+  50% {
+    translate: 0 5px;
+    opacity: 1;
+  }
 }
 
 .tour-flag {
   --flag-arrow-size: 12px;
   position: fixed;
-  z-index: 2;
+  z-index: 3;
   width: min(20rem, calc(100vw - 2rem));
   margin: 0;
   padding: 1rem 1rem 0.85rem;

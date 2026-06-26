@@ -1,7 +1,7 @@
 import {
   buildSpotlightBox,
   buildThemePickerSpotlight,
-  computeAboveAnchorFlagPosition,
+  computeCardNearTarget,
   computeHeaderPinnedFlagPosition,
   resolveTourTarget,
   spotlightPadding,
@@ -66,14 +66,9 @@ describe('onboarding-layout', () => {
   it('positions the tour card above the target controls', () => {
     const targetRect = new DOMRect(520, 600, 260, 40);
     const flagHeight = 220;
-    const flag = computeAboveAnchorFlagPosition(
-      targetRect,
-      320,
-      flagHeight,
-      12
-    );
+    const flag = computeCardNearTarget(targetRect, 320, flagHeight, 12, 18, 'above');
 
-    expect(targetRect.top - (flag.top + flagHeight)).toBeGreaterThanOrEqual(44);
+    expect(targetRect.top - (flag.top + flagHeight)).toBeGreaterThanOrEqual(18);
     expect(flag.placement).toBe('top');
   });
 

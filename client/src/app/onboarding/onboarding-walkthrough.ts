@@ -13,11 +13,14 @@ import { Router } from '@angular/router';
 import { TaskStore } from '../task-store';
 import {
   buildSpotlightBox,
-  computeAboveAnchorFlagPosition,
+  computeCardNearTarget,
   computeHeaderPinnedFlagPosition,
   computeThemeStepFlagPosition,
+  computeTourPointer,
+  FlagLayout,
   resolveTourTarget,
   SpotlightBox,
+  TourPointer,
 } from './onboarding-layout';
 import { OnboardingService, TourPlacement, TourStep } from './onboarding.service';
 
@@ -29,9 +32,8 @@ interface FlagPosition {
 
 const FLAG_GAP = 14;
 const FLAG_WIDTH = 320;
-const FLAG_HEIGHT_EST = 240;
+const FLAG_HEIGHT_EST = 220;
 const VIEWPORT_PAD = 12;
-const ADD_TASK_STEP_IDS = new Set(['add-task', 'pro-add-task']);
 
 @Component({
   selector: 'app-onboarding-walkthrough',
@@ -48,6 +50,7 @@ export class OnboardingWalkthrough {
   protected spotlight = signal<SpotlightBox | null>(null);
   protected flagPos = signal<FlagPosition | null>(null);
   protected flagPlacement = signal<TourPlacement>('bottom');
+  protected pointer = signal<TourPointer | null>(null);
 
   protected isLastStep = computed(() => {
     const steps = this.onboarding.steps();
@@ -64,13 +67,20 @@ export class OnboardingWalkthrough {
 
   protected showThemeSkip = computed(() => this.onboarding.introThemeStepActive());
 
-  // "Skip adding a task" only makes sense in the pro tour where the step
-  // blocks until a task is added. Intro tour always allows Next.
-  protected showAddTaskSkip = computed(() =>
-    this.onboarding.addTaskStepActive() && this.onboarding.isProTour()
-  );
+  protected showAddTaskSkip = computed(() => this.onboarding.addTaskStepActive());
 
   protected canAdvance = computed(() => this.onboarding.canAdvance(this.store.tasks().length));
+
+  protected nextLabel = computed(() => {
+    const step = this.step();
+    if (!step) return 'Next';
+    if (this.isLastStep()) return this.finishLabel();
+    if (step.id === 'theme') return 'Continue';
+    if (step.id === 'add-task' || step.id === 'pro-add-task') {
+      return this.store.tasks().length > 0 ? 'Continue' : 'Next';
+    }
+    return 'Next';
+  });
 
   private lastStepId: string | null = null;
   private layoutAttempts = 0;
@@ -84,7 +94,11 @@ export class OnboardingWalkthrough {
     if (!target) return;
     const flag = document.querySelector('.tour-flag');
     const themePanel = document.querySelector('.theme-picker--tour .panel');
-    if (flag?.contains(target) || themePanel?.contains(target)) return;
+    const addTask = document.querySelector('[data-tour="add-task"]');
+    if (flag?.contains(target) || themePanel?.contains(target) || addTask?.contains(target)) {
+      return;
+    }
+    if (this.onboarding.introThemeStepActive()) return;
     event.preventDefault();
   };
 
@@ -112,6 +126,7 @@ export class OnboardingWalkthrough {
         this.ngZone.run(() => {
           this.spotlight.set(null);
           this.flagPos.set(null);
+          this.pointer.set(null);
         });
         return;
       }
@@ -220,19 +235,17 @@ export class OnboardingWalkthrough {
     }
 
     this.scheduleLayout();
-    if (stepChanged && (step.id === 'theme' || step.id === 'task-controls' || step.id === 'upgrade')) {
+    if (stepChanged) {
       window.setTimeout(() => this.scheduleLayout(), 80);
-      window.setTimeout(() => this.scheduleLayout(), 200);
+      window.setTimeout(() => this.scheduleLayout(), 220);
     }
-
     if (stepChanged && (step.id === 'add-task' || step.id === 'pro-add-task')) {
       window.setTimeout(() => {
-        if (window.matchMedia('(hover: none), (pointer: coarse)').matches) return;
         const input = document.querySelector(
           '[data-tour="add-task"] .task-input'
         ) as HTMLInputElement | null;
-        input?.focus();
-      }, 100);
+        input?.focus({ preventScroll: true });
+      }, 120);
     }
   }
 
@@ -245,18 +258,9 @@ export class OnboardingWalkthrough {
     const step = this.onboarding.currentStep();
     if (!step) return;
 
-    // Intro tour: always use a centered card — no getBoundingClientRect() math
-    // that breaks on iOS when the keyboard or address bar shifts the viewport.
-    if (!this.onboarding.isProTour()) {
-      this.spotlight.set(null);
-      this.flagPos.set(null);
-      this.flagPlacement.set('center');
-      return;
-    }
-
-    // Pro tour: full spotlight + anchored-card positioning (unchanged).
     if (!step.target) {
       this.spotlight.set(null);
+      this.pointer.set(null);
       this.flagPos.set(null);
       this.flagPlacement.set('center');
       return;
@@ -278,81 +282,60 @@ export class OnboardingWalkthrough {
 
     const target = resolveTourTarget(el, step.target!);
     const box = buildSpotlightBox(step, target);
-    const headerBottom = document.querySelector('header')?.getBoundingClientRect().bottom ?? 0;
-    const navBottom = document.querySelector('[data-tour="nav"]')?.getBoundingClientRect().bottom ?? headerBottom;
+    const targetRect = this.spotlightTargetRect(step, target, box);
     const flagW = this.currentFlagWidth();
     const flagH = this.currentFlagHeight();
+    const headerBottom = document.querySelector('header')?.getBoundingClientRect().bottom ?? 0;
+    const navBottom =
+      document.querySelector('[data-tour="nav"]')?.getBoundingClientRect().bottom ?? headerBottom;
 
-    if (step.id === 'theme') {
-      const themeFlag = computeThemeStepFlagPosition(
-        box, flagW, FLAG_HEIGHT_EST, VIEWPORT_PAD, FLAG_GAP
-      );
-      this.spotlight.set(box);
-      this.flagPlacement.set(themeFlag.placement);
-      this.flagPos.set({ top: themeFlag.top, left: themeFlag.left, arrowX: themeFlag.arrowX });
-      return;
-    }
-
-    if (ADD_TASK_STEP_IDS.has(step.id)) {
-      const targetRect = new DOMRect(box.left, box.top, box.width, box.height);
-      const aboveTarget = computeAboveAnchorFlagPosition(targetRect, flagW, flagH, VIEWPORT_PAD);
-      this.spotlight.set(box);
-      this.flagPlacement.set(aboveTarget.placement);
-      this.flagPos.set({ top: aboveTarget.top, left: aboveTarget.left, arrowX: aboveTarget.arrowX });
-      return;
-    }
-
-    if (step.id === 'task-controls') {
-      const targetRect = new DOMRect(box.left, box.top, box.width, box.height);
-      const aboveTarget = computeAboveAnchorFlagPosition(targetRect, flagW, flagH, VIEWPORT_PAD);
-      this.spotlight.set(box);
-      this.flagPlacement.set(aboveTarget.placement);
-      this.flagPos.set({ top: aboveTarget.top, left: aboveTarget.left, arrowX: aboveTarget.arrowX });
-      return;
-    }
-
-    if (step.id === 'upgrade') {
-      const targetRect = target.getBoundingClientRect();
-      const pinned = computeHeaderPinnedFlagPosition(targetRect, navBottom, flagW, VIEWPORT_PAD);
-      this.spotlight.set(box);
-      this.flagPlacement.set(pinned.placement);
-      this.flagPos.set({ top: pinned.top, left: pinned.left, arrowX: pinned.arrowX });
-      return;
-    }
+    const flag = this.layoutFlag(step, box, targetRect, flagW, flagH, headerBottom, navBottom);
 
     this.spotlight.set(box);
-    this.flagPlacement.set(step.placement);
-    this.flagPos.set(this.computeFlagPosition(box, step.placement));
+    this.flagPlacement.set(flag.placement);
+    this.flagPos.set({ top: flag.top, left: flag.left, arrowX: flag.arrowX });
+    this.pointer.set(computeTourPointer(flag, flagW, flagH, targetRect));
   }
 
-  private computeFlagPosition(box: SpotlightBox, placement: TourPlacement): FlagPosition {
-    const vw = window.innerWidth;
-    const vh = window.innerHeight;
-    const flagW = this.currentFlagWidth();
-    const flagH = this.currentFlagHeight();
-
-    let top = box.top + box.height + FLAG_GAP;
-    let left = box.left + box.width / 2 - flagW / 2;
-    let resolvedPlacement = placement;
-
-    if (placement === 'top' || (placement === 'bottom' && top + flagH > vh - VIEWPORT_PAD)) {
-      top = box.top - flagH - FLAG_GAP;
-      resolvedPlacement = 'top';
+  private layoutFlag(
+    step: TourStep,
+    box: SpotlightBox,
+    targetRect: DOMRect,
+    flagW: number,
+    flagH: number,
+    headerBottom: number,
+    navBottom: number
+  ): FlagLayout {
+    switch (step.id) {
+      case 'theme':
+        return computeThemeStepFlagPosition(box, flagW, flagH, VIEWPORT_PAD, FLAG_GAP);
+      case 'add-task':
+      case 'pro-add-task':
+        return computeCardNearTarget(targetRect, flagW, flagH, VIEWPORT_PAD, 20, 'above');
+      case 'task-controls':
+        return computeCardNearTarget(targetRect, flagW, flagH, VIEWPORT_PAD, 24, 'above');
+      case 'nav':
+        return computeHeaderPinnedFlagPosition(targetRect, navBottom, flagW, VIEWPORT_PAD, 10);
+      case 'upgrade':
+        return computeHeaderPinnedFlagPosition(targetRect, navBottom, flagW, VIEWPORT_PAD, 10);
+      case 'pro-coach':
+        return computeCardNearTarget(targetRect, flagW, flagH, VIEWPORT_PAD, 20, 'above');
+      default:
+        return computeCardNearTarget(targetRect, flagW, flagH, VIEWPORT_PAD, FLAG_GAP, 'below');
     }
+  }
 
-    if (top < VIEWPORT_PAD) {
-      top = box.top + box.height + FLAG_GAP;
-      resolvedPlacement = 'bottom';
+  private spotlightTargetRect(step: TourStep, target: Element, box: SpotlightBox): DOMRect {
+    if (step.target === 'first-task-actions' || step.target === 'add-task' || step.target === 'nav') {
+      const pad = spotlightPaddingForStep(step.target);
+      return new DOMRect(
+        box.left + pad,
+        box.top + pad,
+        box.width - pad * 2,
+        box.height - pad * 2
+      );
     }
-
-    left = Math.min(Math.max(left, VIEWPORT_PAD), vw - flagW - VIEWPORT_PAD);
-    top = Math.min(Math.max(top, VIEWPORT_PAD), vh - flagH - VIEWPORT_PAD);
-
-    const targetCenterX = box.left + box.width / 2;
-    const arrowX = Math.min(Math.max(targetCenterX - left, 28), flagW - 28);
-
-    this.flagPlacement.set(resolvedPlacement);
-    return { top, left, arrowX };
+    return target.getBoundingClientRect();
   }
 
   private currentFlagWidth(): number {
@@ -363,6 +346,13 @@ export class OnboardingWalkthrough {
 
   private currentFlagHeight(): number {
     const flag = document.querySelector('.tour-flag') as HTMLElement | null;
-    return flag?.getBoundingClientRect().height || FLAG_HEIGHT_EST;
+    return flag?.offsetHeight || FLAG_HEIGHT_EST;
   }
+}
+
+function spotlightPaddingForStep(targetId: string): number {
+  if (targetId === 'first-task-actions') return 3;
+  if (targetId === 'add-task') return 4;
+  if (targetId === 'nav') return 4;
+  return 4;
 }

@@ -120,7 +120,7 @@ export class ThemePicker {
   }
 
   private refreshTourLayout(): void {
-    if (this.onboarding.introThemeStepActive()) {
+    if (this.onboarding.introTourActive()) {
       this.onboarding.refreshLayout();
     }
   }

@@ -13,6 +13,16 @@
       <div class="tour-scrim tour-scrim--full"></div>
     }
 
+    @if (pointer(); as arrow) {
+      <div
+        class="tour-pointer"
+        aria-hidden="true"
+        [style.left.px]="arrow.x"
+        [style.top.px]="arrow.y"
+        [style.--pointer-rotate.deg]="arrow.rotation"
+      ></div>
+    }
+
     <article
       class="tour-flag"
       [class.tour-flag--center]="flagPlacement() === 'center'"
@@ -37,7 +47,7 @@
           }
         </div>
         <button type="button" class="tour-next" [disabled]="!canAdvance()" (click)="onNext()">
-          {{ isLastStep() ? finishLabel() : 'Next' }}
+          {{ nextLabel() }}
         </button>
       </div>
     </article>

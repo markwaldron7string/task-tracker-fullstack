@@ -20,14 +20,14 @@ const INTRO_TOUR_STEPS: TourStep[] = [
   {
     id: 'welcome',
     title: 'Welcome to Task Tracker',
-    body: 'A quick tour of the essentials — pick a color, add your first task, then see how everything fits together.',
+    body: 'Let’s take a quick tour — you’ll pick a theme, add your first task, and see how everything works.',
     placement: 'center',
   },
   {
     id: 'theme',
     target: 'theme-picker',
     title: 'Pick your color',
-    body: 'Tap the theme button in the top-right corner. Choose Light, Dark, or Neon, then tap a color swatch.',
+    body: 'Choose Light, Dark, or Neon, then tap a swatch. Try it now — your theme applies instantly.',
     placement: 'bottom',
     route: '/',
   },
@@ -35,7 +35,7 @@ const INTRO_TOUR_STEPS: TourStep[] = [
     id: 'add-task',
     target: 'add-task',
     title: 'Add your first task',
-    body: 'Tap the task field above, type something like “Walk the dog tomorrow”, then tap Add. We parse dates and priority automatically.',
+    body: 'Type a task in the field below — try “Walk the dog tomorrow” — then tap Add or press Enter.',
     placement: 'bottom',
     route: '/',
   },
@@ -43,23 +43,23 @@ const INTRO_TOUR_STEPS: TourStep[] = [
     id: 'task-controls',
     target: 'first-task-actions',
     title: 'Manage each task',
-    body: 'Every task has a bell for device reminders, an Edit button for due dates and details, and Delete to remove it.',
-    placement: 'center',
+    body: 'Every row has a bell for reminders, Edit for details, and Delete to remove the task.',
+    placement: 'top',
     route: '/',
   },
   {
     id: 'nav',
     target: 'nav',
     title: 'Filter your work',
-    body: 'Use the tabs at the top to switch between All Tasks, Today, Calendar, Active, and Completed.',
+    body: 'Use these tabs to switch between All Tasks, Today, Calendar, Active, and Completed.',
     placement: 'bottom',
   },
   {
     id: 'upgrade',
     target: 'upgrade',
     title: 'Unlock Pro features',
-    body: 'Upgrade for calendar planning, recurring tasks, and the AI Planning Coach — tap Upgrade in the header anytime.',
-    placement: 'center',
+    body: 'Upgrade anytime for calendar planning, recurring tasks, and the AI Planning Coach.',
+    placement: 'bottom',
   },
 ];
 
@@ -163,6 +163,10 @@ export class OnboardingService {
     () => this.introTourActive() && !this.introUpgradeStepActive()
   );
 
+  readonly proCoachStepActive = computed(
+    () => this.active() && this.kind() === 'pro' && this.currentStep()?.id === 'pro-coach'
+  );
+
   readonly openThemePickerTick = signal(0);
   readonly addTaskStepSkipped = signal(false);
 
@@ -218,8 +222,6 @@ export class OnboardingService {
   }
 
   canAdvance(taskCount: number): boolean {
-    // Intro tour uses a centered card that covers the input, so never block.
-    if (this.kind() === 'intro') return true;
     if (!this.addTaskStepActive() || this.addTaskStepSkipped()) return true;
     return taskCount > 0;
   }
@@ -286,15 +288,7 @@ export class OnboardingService {
   }
 
   notifyTaskAdded(): void {
-    // Delay so Angular renders the new task row before we re-query the DOM.
-    // refreshLayout() recomputes steps; once add-task is filtered out,
-    // stepIndex=2 naturally points to task-controls with no manual next() call.
-    window.setTimeout(() => {
-      this.refreshLayout();
-      if (this.addTaskStepActive()) {
-        this.next();
-      }
-    }, 100);
+    window.setTimeout(() => this.refreshLayout(), 80);
   }
 
   private beginProTour(): void {

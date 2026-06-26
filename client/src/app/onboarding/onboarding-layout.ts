@@ -8,6 +8,19 @@ export interface SpotlightBox {
   radius: string;
 }
 
+export interface FlagLayout {
+  top: number;
+  left: number;
+  arrowX: number;
+  placement: 'top' | 'bottom';
+}
+
+export interface TourPointer {
+  x: number;
+  y: number;
+  rotation: number;
+}
+
 const PAD_TIGHT = 3;
 const PAD_UPGRADE = 1;
 const PAD_DEFAULT = 4;
@@ -56,7 +69,6 @@ function unionElementRects(elements: Element[]): DOMRect | null {
   return rect;
 }
 
-/** Exact viewport box for a measured rect — no clamping that can shift the highlight. */
 export function boxFromRect(rect: DOMRect, pad: number, radius: string): SpotlightBox {
   return {
     top: rect.top - pad,
@@ -135,72 +147,117 @@ export function buildSpotlightBox(step: TourStep, target: Element): SpotlightBox
 
 export const FLAG_ARROW_INSET = 28;
 
-/** Position the tour card below a spotlight box (used for the theme step). */
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(Math.max(value, min), max);
+}
+
+/** Place the card near a target, preferring above so the feature stays visible. */
+export function computeCardNearTarget(
+  targetRect: DOMRect,
+  flagWidth: number,
+  flagHeight: number,
+  viewportPad = 12,
+  gap = 18,
+  prefer: 'above' | 'below' = 'above'
+): FlagLayout {
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+  const flagW = Math.min(flagWidth, vw - viewportPad * 2);
+
+  const aboveTop = targetRect.top - flagHeight - gap;
+  const belowTop = targetRect.bottom + gap;
+
+  let top: number;
+  let placement: 'top' | 'bottom';
+
+  if (prefer === 'above' && aboveTop >= viewportPad) {
+    top = aboveTop;
+    placement = 'top';
+  } else if (belowTop + flagHeight <= vh - viewportPad) {
+    top = belowTop;
+    placement = 'bottom';
+  } else {
+    top = Math.max(viewportPad, aboveTop);
+    placement = 'top';
+  }
+
+  let left = targetRect.left + targetRect.width / 2 - flagW / 2;
+  left = clamp(left, viewportPad, vw - flagW - viewportPad);
+
+  const targetCenterX = targetRect.left + targetRect.width / 2;
+  const arrowX = clamp(targetCenterX - left, FLAG_ARROW_INSET, flagW - FLAG_ARROW_INSET);
+
+  return { top, left, arrowX, placement };
+}
+
+/** Position the tour card below a spotlight box (theme step). */
 export function computeThemeStepFlagPosition(
   box: SpotlightBox,
   flagWidth: number,
   flagHeight: number,
   viewportPad = 12,
   gap = 14
-): { top: number; left: number; arrowX: number; placement: 'bottom' } {
+): FlagLayout {
   const vw = window.innerWidth;
   const vh = window.innerHeight;
   const flagW = Math.min(flagWidth, vw - viewportPad * 2);
 
   let top = box.top + box.height + gap;
   let left = box.left + box.width / 2 - flagW / 2;
-  left = Math.min(Math.max(left, viewportPad), vw - flagW - viewportPad);
-  top = Math.min(Math.max(top, viewportPad), vh - flagHeight - viewportPad);
+  left = clamp(left, viewportPad, vw - flagW - viewportPad);
+  top = clamp(top, viewportPad, vh - flagHeight - viewportPad);
 
   const targetCenterX = box.left + box.width / 2;
-  const arrowX = Math.min(
-    Math.max(targetCenterX - left, FLAG_ARROW_INSET),
-    flagW - FLAG_ARROW_INSET
-  );
+  const arrowX = clamp(targetCenterX - left, FLAG_ARROW_INSET, flagW - FLAG_ARROW_INSET);
 
   return { top, left, arrowX, placement: 'bottom' };
 }
 
-/** Pin the tour card just below the sticky header with the arrow aimed at the target. */
+/** Pin the card just below the header/nav with the arrow aimed at the target. */
 export function computeHeaderPinnedFlagPosition(
   targetRect: DOMRect,
   headerBottom: number,
   flagWidth: number,
   viewportPad = 12,
-  gap = 0
-): { top: number; left: number; arrowX: number; placement: 'bottom' | 'top' } {
+  gap = 8
+): FlagLayout {
   const vw = window.innerWidth;
   const flagW = Math.min(flagWidth, vw - viewportPad * 2);
   const top = headerBottom + gap;
-  const left = Math.max(viewportPad, Math.min(vw / 2 - flagW / 2, vw - flagW - viewportPad));
+  const left = clamp(vw / 2 - flagW / 2, viewportPad, vw - flagW - viewportPad);
   const targetCenterX = targetRect.left + targetRect.width / 2;
-  const arrowX = Math.min(
-    Math.max(targetCenterX - left, FLAG_ARROW_INSET),
-    flagW - FLAG_ARROW_INSET
-  );
+  const arrowX = clamp(targetCenterX - left, FLAG_ARROW_INSET, flagW - FLAG_ARROW_INSET);
   const placement: 'bottom' | 'top' = targetRect.top < top ? 'bottom' : 'top';
   return { top, left, arrowX, placement };
 }
 
-/** Place the tour card immediately above a target while aiming down at it. */
-export function computeAboveAnchorFlagPosition(
-  targetRect: DOMRect,
+/** Animated pointer between the card edge and the highlighted target. */
+export function computeTourPointer(
+  flag: FlagLayout,
   flagWidth: number,
   flagHeight: number,
-  viewportPad = 12,
-  gap = 44
-): { top: number; left: number; arrowX: number; placement: 'top' } {
-  const vw = window.innerWidth;
-  const flagW = Math.min(flagWidth, vw - viewportPad * 2);
-  const top = Math.max(targetRect.top - flagHeight - gap, viewportPad);
-  let left = targetRect.left + targetRect.width / 2 - flagW / 2;
-  left = Math.min(Math.max(left, viewportPad), vw - flagW - viewportPad);
+  targetRect: DOMRect
+): TourPointer {
+  const tipX = flag.left + flag.arrowX;
+  const tipY =
+    flag.placement === 'top'
+      ? flag.top + flagHeight
+      : flag.top;
 
   const targetCenterX = targetRect.left + targetRect.width / 2;
-  const arrowX = Math.min(
-    Math.max(targetCenterX - left, FLAG_ARROW_INSET),
-    flagW - FLAG_ARROW_INSET
-  );
+  const targetCenterY = targetRect.top + targetRect.height / 2;
 
-  return { top, left, arrowX, placement: 'top' };
+  const dx = targetCenterX - tipX;
+  const dy = targetCenterY - tipY;
+  const dist = Math.hypot(dx, dy);
+  if (dist < 8) {
+    return { x: tipX, y: tipY, rotation: 0 };
+  }
+  const travel = Math.min(dist * 0.55, 72);
+
+  const x = tipX + (dx / dist) * travel;
+  const y = tipY + (dy / dist) * travel;
+  const rotation = (Math.atan2(dy, dx) * 180) / Math.PI + 90;
+
+  return { x, y, rotation };
 }
