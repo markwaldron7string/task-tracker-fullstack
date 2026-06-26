@@ -1,6 +1,7 @@
 import { afterNextRender, Component, inject } from '@angular/core';
 import { injectOverlayDismissBinding } from './overlay-dismiss.service';
 import { RouterLink, RouterOutlet, RouterLinkActive } from '@angular/router';
+import { AppUpdateService } from './app-update.service';
 import { OnboardingWalkthrough } from './onboarding/onboarding-walkthrough';
 import { OnboardingService } from './onboarding/onboarding.service';
 import { ProAssistant } from './pro-assistant/pro-assistant';
@@ -45,6 +46,7 @@ export class App {
   protected pickerOverlay = inject(TaskPickerOverlayService);
   protected reminderOverlay = inject(TaskReminderOverlayService);
   protected reminders = inject(TaskReminderService);
+  protected appUpdate = inject(AppUpdateService);
   protected _theme = inject(ThemeService);
 
   constructor() {

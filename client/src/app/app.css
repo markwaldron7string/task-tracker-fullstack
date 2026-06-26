@@ -24,6 +24,80 @@
   background: rgba(0, 0, 0, 0.2);
 }
 
+.app-update-toast {
+  position: fixed;
+  left: 50%;
+  bottom: max(1rem, env(safe-area-inset-bottom));
+  z-index: 135;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  width: min(34rem, calc(100vw - 1.5rem));
+  padding: 0.85rem;
+  border: 1px solid var(--red-border);
+  border-radius: 8px;
+  background-color: var(--overlay-surface);
+  background-image: var(--overlay-sheen);
+  box-shadow: var(--shadow), 0 16px 32px rgba(0, 0, 0, 0.28);
+  color: var(--text);
+  transform: translateX(-50%);
+}
+
+.app-update-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.app-update-copy strong {
+  font-size: 0.9rem;
+  line-height: 1.2;
+}
+
+.app-update-copy span {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  line-height: 1.35;
+}
+
+.app-update-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.app-update-later,
+.app-update-refresh {
+  min-height: 2.4rem;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  padding: 0.45rem 0.7rem;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.app-update-later {
+  background: transparent;
+  color: var(--text-muted);
+  border-color: var(--border);
+}
+
+.app-update-refresh {
+  background: var(--red);
+  color: var(--on-primary, white);
+  box-shadow: var(--btn-glow, none);
+}
+
+.app-update-refresh:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+
 header {
   background: var(--header-gradient);
   border-bottom: var(--header-border, none);
@@ -240,6 +314,16 @@ main {
   main {
     margin: 1rem auto;
     padding: 0 0.75rem;
+  }
+
+  .app-update-toast {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .app-update-actions {
+    justify-content: flex-end;
   }
 }
 

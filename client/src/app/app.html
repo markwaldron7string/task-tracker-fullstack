@@ -32,6 +32,26 @@
 
 <app-pro-assistant />
 
+@if (appUpdate.updateReady() && (!onboarding.active() || appUpdate.unrecoverable())) {
+  <aside class="app-update-toast" role="status" aria-live="polite" aria-label="App update">
+    <div class="app-update-copy">
+      <strong>{{ appUpdate.title() }}</strong>
+      <span>{{ appUpdate.body() }}</span>
+    </div>
+    <div class="app-update-actions">
+      @if (!appUpdate.unrecoverable()) {
+        <button type="button" class="app-update-later" (click)="appUpdate.dismiss()">Later</button>
+      }
+      <button
+        type="button"
+        class="app-update-refresh"
+        [disabled]="appUpdate.activating()"
+        (click)="appUpdate.refresh()"
+      >{{ appUpdate.activating() ? 'Refreshing...' : 'Refresh' }}</button>
+    </div>
+  </aside>
+}
+
 @if (pickerOverlay.bulkReschedule()) {
   <button
     type="button"
