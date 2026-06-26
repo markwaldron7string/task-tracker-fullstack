@@ -3,13 +3,21 @@
     @if (spotlight(); as box) {
       <div
         class="tour-spotlight"
-        [class.tour-spotlight--pulse]="true"
         [style.top.px]="box.top"
         [style.left.px]="box.left"
         [style.width.px]="box.width"
         [style.height.px]="box.height"
         [style.border-radius]="box.radius"
       ></div>
+      @if (flagPlacement() !== 'center') {
+        <div
+          class="tour-arrow"
+          [class.tour-arrow--down]="flagPlacement() === 'top'"
+          [class.tour-arrow--up]="flagPlacement() === 'bottom'"
+          [style.left.px]="box.left + box.width / 2"
+          [style.top.px]="flagPlacement() === 'top' ? box.top - 32 : box.top + box.height + 10"
+        ></div>
+      }
     } @else {
       <div class="tour-scrim tour-scrim--full"></div>
     }

@@ -74,6 +74,10 @@ export class AppUpdateService {
       if (!this.unrecoverable()) {
         await this.swUpdate.activateUpdate().catch(() => false);
       }
+      if ('caches' in window) {
+        const keys = await caches.keys();
+        await Promise.all(keys.map(k => caches.delete(k)));
+      }
     } finally {
       window.location.reload();
     }
