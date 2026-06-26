@@ -79,7 +79,7 @@ describe('onboarding-layout', () => {
 
     expect(pointer.x).toBe(610);
     expect(pointer.y).toBe(408);
-    expect(pointer.rotation).toBe(0);
+    expect(pointer.rotation).toBe(180);
   });
 
   it('builds a nav spotlight from the actual nav links', () => {

@@ -308,5 +308,6 @@ export function computeDownwardPointerAboveTarget(
 ): TourPointer {
   const x = targetRect.left + targetRect.width / 2;
   const y = targetRect.top - gap;
-  return { x, y, rotation: 0 };
+  // Triangle uses border-bottom, so its default tip points up; flip to aim down.
+  return { x, y, rotation: 180 };
 }
