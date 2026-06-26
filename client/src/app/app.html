@@ -61,8 +61,32 @@
     type="button"
     class="app-manual-refresh"
     [disabled]="appUpdate.activating()"
-    (click)="appUpdate.refresh()"
+    (click)="requestAppRefresh()"
   >{{ appUpdate.activating() ? 'Refreshing...' : 'Refresh app' }}</button>
+}
+
+@if (refreshConfirmOpen()) {
+  <button type="button" class="refresh-confirm-scrim" aria-label="Close refresh confirmation" (click)="cancelAppRefresh()"></button>
+  <div
+    class="refresh-confirm-dialog"
+    role="alertdialog"
+    aria-labelledby="refresh-app-title"
+    aria-describedby="refresh-app-desc"
+  >
+    <h3 id="refresh-app-title">Refresh app?</h3>
+    <p id="refresh-app-desc">
+      This reloads Task Tracker from scratch and clears local data on this device, including your tasks, theme, and tour progress. This cannot be undone.
+    </p>
+    <div class="refresh-confirm-actions">
+      <button type="button" class="refresh-confirm-cancel" (click)="cancelAppRefresh()">Cancel</button>
+      <button
+        type="button"
+        class="refresh-confirm-ok"
+        [disabled]="appUpdate.activating()"
+        (click)="confirmAppRefresh()"
+      >{{ appUpdate.activating() ? 'Refreshing...' : 'OK' }}</button>
+    </div>
+  </div>
 }
 
 @if (pickerOverlay.bulkReschedule()) {

@@ -1,4 +1,4 @@
-import { afterNextRender, Component, inject } from '@angular/core';
+import { afterNextRender, Component, ElementRef, inject, signal } from '@angular/core';
 import { injectOverlayDismissBinding } from './overlay-dismiss.service';
 import { RouterLink, RouterOutlet, RouterLinkActive } from '@angular/router';
 import { AppUpdateService } from './app-update.service';
@@ -48,8 +48,21 @@ export class App {
   protected reminders = inject(TaskReminderService);
   protected appUpdate = inject(AppUpdateService);
   protected _theme = inject(ThemeService);
+  protected refreshConfirmOpen = signal(false);
+  private host = inject(ElementRef<HTMLElement>);
 
   constructor() {
+    injectOverlayDismissBinding(() => {
+      if (!this.refreshConfirmOpen()) return null;
+      return {
+        contains: target => {
+          const dialog = this.host.nativeElement.querySelector('.refresh-confirm-dialog');
+          return !!dialog?.contains(target);
+        },
+        close: () => this.cancelAppRefresh(),
+      };
+    });
+
     injectOverlayDismissBinding(() => {
       if (!this.pickerOverlay.bulkReschedule()) return null;
       return {
@@ -129,5 +142,19 @@ export class App {
       }
     }
     this.pickerOverlay.close();
+  }
+
+  protected requestAppRefresh(): void {
+    if (this.appUpdate.activating()) return;
+    this.refreshConfirmOpen.set(true);
+  }
+
+  protected cancelAppRefresh(): void {
+    this.refreshConfirmOpen.set(false);
+  }
+
+  protected confirmAppRefresh(): void {
+    this.refreshConfirmOpen.set(false);
+    void this.appUpdate.refresh();
   }
 }

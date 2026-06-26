@@ -102,7 +102,8 @@
 }
 
 .tour-flag {
-  --flag-arrow-size: 12px;
+  --flag-arrow-width: 14px;
+  --flag-arrow-height: 7px;
   position: fixed;
   z-index: 3;
   width: min(20rem, calc(100vw - 2rem));
@@ -117,34 +118,29 @@
     0 18px 40px rgba(0, 0, 0, 0.35);
   pointer-events: auto;
   overflow: visible;
+  isolation: isolate;
 }
 
 .tour-flag::before {
   content: '';
   position: absolute;
-  width: var(--flag-arrow-size);
-  height: var(--flag-arrow-size);
+  left: var(--flag-arrow-x, 50%);
+  width: var(--flag-arrow-width);
+  height: var(--flag-arrow-height);
+  margin-left: calc(var(--flag-arrow-width) / -2);
   background-color: var(--overlay-surface);
-  background-image: var(--overlay-sheen);
-  border: 1px solid var(--border);
-  transform: rotate(45deg);
-  z-index: -1;
+  pointer-events: none;
+  z-index: 1;
 }
 
 .tour-flag[data-placement='bottom']::before {
-  top: calc(var(--flag-arrow-size) / -2 + 1px);
-  left: var(--flag-arrow-x, 50%);
-  margin-left: calc(var(--flag-arrow-size) / -2);
-  border-bottom-color: transparent;
-  border-right-color: transparent;
+  top: calc(var(--flag-arrow-height) * -1 + 2px);
+  clip-path: polygon(50% 0, 0 100%, 100% 100%);
 }
 
 .tour-flag[data-placement='top']::before {
-  bottom: calc(var(--flag-arrow-size) / -2 + 1px);
-  left: var(--flag-arrow-x, 50%);
-  margin-left: calc(var(--flag-arrow-size) / -2);
-  border-top-color: transparent;
-  border-left-color: transparent;
+  bottom: calc(var(--flag-arrow-height) * -1 + 2px);
+  clip-path: polygon(50% 100%, 0 0, 100% 0);
 }
 
 .tour-flag--center::before {
