@@ -110,6 +110,19 @@ export class TaskReminderDialog {
   }
 
   protected setRecurrence(value: RecurrenceRule | null): void {
+    // Tapping an already-active non-null option toggles it off and disables the reminder.
+    if (value !== null && this.isRecurrenceActive(value)) {
+      this.recurrence.set(null);
+      this.enabled.set(false);
+      this.recurrencePopover.set(null);
+      return;
+    }
+
+    // Picking any repeat option automatically enables the reminder.
+    if (value !== null) {
+      this.enabled.set(true);
+    }
+
     this.recurrence.set(value);
     if (value === 'custom') {
       if (!this.customDays().length) {

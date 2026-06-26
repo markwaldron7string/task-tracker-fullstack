@@ -276,9 +276,10 @@
 }
 
 .bell-btn--active {
-  color: var(--red-dark);
+  color: var(--red);
   background: var(--red-light);
-  border-color: var(--red-border);
+  border-color: var(--red);
+  box-shadow: 0 0 0 2px var(--red-border);
 }
 
 .bell-btn--muted {
