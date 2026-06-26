@@ -1,7 +1,7 @@
 import {
   buildSpotlightBox,
   buildThemePickerSpotlight,
-  computeBelowAnchorFlagPosition,
+  computeAboveAnchorFlagPosition,
   computeHeaderPinnedFlagPosition,
   resolveTourTarget,
   spotlightPadding,
@@ -63,18 +63,18 @@ describe('onboarding-layout', () => {
     expect(flag.placement).toBe('bottom');
   });
 
-  it('positions the tour card below the containing task card', () => {
-    Object.defineProperty(window, 'innerHeight', { configurable: true, value: 1000 });
-    const flag = computeBelowAnchorFlagPosition(
-      new DOMRect(520, 600, 260, 40),
-      new DOMRect(20, 280, 860, 430),
+  it('positions the tour card above the target controls', () => {
+    const targetRect = new DOMRect(520, 600, 260, 40);
+    const flagHeight = 220;
+    const flag = computeAboveAnchorFlagPosition(
+      targetRect,
       320,
-      220,
+      flagHeight,
       12
     );
 
-    expect(flag.top).toBe(710);
-    expect(flag.placement).toBe('bottom');
+    expect(flag.top + flagHeight).toBeLessThan(targetRect.top);
+    expect(flag.placement).toBe('top');
   });
 
   it('builds a nav spotlight from the actual nav links', () => {

@@ -180,20 +180,17 @@ export function computeHeaderPinnedFlagPosition(
   return { top, left, arrowX, placement };
 }
 
-/** Place the tour card immediately after a containing card while aiming at a target above. */
-export function computeBelowAnchorFlagPosition(
+/** Place the tour card immediately above a target while aiming down at it. */
+export function computeAboveAnchorFlagPosition(
   targetRect: DOMRect,
-  anchorRect: DOMRect,
   flagWidth: number,
   flagHeight: number,
   viewportPad = 12,
-  gap = 0
-): { top: number; left: number; arrowX: number; placement: 'bottom' } {
+  gap = 12
+): { top: number; left: number; arrowX: number; placement: 'top' } {
   const vw = window.innerWidth;
-  const vh = window.innerHeight;
   const flagW = Math.min(flagWidth, vw - viewportPad * 2);
-  const maxTop = Math.max(viewportPad, vh - flagHeight - viewportPad);
-  const top = Math.min(Math.max(anchorRect.bottom + gap, viewportPad), maxTop);
+  const top = Math.max(targetRect.top - flagHeight - gap, viewportPad);
   let left = targetRect.left + targetRect.width / 2 - flagW / 2;
   left = Math.min(Math.max(left, viewportPad), vw - flagW - viewportPad);
 
@@ -203,5 +200,5 @@ export function computeBelowAnchorFlagPosition(
     flagW - FLAG_ARROW_INSET
   );
 
-  return { top, left, arrowX, placement: 'bottom' };
+  return { top, left, arrowX, placement: 'top' };
 }

@@ -13,7 +13,7 @@ import { Router } from '@angular/router';
 import { TaskStore } from '../task-store';
 import {
   buildSpotlightBox,
-  computeBelowAnchorFlagPosition,
+  computeAboveAnchorFlagPosition,
   computeHeaderPinnedFlagPosition,
   computeThemeStepFlagPosition,
   resolveTourTarget,
@@ -262,6 +262,7 @@ export class OnboardingWalkthrough {
     const target = resolveTourTarget(el, step.target!);
     const box = buildSpotlightBox(step, target);
     const headerBottom = document.querySelector('header')?.getBoundingClientRect().bottom ?? 0;
+    const navBottom = document.querySelector('[data-tour="nav"]')?.getBoundingClientRect().bottom ?? headerBottom;
     const flagW = this.currentFlagWidth();
     const flagH = this.currentFlagHeight();
 
@@ -296,27 +297,23 @@ export class OnboardingWalkthrough {
 
     if (step.id === 'task-controls') {
       const targetRect = target.getBoundingClientRect();
-      const cardRect = target.closest('.card')?.getBoundingClientRect();
-      if (cardRect) {
-        const belowCard = computeBelowAnchorFlagPosition(
-          targetRect,
-          cardRect,
-          flagW,
-          flagH,
-          VIEWPORT_PAD
-        );
-        this.spotlight.set(box);
-        this.flagPlacement.set(belowCard.placement);
-        this.flagPos.set({ top: belowCard.top, left: belowCard.left, arrowX: belowCard.arrowX });
-        return;
-      }
+      const aboveTarget = computeAboveAnchorFlagPosition(
+        targetRect,
+        flagW,
+        flagH,
+        VIEWPORT_PAD
+      );
+      this.spotlight.set(box);
+      this.flagPlacement.set(aboveTarget.placement);
+      this.flagPos.set({ top: aboveTarget.top, left: aboveTarget.left, arrowX: aboveTarget.arrowX });
+      return;
     }
 
     if (step.id === 'upgrade') {
       const targetRect = target.getBoundingClientRect();
       const pinned = computeHeaderPinnedFlagPosition(
         targetRect,
-        headerBottom,
+        navBottom,
         flagW,
         VIEWPORT_PAD
       );
