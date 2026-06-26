@@ -44,7 +44,7 @@ const INTRO_TOUR_STEPS: TourStep[] = [
     target: 'first-task-actions',
     title: 'Manage each task',
     body: 'Tap the bell for device reminders, Edit for due dates and details, or Delete to remove a task.',
-    placement: 'top',
+    placement: 'center',
     route: '/',
   },
   {

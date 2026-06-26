@@ -17,7 +17,7 @@
       } @else if (onboarding.introUpgradeLocked()) {
         <span class="upgrade-btn upgrade-btn--disabled" aria-disabled="true" data-tour="upgrade">Upgrade</span>
       } @else {
-        <a routerLink="/upgrade" class="upgrade-btn" data-tour="upgrade">Upgrade</a>
+        <a routerLink="/upgrade" class="upgrade-btn" data-tour="upgrade" (click)="onUpgradeClick()">Upgrade</a>
       }
       <theme-picker />
     </div>

@@ -112,6 +112,12 @@ export class App {
     if (task) this.detailsOverlay.open(task);
   }
 
+  protected onUpgradeClick(): void {
+    if (this.onboarding.introUpgradeStepActive()) {
+      this.onboarding.complete();
+    }
+  }
+
   protected onBulkRescheduleSelect(due: string | null): void {
     const state = this.pickerOverlay.bulkReschedule();
     if (!state) return;

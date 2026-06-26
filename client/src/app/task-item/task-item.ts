@@ -1,4 +1,5 @@
 import { Component, computed, inject, input, output } from '@angular/core';
+import { OnboardingService } from '../onboarding/onboarding.service';
 import { TaskDetailsOverlayService } from '../task-details-overlay.service';
 import { TaskEditOverlayService } from '../task-edit-overlay.service';
 import { projectLabel, isCoachPlan } from '../task-domains';
@@ -18,6 +19,7 @@ import { EnrichedTask } from '../task-store';
   styleUrl: './task-item.css',
 })
 export class TaskItem {
+  protected onboarding = inject(OnboardingService);
   private editOverlay = inject(TaskEditOverlayService);
   private detailsOverlay = inject(TaskDetailsOverlayService);
   private reminderOverlay = inject(TaskReminderOverlayService);
