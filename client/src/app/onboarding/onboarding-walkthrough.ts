@@ -10,13 +10,11 @@ import { Router } from '@angular/router';
 import { TaskStore } from '../task-store';
 import { OnboardingService, TourStep } from './onboarding.service';
 
-type TourMode = 'center' | 'top';
-
-// Steps whose target lives in or near the header — card anchors below header
-// so the header stays fully visible and interactive.
-const TOP_STEP_IDS = new Set([
-  'theme', 'add-task', 'nav', 'upgrade',
-  'pro-add-task', 'pro-calendar-nav',
+// Show a translucent scrim for purely informational steps.
+// Hide it for steps where the user must interact with something above the sheet.
+const NO_SCRIM_STEP_IDS = new Set([
+  'theme', 'add-task', 'nav',
+  'pro-add-task', 'pro-calendar-nav', 'pro-notifications', 'pro-coach',
 ]);
 
 @Component({
@@ -48,20 +46,21 @@ export class OnboardingWalkthrough {
   protected showAddTaskSkip = computed(() => this.onboarding.addTaskStepActive());
   protected canAdvance = computed(() => this.onboarding.canAdvance(this.store.tasks().length));
 
-  protected tourMode = computed((): TourMode => {
+  protected showScrim = computed(() => {
     const id = this.onboarding.currentStep()?.id;
-    return id && TOP_STEP_IDS.has(id) ? 'top' : 'center';
+    return !id || !NO_SCRIM_STEP_IDS.has(id);
   });
 
   private lastStepId: string | null = null;
   private scrollLockY = 0;
+
   private readonly onTouchMove = (event: TouchEvent) => {
     if (!this.onboarding.active()) return;
     const target = event.target as Node | null;
     if (!target) return;
-    const card = document.querySelector('.tour-card');
+    const sheet = document.querySelector('.tour-sheet');
     const themePanel = document.querySelector('.theme-picker--tour .panel');
-    if (card?.contains(target) || themePanel?.contains(target)) return;
+    if (sheet?.contains(target) || themePanel?.contains(target)) return;
     event.preventDefault();
   };
 
@@ -87,7 +86,6 @@ export class OnboardingWalkthrough {
         this.unlockScroll();
         return;
       }
-
       this.lockScroll();
       const current = this.onboarding.currentStep();
       untracked(() => void this.syncStep(current));

@@ -1,14 +1,10 @@
 @if (onboarding.active() && step(); as current) {
-  <div
-    class="tour-root"
-    [class.tour-root--top]="tourMode() === 'top'"
-    role="dialog"
-    aria-modal="true"
-    [attr.aria-label]="current.title"
-  >
-    <div class="tour-scrim" [class.tour-scrim--top]="tourMode() === 'top'"></div>
-
-    <article class="tour-card">
+  <div class="tour-root" role="dialog" aria-modal="true" [attr.aria-label]="current.title">
+    @if (showScrim()) {
+      <div class="tour-scrim"></div>
+    }
+    <div class="tour-sheet">
+      <div class="tour-handle" aria-hidden="true"></div>
       <p class="tour-progress">{{ onboarding.progressLabel() }}</p>
       <h2 class="tour-title">{{ current.title }}</h2>
       <p class="tour-body">{{ current.body }}</p>
@@ -26,6 +22,6 @@
           {{ isLastStep() ? finishLabel() : 'Next' }}
         </button>
       </div>
-    </article>
+    </div>
   </div>
 }
