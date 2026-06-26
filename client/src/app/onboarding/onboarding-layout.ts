@@ -170,7 +170,10 @@ export function computeCardNearTarget(
   let top: number;
   let placement: 'top' | 'bottom';
 
-  if (prefer === 'above' && aboveTop >= viewportPad) {
+  if (prefer === 'below' && belowTop + flagHeight <= vh - viewportPad) {
+    top = belowTop;
+    placement = 'bottom';
+  } else if (prefer === 'above' && aboveTop >= viewportPad) {
     top = aboveTop;
     placement = 'top';
   } else if (belowTop + flagHeight <= vh - viewportPad) {
@@ -310,4 +313,18 @@ export function computeDownwardPointerAboveTarget(
   const y = targetRect.top - gap;
   // Triangle uses border-bottom, so its default tip points up; flip to aim down.
   return { x, y, rotation: 180 };
+}
+
+/** Place an upward arrow centered just below a highlighted target. */
+export function computeUpwardPointerBelowTarget(
+  targetRect: DOMRect,
+  gap = 14,
+): TourPointer {
+  const x = targetRect.left + targetRect.width / 2;
+  const y = targetRect.bottom + gap;
+  return { x, y, rotation: 0 };
+}
+
+export function spotlightDomRect(box: SpotlightBox): DOMRect {
+  return new DOMRect(box.left, box.top, box.width, box.height);
 }

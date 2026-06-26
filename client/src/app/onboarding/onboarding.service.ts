@@ -49,7 +49,7 @@ const INTRO_TOUR_STEPS: TourStep[] = [
   },
   {
     id: 'nav',
-    target: 'nav',
+    target: 'nav-calendar',
     title: 'Filter your work',
     body: 'Switch between All Tasks, Today, Active, and Completed. Calendar and device reminders unlock with Pro.',
     placement: 'bottom',

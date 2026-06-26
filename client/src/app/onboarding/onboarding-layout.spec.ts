@@ -4,7 +4,9 @@ import {
   computeCardNearTarget,
   computeDownwardPointerAboveTarget,
   computeHeaderPinnedFlagPosition,
+  computeUpwardPointerBelowTarget,
   resolveTourTarget,
+  spotlightDomRect,
   spotlightPadding,
   unionDomRects,
 } from './onboarding-layout';
@@ -73,6 +75,15 @@ describe('onboarding-layout', () => {
     expect(flag.placement).toBe('top');
   });
 
+  it('positions the tour card below the target with an upward arrow', () => {
+    const targetRect = new DOMRect(24, 280, 320, 88);
+    const flagHeight = 200;
+    const flag = computeCardNearTarget(targetRect, 320, flagHeight, 12, 24, 'below');
+
+    expect(flag.top).toBe(targetRect.bottom + 24);
+    expect(flag.placement).toBe('bottom');
+  });
+
   it('positions a downward pointer just above compact controls', () => {
     const targetRect = new DOMRect(520, 420, 180, 36);
     const pointer = computeDownwardPointerAboveTarget(targetRect);
@@ -80,6 +91,15 @@ describe('onboarding-layout', () => {
     expect(pointer.x).toBe(610);
     expect(pointer.y).toBe(392);
     expect(pointer.rotation).toBe(180);
+  });
+
+  it('positions an upward pointer just below a highlighted target', () => {
+    const targetRect = new DOMRect(120, 64, 72, 36);
+    const pointer = computeUpwardPointerBelowTarget(targetRect, 14);
+
+    expect(pointer.x).toBe(156);
+    expect(pointer.y).toBe(114);
+    expect(pointer.rotation).toBe(0);
   });
 
   it('builds a nav spotlight from the actual nav links', () => {

@@ -18,6 +18,7 @@ import {
   computeHeaderPinnedFlagPosition,
   computeThemeStepFlagPosition,
   computeTourPointer,
+  computeUpwardPointerBelowTarget,
   computeViewportTopFlagPosition,
   FlagLayout,
   getVisualViewportHeight,
@@ -26,6 +27,7 @@ import {
   isKeyboardOpen,
   isMobileTour,
   resolveTourTarget,
+  spotlightDomRect,
   SpotlightBox,
   TourPointer,
 } from './onboarding-layout';
@@ -338,7 +340,7 @@ export class OnboardingWalkthrough {
     this.spotlight.set(box);
     this.flagPlacement.set(flag.placement);
     this.flagPos.set({ top: flag.top, left: flag.left, arrowX: flag.arrowX });
-    this.pointer.set(this.computePointerForStep(step, flag, flagW, flagH, targetRect));
+    this.pointer.set(this.computePointerForStep(step, flag, flagW, flagH, targetRect, box));
   }
 
   private computePointerForStep(
@@ -347,10 +349,14 @@ export class OnboardingWalkthrough {
     flagW: number,
     flagH: number,
     targetRect: DOMRect,
+    box: SpotlightBox,
   ): TourPointer | null {
     if (!this.shouldShowPointer(step)) return null;
     if (step.id === 'task-controls') {
       return computeDownwardPointerAboveTarget(targetRect);
+    }
+    if (step.id === 'nav') {
+      return computeUpwardPointerBelowTarget(spotlightDomRect(box), 10);
     }
     return computeTourPointer(flag, flagW, flagH, targetRect);
   }
@@ -395,9 +401,10 @@ export class OnboardingWalkthrough {
       case 'theme':
         return computeThemeStepFlagPosition(box, flagW, flagH, VIEWPORT_PAD, FLAG_GAP);
       case 'add-task':
+        return computeCardNearTarget(targetRect, flagW, flagH, VIEWPORT_PAD, 24, 'below');
       case 'pro-add-task':
         if (isMobileTour()) {
-          return computeHeaderPinnedFlagPosition(targetRect, headerBottom, flagW, VIEWPORT_PAD, 10);
+          return computeCardNearTarget(targetRect, flagW, flagH, VIEWPORT_PAD, 24, 'below');
         }
         return computeCardNearTarget(targetRect, flagW, flagH, VIEWPORT_PAD, 20, 'above');
       case 'task-controls':
@@ -405,8 +412,10 @@ export class OnboardingWalkthrough {
           return computeHeaderPinnedFlagPosition(targetRect, headerBottom, flagW, VIEWPORT_PAD, 10);
         }
         return computeCardNearTarget(targetRect, flagW, flagH, VIEWPORT_PAD, 24, 'above');
-      case 'nav':
-        return computeHeaderPinnedFlagPosition(targetRect, navBottom, flagW, VIEWPORT_PAD, 10);
+      case 'nav': {
+        const spotlightRect = spotlightDomRect(box);
+        return computeCardNearTarget(spotlightRect, flagW, flagH, VIEWPORT_PAD, 36, 'below');
+      }
       case 'upgrade':
         return computeHeaderPinnedFlagPosition(targetRect, navBottom, flagW, VIEWPORT_PAD, 10);
       case 'pro-coach':
@@ -417,7 +426,12 @@ export class OnboardingWalkthrough {
   }
 
   private spotlightTargetRect(step: TourStep, target: Element, box: SpotlightBox): DOMRect {
-    if (step.target === 'first-task-actions' || step.target === 'add-task' || step.target === 'nav') {
+    if (
+      step.target === 'first-task-actions'
+      || step.target === 'add-task'
+      || step.target === 'nav'
+      || step.target === 'nav-calendar'
+    ) {
       const pad = spotlightPaddingForStep(step.target);
       return new DOMRect(
         box.left + pad,
@@ -445,5 +459,6 @@ function spotlightPaddingForStep(targetId: string): number {
   if (targetId === 'first-task-actions') return 3;
   if (targetId === 'add-task') return 4;
   if (targetId === 'nav') return 4;
+  if (targetId === 'nav-calendar') return 3;
   return 4;
 }
