@@ -1,37 +1,14 @@
 @if (onboarding.active() && step(); as current) {
-  <div class="tour-root" role="dialog" aria-modal="true" [attr.aria-label]="current.title">
-    @if (spotlight(); as box) {
-      <div
-        class="tour-spotlight"
-        [style.top.px]="box.top"
-        [style.left.px]="box.left"
-        [style.width.px]="box.width"
-        [style.height.px]="box.height"
-        [style.border-radius]="box.radius"
-      ></div>
-      @if (flagPlacement() !== 'center') {
-        <div
-          class="tour-arrow"
-          [class.tour-arrow--down]="flagPlacement() === 'top'"
-          [class.tour-arrow--up]="flagPlacement() === 'bottom'"
-          [style.left.px]="box.left + box.width / 2"
-          [style.top.px]="flagPlacement() === 'top' ? box.top - 32 : box.top + box.height + 10"
-        ></div>
-      }
-    } @else {
-      <div class="tour-scrim tour-scrim--full"></div>
-    }
+  <div
+    class="tour-root"
+    [class.tour-root--top]="tourMode() === 'top'"
+    role="dialog"
+    aria-modal="true"
+    [attr.aria-label]="current.title"
+  >
+    <div class="tour-scrim" [class.tour-scrim--top]="tourMode() === 'top'"></div>
 
-    <article
-      class="tour-flag"
-      [class.tour-flag--center]="flagPlacement() === 'center'"
-      [class.tour-flag--anchored]="flagPos() !== null"
-      [class.tour-flag--theme-step]="current.id === 'theme'"
-      [style.--flag-top.px]="flagPos()?.top"
-      [style.--flag-left.px]="flagPos()?.left"
-      [style.--flag-arrow-x.px]="flagPos()?.arrowX"
-      [attr.data-placement]="flagPlacement()"
-    >
+    <article class="tour-card">
       <p class="tour-progress">{{ onboarding.progressLabel() }}</p>
       <h2 class="tour-title">{{ current.title }}</h2>
       <p class="tour-body">{{ current.body }}</p>
