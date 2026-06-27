@@ -100,8 +100,8 @@
 
 .app-manual-refresh {
   position: fixed;
-  right: 0.85rem;
-  bottom: max(0.85rem, env(safe-area-inset-bottom));
+  right: 1.25rem;
+  bottom: calc(max(1.25rem, env(safe-area-inset-bottom)) + 4.5rem);
   z-index: 136;
   min-height: 2.35rem;
   padding: 0.45rem 0.75rem;
