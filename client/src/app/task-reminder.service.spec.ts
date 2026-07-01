@@ -1,4 +1,4 @@
-import { signal } from '@angular/core';
+import { computed, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 
 import { ProService } from './pro.service';
@@ -47,6 +47,7 @@ describe('TaskReminderService', () => {
     service?.setMasterEnabled(false);
     service = null;
     storage.clear();
+    vi.unstubAllGlobals();
     TestBed.resetTestingModule();
   });
 
@@ -61,6 +62,26 @@ describe('TaskReminderService', () => {
     service = TestBed.inject(TaskReminderService);
 
     expect(service.isMasterEnabled()).toBe(false);
+  });
+
+  it('notifies computed consumers when a task reminder is enabled', async () => {
+    vi.stubGlobal('Notification', class NotificationMock {
+      static permission = 'granted';
+    });
+    service = TestBed.inject(TaskReminderService);
+    const enabled = computed(() => service?.isEnabled(1));
+
+    expect(enabled()).toBe(false);
+
+    const ok = await service.saveConfig(1, {
+      enabled: true,
+      remindDate: '2026-07-01',
+      remindTime: '09:00',
+      recurrence: null,
+    });
+
+    expect(ok).toBe(true);
+    expect(enabled()).toBe(true);
   });
 });
 

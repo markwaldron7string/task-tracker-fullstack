@@ -34,6 +34,7 @@ export class TaskReminderService {
   private store = inject(TaskStore);
   private pro = inject(ProService);
   private settings = new Map<number, TaskReminderConfig>(this.loadSettings());
+  private settingsRevision = signal(0);
   private firedKeys = new Set<string>(this.loadFired());
   private firingKeys = new Set<string>();
   private timerId: ReturnType<typeof setTimeout> | null = null;
@@ -52,7 +53,10 @@ export class TaskReminderService {
           changed = true;
         }
       }
-      if (changed) this.persistSettings();
+      if (changed) {
+        this.markSettingsChanged();
+        this.persistSettings();
+      }
       this.reschedule(this.store.tasks());
     });
   }
@@ -115,6 +119,7 @@ export class TaskReminderService {
   }
 
   isEnabled(taskId: number): boolean {
+    this.settingsRevision();
     const config = this.settings.get(taskId);
     return !!config?.enabled && this.masterEnabled();
   }
@@ -148,6 +153,7 @@ export class TaskReminderService {
       recurrenceDays: save.recurrenceDays ?? null,
       recurrenceMonthDays: save.recurrenceMonthDays ?? null,
     });
+    this.markSettingsChanged();
     this.clearFiredForTask(taskId);
     this.persistSettings();
     this.reschedule(this.store.tasks());
@@ -161,6 +167,7 @@ export class TaskReminderService {
     const config = this.settings.get(task.id);
     if (config?.enabled) {
       this.settings.set(task.id, { ...config, enabled: false });
+      this.markSettingsChanged();
       this.persistSettings();
       this.reschedule(this.store.tasks());
       return 'disabled';
@@ -174,6 +181,7 @@ export class TaskReminderService {
     if (!granted) return 'blocked';
 
     this.settings.set(task.id, { ...config, enabled: true });
+    this.markSettingsChanged();
     this.clearFiredForTask(task.id);
     this.persistSettings();
     this.reschedule(this.store.tasks());
@@ -317,6 +325,10 @@ export class TaskReminderService {
       payload[String(id)] = config;
     }
     writeStoredJson(SETTINGS_KEY, payload);
+  }
+
+  private markSettingsChanged(): void {
+    this.settingsRevision.update(value => value + 1);
   }
 
   private loadFired(): string[] {
