@@ -42,7 +42,7 @@
       type="button"
       class="bell-btn"
       [class.bell-btn--active]="reminderEnabled()"
-      [class.bell-btn--muted]="!masterEnabled()"
+      [class.bell-btn--muted]="!reminderEnabled()"
       [title]="bellTitle()"
       [attr.aria-label]="bellTitle()"
       [attr.aria-pressed]="reminderEnabled()"

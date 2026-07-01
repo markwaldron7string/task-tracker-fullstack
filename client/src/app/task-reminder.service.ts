@@ -329,7 +329,7 @@ export class TaskReminderService {
 
   private loadMaster(): boolean {
     const value = readStoredJson<boolean | null>(MASTER_KEY, null);
-    return value ?? false;
+    return value ?? true;
   }
 }
 
