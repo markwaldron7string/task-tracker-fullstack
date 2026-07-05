@@ -11,7 +11,7 @@ import {
 } from '../task-recurrence';
 import { getNotificationSupport } from '../notification-support';
 import { TaskReminderService } from '../task-reminder.service';
-import { EnrichedTask } from '../task-store';
+import { Task } from '../task-store';
 
 export type RecurrencePopover = 'week' | 'month' | null;
 
@@ -35,7 +35,7 @@ export class TaskReminderDialog {
   private reminders = inject(TaskReminderService);
   private host = inject(ElementRef<HTMLElement>);
 
-  task = input.required<EnrichedTask>();
+  task = input.required<Task>();
 
   save = output<TaskReminderDialogSave>();
   cancel = output<void>();

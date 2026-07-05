@@ -20,7 +20,6 @@ const taskStoreStub = {
   isOvercommitted: () => false,
   weekGlance: () => [],
   completedDueTodayCount: () => 0,
-  incompleteDueTodayCount: () => 0,
   openDueTodayCount: () => 0,
   tomorrowTaskCount: () => 0,
   rollOverdueToToday: () => {},

@@ -26,9 +26,6 @@ export interface Task {
   checklist: ChecklistItem[];
 }
 
-/** @deprecated Use Task — planning fields now live on the task itself. */
-export type EnrichedTask = Task;
-
 interface LegacyTaskMeta {
   priority: Priority;
   due: string | null;
@@ -215,8 +212,6 @@ export class TaskStore {
   pendingChanges = signal(0);
 
   remaining = computed(() => this.tasks().filter(task => !task.done).length);
-  completedTasks = computed(() => this.tasks().filter(task => task.done));
-  activeTasks = computed(() => this.tasks().filter(task => !task.done));
   activeEnrichedTasks = computed(() => this.enrichedTasks().filter(task => !task.done));
   completedEnrichedTasks = computed(() => this.enrichedTasks().filter(task => task.done));
 
@@ -268,8 +263,6 @@ export class TaskStore {
     const today = todayIso();
     return countCompletedDayTasks(this.tasks().filter(task => task.due === today));
   });
-
-  incompleteDueTodayCount = computed(() => countOpenDayTasks(this.dueTodayTasks()));
 
   openDueTodayCount = computed(() => countOpenDayTasks(this.dueTodayTasks()));
 

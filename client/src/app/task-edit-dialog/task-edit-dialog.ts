@@ -6,7 +6,7 @@ import { TASK_DOMAINS, projectLabel } from '../task-domains';
 import { TaskDatePicker } from '../task-date-picker/task-date-picker';
 import { parseEstimateInput } from '../task-quick-parse';
 import { TaskReminderOverlayService } from '../task-reminder-overlay.service';
-import { EnrichedTask, Priority } from '../task-store';
+import { Task, Priority } from '../task-store';
 
 export interface TaskEditPatch {
   id: number;
@@ -40,7 +40,7 @@ export class TaskEditDialog {
   private pro = inject(ProService);
   private host = inject(ElementRef<HTMLElement>);
 
-  task = input.required<EnrichedTask>();
+  task = input.required<Task>();
 
   save = output<TaskEditPatch>();
   cancel = output<void>();
