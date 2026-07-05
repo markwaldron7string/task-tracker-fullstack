@@ -48,7 +48,11 @@ app.MapGet("/api/tasks", async (HttpContext ctx, TaskDbContext db) =>
 {
     var userId = ctx.Request.Headers["X-User-ID"].FirstOrDefault();
     if (string.IsNullOrWhiteSpace(userId)) return Results.BadRequest("X-User-ID header is required.");
-    var tasks = await db.Tasks.Where(t => t.UserId == userId).OrderBy(t => t.Id).ToListAsync();
+    var tasks = await db.Tasks
+        .Where(t => t.UserId == userId)
+        .OrderBy(t => t.SortOrder)
+        .ThenBy(t => t.Id)
+        .ToListAsync();
     return Results.Ok(tasks.Select(ToTaskResponse));
 });
 
@@ -69,11 +73,17 @@ app.MapPost("/api/tasks", async (CreateTaskRequest request, HttpContext ctx, Tas
     if (string.IsNullOrWhiteSpace(title))
         return Results.BadRequest("Title is required.");
 
+    var maxSortOrder = await db.Tasks
+        .Where(t => t.UserId == userId)
+        .Select(t => (int?)t.SortOrder)
+        .MaxAsync() ?? 0;
+
     var newTask = new TaskItem
     {
         UserId = userId,
         Title = title,
         Done = false,
+        SortOrder = maxSortOrder + 10,
         Priority = NormalizePriority(request.Priority),
         Due = NormalizeDue(request.Due),
         EstimateMinutes = request.EstimateMinutes,
@@ -131,6 +141,30 @@ app.MapDelete("/api/tasks", async (HttpContext ctx, TaskDbContext db) =>
 
     var userTasks = await db.Tasks.Where(t => t.UserId == userId).ToListAsync();
     db.Tasks.RemoveRange(userTasks);
+    await db.SaveChangesAsync();
+    return Results.NoContent();
+});
+
+app.MapPatch("/api/tasks/reorder", async (ReorderTasksRequest request, HttpContext ctx, TaskDbContext db) =>
+{
+    var userId = ctx.Request.Headers["X-User-ID"].FirstOrDefault();
+    if (string.IsNullOrWhiteSpace(userId)) return Results.BadRequest("X-User-ID header is required.");
+    if (request.Tasks is null || request.Tasks.Count == 0)
+        return Results.BadRequest("Tasks array is required.");
+
+    var requestedIds = request.Tasks.Select(item => item.Id).ToHashSet();
+    var tasks = await db.Tasks
+        .Where(task => task.UserId == userId && requestedIds.Contains(task.Id))
+        .ToListAsync();
+
+    if (tasks.Count != requestedIds.Count) return Results.NotFound();
+
+    foreach (var item in request.Tasks)
+    {
+        var task = tasks.First(existing => existing.Id == item.Id);
+        task.SortOrder = item.SortOrder;
+    }
+
     await db.SaveChangesAsync();
     return Results.NoContent();
 });
@@ -262,6 +296,7 @@ static TaskResponse ToTaskResponse(TaskItem task) => new(
     task.Id,
     task.Title,
     task.Done,
+    task.SortOrder,
     task.Priority,
     task.Due,
     task.EstimateMinutes,
@@ -275,6 +310,7 @@ class TaskItem
     public string UserId { get; set; } = "";
     public string Title { get; set; } = "";
     public bool Done { get; set; }
+    public int SortOrder { get; set; }
     public string Priority { get; set; } = "none";
     public string? Due { get; set; }
     public int? EstimateMinutes { get; set; }
@@ -287,12 +323,17 @@ record TaskResponse(
     int Id,
     string Title,
     bool Done,
+    int SortOrder,
     string Priority,
     string? Due,
     int? EstimateMinutes,
     string? Project,
     string? Recurrence,
     List<ChecklistItem> Checklist);
+
+record ReorderTasksRequest(IReadOnlyList<ReorderTaskItem> Tasks);
+
+record ReorderTaskItem(int Id, int SortOrder);
 
 record CreateTaskRequest(
     string? Title,

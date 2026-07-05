@@ -7,6 +7,7 @@ describe('buildDayTaskGroups', () => {
     id: 1,
     title: 'Task',
     done: false,
+    sortOrder: 1,
     priority: 'none',
     due: '2026-06-25',
     estimateMinutes: null,

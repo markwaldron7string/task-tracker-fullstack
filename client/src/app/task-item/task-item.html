@@ -1,4 +1,25 @@
 <div class="task-head">
+  @if (dragEnabled()) {
+    <button
+      type="button"
+      class="drag-handle"
+      cdkDragHandle
+      aria-label="Drag to reorder task"
+      (pointerdown)="onPressStart($event)"
+      (pointerup)="onPressEnd()"
+      (pointercancel)="onPressEnd()"
+      (pointerleave)="onPressEnd()"
+    >
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <circle cx="9" cy="7" r="1.4" />
+        <circle cx="15" cy="7" r="1.4" />
+        <circle cx="9" cy="12" r="1.4" />
+        <circle cx="15" cy="12" r="1.4" />
+        <circle cx="9" cy="17" r="1.4" />
+        <circle cx="15" cy="17" r="1.4" />
+      </svg>
+    </button>
+  }
   <button
     type="button"
     class="priority-flag"

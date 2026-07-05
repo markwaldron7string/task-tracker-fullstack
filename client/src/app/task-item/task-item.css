@@ -16,7 +16,47 @@
   padding: 0.7rem 0.5rem;
   border-bottom: 1px solid var(--border-light);
   border-radius: 4px;
-  transition: background 0.12s;
+  transition: background 0.12s, transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+:host(.task-item-pressing) {
+  transform: scale(1.02);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
+  z-index: 2;
+}
+
+:host(.task-item-dragging) {
+  opacity: 0.35;
+}
+
+.drag-handle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.35rem;
+  height: 1.35rem;
+  padding: 0;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-faint);
+  cursor: grab;
+  flex-shrink: 0;
+  touch-action: none;
+}
+
+.drag-handle:active {
+  cursor: grabbing;
+}
+
+.drag-handle svg {
+  width: 1rem;
+  height: 1rem;
+  fill: currentColor;
+}
+
+:host(:hover) .drag-handle {
+  color: var(--text-muted);
 }
 
 :host:last-child {

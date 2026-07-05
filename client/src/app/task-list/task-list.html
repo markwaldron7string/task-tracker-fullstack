@@ -102,7 +102,14 @@
     </div>
   }
 
-  <div class="task-list" role="list">
+  <div
+    class="task-list"
+    cdkDropList
+    cdkDropListOrientation="vertical"
+    [cdkDropListDisabled]="!canReorder()"
+    (cdkDropListDropped)="onTaskDrop($event)"
+    role="list"
+  >
     @if (onboarding.introTourActive() && store.tasks().length === 0) {
       <app-task-item
         role="listitem"
@@ -110,6 +117,7 @@
         [class.tour-demo-task--hidden]="!introTaskControlsStepActive()"
         [task]="tourDemoTask"
         [position]="1"
+        [dragEnabled]="false"
         (toggle)="ignoreTourDemoAction()"
         (remove)="ignoreTourDemoAction()"
         (edit)="ignoreTourDemoAction()"
@@ -117,11 +125,13 @@
         (cyclePriority)="ignoreTourDemoAction()"
       />
     }
-    @for (task of store.filteredEnrichedTasks(); track task.id) {
+    @for (task of store.filteredManualOrderTasks(); track task.id) {
       <app-task-item
         role="listitem"
         [task]="task"
         [position]="$index + 1"
+        [dragEnabled]="canReorder()"
+        [dragStartDelay]="dragStartDelay()"
         (toggle)="store.toggleTask($event)"
         (remove)="store.removeTask($event)"
         (edit)="store.editTask($event.id, $event.title)"

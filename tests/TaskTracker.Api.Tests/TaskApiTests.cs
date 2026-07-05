@@ -109,6 +109,39 @@ public class TaskApiTests : IClassFixture<TaskApiFactory>
     }
 
     [Fact]
+    public async Task Reorder_tasks_updates_list_order()
+    {
+        var firstResponse = await client.PostAsJsonAsync("/api/tasks", new { title = "First" });
+        firstResponse.EnsureSuccessStatusCode();
+        var first = await firstResponse.Content.ReadFromJsonAsync<JsonElement>();
+
+        var secondResponse = await client.PostAsJsonAsync("/api/tasks", new { title = "Second" });
+        secondResponse.EnsureSuccessStatusCode();
+        var second = await secondResponse.Content.ReadFromJsonAsync<JsonElement>();
+
+        var firstId = first.GetProperty("id").GetInt32();
+        var secondId = second.GetProperty("id").GetInt32();
+
+        var reorderResponse = await client.PatchAsJsonAsync("/api/tasks/reorder", new
+        {
+            tasks = new[]
+            {
+                new { id = secondId, sortOrder = 10 },
+                new { id = firstId, sortOrder = 20 },
+            }
+        });
+        Assert.Equal(HttpStatusCode.NoContent, reorderResponse.StatusCode);
+
+        var tasks = await client.GetFromJsonAsync<JsonElement[]>("/api/tasks");
+        Assert.NotNull(tasks);
+        Assert.Equal(2, tasks.Length);
+        Assert.Equal("Second", tasks[0].GetProperty("title").GetString());
+        Assert.Equal("First", tasks[1].GetProperty("title").GetString());
+        Assert.Equal(10, tasks[0].GetProperty("sortOrder").GetInt32());
+        Assert.Equal(20, tasks[1].GetProperty("sortOrder").GetInt32());
+    }
+
+    [Fact]
     public async Task Create_task_accepts_project_and_recurrence()
     {
         var createResponse = await client.PostAsJsonAsync("/api/tasks", new

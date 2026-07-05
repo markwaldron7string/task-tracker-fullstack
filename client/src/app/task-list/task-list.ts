@@ -1,3 +1,4 @@
+import { CdkDragDrop, DragDropModule } from '@angular/cdk/drag-drop';
 import { Component, ElementRef, computed, effect, inject, signal } from '@angular/core';
 import { injectOverlayDismissBinding } from '../overlay-dismiss.service';
 import { OnboardingService } from '../onboarding/onboarding.service';
@@ -12,6 +13,7 @@ const TOUR_DEMO_TASK: Task = {
   id: 0,
   title: 'Walk the dog',
   done: false,
+  sortOrder: 0,
   priority: 'none',
   due: null,
   estimateMinutes: null,
@@ -24,7 +26,7 @@ const SEARCH_MIN_TASKS = 10;
 
 @Component({
   selector: 'app-task-list',
-  imports: [TaskItem, TaskSummary],
+  imports: [TaskItem, TaskSummary, DragDropModule],
   templateUrl: './task-list.html',
   styleUrl: './task-list.css',
 })
@@ -41,6 +43,13 @@ export class TaskList {
   protected introTaskControlsStepActive = this.onboarding.introTaskControlsStepActive;
   protected tourDemoTask = TOUR_DEMO_TASK;
   protected showSearch = computed(() => this.store.tasks().length >= SEARCH_MIN_TASKS);
+  readonly dragStartDelay = signal(this.getDragStartDelay());
+  protected canReorder = computed(
+    () =>
+      !this.store.searchQuery().trim() &&
+      !this.store.projectFilter() &&
+      !this.onboarding.introTourActive()
+  );
 
   constructor() {
     injectOverlayDismissBinding(() => {
@@ -112,4 +121,16 @@ export class TaskList {
   }
 
   protected ignoreTourDemoAction(): void {}
+
+  protected onTaskDrop(event: CdkDragDrop<unknown>) {
+    this.store.reorderTasks(event.previousIndex, event.currentIndex);
+  }
+
+  private getDragStartDelay(): number {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
+      return 0;
+    }
+
+    return window.matchMedia('(pointer: coarse)').matches ? 450 : 0;
+  }
 }

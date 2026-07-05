@@ -18,6 +18,7 @@ export interface Task {
   title: string;
   done: boolean;
   pending?: boolean;
+  sortOrder: number;
   priority: Priority;
   due: string | null;
   estimateMinutes: number | null;
@@ -103,16 +104,18 @@ type SyncStatus = 'loading' | 'synced' | 'syncing' | 'offline' | 'error';
 
 interface QueuedTaskChange {
   id: string;
-  type: 'create' | 'update' | 'delete';
+  type: 'create' | 'update' | 'delete' | 'reorder';
   taskId: number;
   title?: string;
   done?: boolean;
+  sortOrder?: number;
   priority?: Priority;
   due?: string | null;
   estimateMinutes?: number | null;
   project?: string | null;
   recurrence?: RecurrenceRule | null;
   checklist?: ChecklistItem[];
+  sortOrders?: Array<{ taskId: number; sortOrder: number }>;
   createdAt: string;
 }
 
@@ -156,6 +159,7 @@ function normalizeTask(raw: Partial<Task> & Pick<Task, 'id' | 'title' | 'done'>)
     id: raw.id,
     title: raw.title,
     done: raw.done,
+    sortOrder: typeof raw.sortOrder === 'number' ? raw.sortOrder : raw.id,
     priority: normalizePriority(raw.priority),
     due: raw.due ?? null,
     estimateMinutes: raw.estimateMinutes ?? null,
@@ -163,6 +167,10 @@ function normalizeTask(raw: Partial<Task> & Pick<Task, 'id' | 'title' | 'done'>)
     recurrence: normalizeRecurrence(raw.recurrence),
     checklist: normalizeChecklist(raw.checklist),
   };
+}
+
+function compareTaskOrder(a: Task, b: Task): number {
+  return a.sortOrder - b.sortOrder || a.id - b.id;
 }
 
 function stripFlags(task: Task): Task {
@@ -220,6 +228,13 @@ export class TaskStore {
   activeEnrichedTasks = computed(() => this.enrichedTasks().filter(task => !task.done));
   completedEnrichedTasks = computed(() => this.enrichedTasks().filter(task => task.done));
 
+  /** Tasks in the user's manual list order. */
+  manualOrderTasks = computed<Task[]>(() =>
+    this.tasks()
+      .map(stripFlags)
+      .sort(compareTaskOrder)
+  );
+
   /** Tasks ordered by status, priority, then due date. */
   enrichedTasks = computed<Task[]>(() =>
     this.tasks()
@@ -234,6 +249,27 @@ export class TaskStore {
         return a.id - b.id;
       })
   );
+
+  /** Manual-order tasks filtered by search query and optional project. */
+  filteredManualOrderTasks = computed(() => {
+    const query = this.searchQuery().trim().toLowerCase();
+    const project = this.projectFilter();
+
+    return this.manualOrderTasks().filter(task => {
+      if (project && task.project !== project) return false;
+      if (!query) return true;
+
+      const haystack = [
+        task.title,
+        task.project ?? '',
+        ...(task.checklist.map(item => item.title)),
+      ]
+        .join(' ')
+        .toLowerCase();
+
+      return haystack.includes(query);
+    });
+  });
 
   /** Tasks filtered by search query and optional project. */
   filteredEnrichedTasks = computed(() => {
@@ -377,6 +413,32 @@ export class TaskStore {
     void this.syncNow();
   }
 
+  reorderTasks(previousIndex: number, currentIndex: number) {
+    if (previousIndex === currentIndex) return;
+
+    const visibleTasks = this.filteredManualOrderTasks();
+    const reorderedVisible = [...visibleTasks];
+    const [moved] = reorderedVisible.splice(previousIndex, 1);
+    reorderedVisible.splice(currentIndex, 0, moved);
+
+    const orderMap = new Map(
+      reorderedVisible.map((task, index) => [task.id, (index + 1) * 10])
+    );
+
+    const updated = this.tasks().map(task => {
+      const stripped = stripFlags(task);
+      return orderMap.has(task.id)
+        ? { ...stripped, sortOrder: orderMap.get(task.id)! }
+        : stripped;
+    });
+
+    this.setLocalTasks(updated);
+    this.queueReorder(
+      [...orderMap.entries()].map(([taskId, sortOrder]) => ({ taskId, sortOrder }))
+    );
+    void this.syncNow();
+  }
+
   addTask(raw: string) {
     const parsed = parseQuickAdd(raw);
     if (parsed.title === '') return;
@@ -386,6 +448,7 @@ export class TaskStore {
       title: parsed.title,
       done: false,
       pending: true,
+      sortOrder: this.nextSortOrder(),
       priority: parsed.priority,
       due: parsed.due,
       estimateMinutes: parsed.estimateMinutes,
@@ -421,6 +484,7 @@ export class TaskStore {
       title: parsed.title,
       done: false,
       pending: true,
+      sortOrder: this.nextSortOrder(),
       priority: parsed.priority,
       due: dueIso,
       estimateMinutes: parsed.estimateMinutes,
@@ -656,6 +720,7 @@ export class TaskStore {
         title,
         done: false,
         pending: true,
+        sortOrder: this.nextSortOrder(),
         priority: 'none',
         due: assignment.due,
         estimateMinutes: assignment.estimateMinutes ?? null,
@@ -719,6 +784,7 @@ export class TaskStore {
       id: task.id!,
       title: task.title ?? '',
       done: task.done ?? false,
+      sortOrder: task.sortOrder,
       priority: task.priority,
       due: task.due,
       estimateMinutes: task.estimateMinutes,
@@ -794,6 +860,7 @@ export class TaskStore {
               id: task.id!,
               title: task.title ?? '',
               done: task.done ?? false,
+              sortOrder: task.sortOrder,
               priority: task.priority,
               due: task.due,
               estimateMinutes: task.estimateMinutes,
@@ -823,6 +890,16 @@ export class TaskStore {
   }
 
   private async syncChange(change: QueuedTaskChange) {
+    if (change.type === 'reorder') {
+      await firstValueFrom(this.http.patch(`${this.tasksApiUrl}/reorder`, {
+        tasks: (change.sortOrders ?? []).map(item => ({
+          id: item.taskId,
+          sortOrder: item.sortOrder,
+        })),
+      }));
+      return;
+    }
+
     if (change.type === 'create') {
       const createdTask = await firstValueFrom(this.http.post<Partial<Task>>(this.tasksApiUrl, {
         title: change.title,
@@ -837,6 +914,7 @@ export class TaskStore {
         id: createdTask.id!,
         title: createdTask.title ?? change.title ?? '',
         done: createdTask.done ?? false,
+        sortOrder: createdTask.sortOrder ?? change.sortOrder,
         priority: createdTask.priority ?? change.priority,
         due: createdTask.due ?? change.due ?? null,
         estimateMinutes: createdTask.estimateMinutes ?? change.estimateMinutes ?? null,
@@ -854,6 +932,7 @@ export class TaskStore {
           id: doneResponse.id ?? normalized.id,
           title: doneResponse.title ?? normalized.title,
           done: doneResponse.done ?? true,
+          sortOrder: doneResponse.sortOrder ?? normalized.sortOrder,
           priority: doneResponse.priority ?? normalized.priority,
           due: doneResponse.due ?? normalized.due,
           estimateMinutes: doneResponse.estimateMinutes ?? normalized.estimateMinutes,
@@ -885,6 +964,7 @@ export class TaskStore {
           id: updatedTask.id ?? change.taskId,
           title: updatedTask.title ?? change.title ?? '',
           done: updatedTask.done ?? change.done ?? false,
+          sortOrder: updatedTask.sortOrder ?? change.sortOrder,
           priority: updatedTask.priority ?? change.priority,
           due: updatedTask.due ?? change.due ?? null,
           estimateMinutes: updatedTask.estimateMinutes ?? change.estimateMinutes ?? null,
@@ -908,6 +988,7 @@ export class TaskStore {
           id: recreatedTask.id!,
           title: recreatedTask.title ?? change.title ?? '',
           done: recreatedTask.done ?? false,
+          sortOrder: recreatedTask.sortOrder ?? change.sortOrder,
           priority: recreatedTask.priority ?? change.priority,
           due: recreatedTask.due ?? change.due ?? null,
           estimateMinutes: recreatedTask.estimateMinutes ?? change.estimateMinutes ?? null,
@@ -924,6 +1005,7 @@ export class TaskStore {
             id: doneResponse.id ?? normalized.id,
             title: doneResponse.title ?? normalized.title,
             done: doneResponse.done ?? true,
+            sortOrder: doneResponse.sortOrder ?? normalized.sortOrder,
             priority: doneResponse.priority ?? normalized.priority,
             due: doneResponse.due ?? normalized.due,
             estimateMinutes: doneResponse.estimateMinutes ?? normalized.estimateMinutes,
@@ -1003,6 +1085,7 @@ export class TaskStore {
       title: completed.title,
       done: false,
       pending: true,
+      sortOrder: this.nextSortOrder(),
       priority: completed.priority,
       due: nextDue,
       estimateMinutes: completed.estimateMinutes,
@@ -1091,10 +1174,29 @@ export class TaskStore {
     ));
   }
 
+  private queueReorder(sortOrders: Array<{ taskId: number; sortOrder: number }>) {
+    this.queuedChanges = this.queuedChanges.filter(change => change.type !== 'reorder');
+    this.enqueueChange({
+      id: crypto.randomUUID(),
+      type: 'reorder',
+      taskId: -1,
+      sortOrders,
+      createdAt: new Date().toISOString(),
+    });
+  }
+
+  private nextSortOrder() {
+    const maxSortOrder = this.tasks().reduce(
+      (max, task) => Math.max(max, stripFlags(task).sortOrder),
+      0
+    );
+    return maxSortOrder + 10;
+  }
+
   private setLocalTasks(tasks: Task[]) {
     const sortedTasks = tasks
       .map(stripFlags)
-      .sort((a, b) => a.id - b.id);
+      .sort(compareTaskOrder);
 
     this.tasks.set(this.withPendingFlags(sortedTasks));
     writeStoredJson(LOCAL_TASKS_STORAGE_KEY, sortedTasks);
