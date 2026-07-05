@@ -99,11 +99,11 @@
       @if (!reviewDismissed()) {
         <ul class="daily-review-stats">
           <li><strong>{{ store.completedDueTodayCount() }}</strong> completed today</li>
-          <li><strong>{{ store.incompleteDueTodayCount() }}</strong> still open for today</li>
+          <li><strong>{{ store.openDueTodayCount() }}</strong> still open for today</li>
           <li><strong>{{ store.overdueTasks().length }}</strong> overdue</li>
           <li><strong>{{ store.tomorrowTaskCount() }}</strong> scheduled tomorrow</li>
         </ul>
-        @if (store.incompleteDueTodayCount() > 0) {
+        @if (store.openDueTodayCount() > 0) {
           <p class="daily-review-hint">
             Not everything got done? Pick a new date for today's open items and start fresh.
           </p>

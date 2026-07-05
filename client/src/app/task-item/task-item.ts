@@ -7,7 +7,7 @@ import { projectLabel, isCoachPlan } from '../task-domains';
 import { recurrenceLabel } from '../task-recurrence';
 import { TaskReminderOverlayService } from '../task-reminder-overlay.service';
 import { TaskReminderService } from '../task-reminder.service';
-import { EnrichedTask } from '../task-store';
+import { Task } from '../task-store';
 
 @Component({
   selector: 'app-task-item',
@@ -28,7 +28,7 @@ export class TaskItem {
   private onboarding = inject(OnboardingService);
   private pro = inject(ProService);
 
-  task = input.required<EnrichedTask>();
+  task = input.required<Task>();
   position = input<number>();
   protected showReminders = computed(() => this.pro.unlocked());
   protected tourDemoLocked = computed(() => this.onboarding.introTaskControlsStepActive());
@@ -38,7 +38,7 @@ export class TaskItem {
   toggle = output<number>();
   remove = output<number>();
   edit = output<{ id: number; title: string }>();
-  update = output<{ id: number; title: string; priority: EnrichedTask['priority']; due: string | null; estimateMinutes: number | null; done: boolean }>();
+  update = output<{ id: number; title: string; priority: Task['priority']; due: string | null; estimateMinutes: number | null; done: boolean }>();
   cyclePriority = output<number>();
 
   protected priority = computed(() => this.task().priority ?? 'none');

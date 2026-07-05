@@ -44,27 +44,32 @@ app.UseCors("AllowConfiguredOrigins");
 
 app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
 
-app.MapGet("/api/tasks", async (HttpContext ctx, TaskDbContext db) =>
+var api = app.MapGroup("/api").AddEndpointFilter(async (ctx, next) =>
 {
-    var userId = ctx.Request.Headers["X-User-ID"].FirstOrDefault();
-    if (string.IsNullOrWhiteSpace(userId)) return Results.BadRequest("X-User-ID header is required.");
+    var userId = ctx.HttpContext.Request.Headers["X-User-ID"].FirstOrDefault();
+    if (string.IsNullOrWhiteSpace(userId))
+        return Results.BadRequest("X-User-ID header is required.");
+    ctx.HttpContext.Items["UserId"] = userId;
+    return await next(ctx);
+});
+
+api.MapGet("/tasks", async (HttpContext ctx, TaskDbContext db) =>
+{
+    var userId = (string)ctx.Items["UserId"]!;
     var tasks = await db.Tasks.Where(t => t.UserId == userId).OrderBy(t => t.Id).ToListAsync();
     return Results.Ok(tasks.Select(ToTaskResponse));
 });
 
-app.MapGet("/api/tasks/{id}", async (int id, HttpContext ctx, TaskDbContext db) =>
+api.MapGet("/tasks/{id}", async (int id, HttpContext ctx, TaskDbContext db) =>
 {
-    var userId = ctx.Request.Headers["X-User-ID"].FirstOrDefault();
-    if (string.IsNullOrWhiteSpace(userId)) return Results.BadRequest("X-User-ID header is required.");
+    var userId = (string)ctx.Items["UserId"]!;
     var task = await db.Tasks.FirstOrDefaultAsync(t => t.Id == id && t.UserId == userId);
     return task is null ? Results.NotFound() : Results.Ok(ToTaskResponse(task));
 });
 
-app.MapPost("/api/tasks", async (CreateTaskRequest request, HttpContext ctx, TaskDbContext db) =>
+api.MapPost("/tasks", async (CreateTaskRequest request, HttpContext ctx, TaskDbContext db) =>
 {
-    var userId = ctx.Request.Headers["X-User-ID"].FirstOrDefault();
-    if (string.IsNullOrWhiteSpace(userId)) return Results.BadRequest("X-User-ID header is required.");
-
+    var userId = (string)ctx.Items["UserId"]!;
     var title = request.Title?.Trim();
     if (string.IsNullOrWhiteSpace(title))
         return Results.BadRequest("Title is required.");
@@ -86,11 +91,9 @@ app.MapPost("/api/tasks", async (CreateTaskRequest request, HttpContext ctx, Tas
     return Results.Created($"/api/tasks/{newTask.Id}", ToTaskResponse(newTask));
 });
 
-app.MapPut("/api/tasks/{id}", async (int id, UpdateTaskRequest request, HttpContext ctx, TaskDbContext db) =>
+api.MapPut("/tasks/{id}", async (int id, UpdateTaskRequest request, HttpContext ctx, TaskDbContext db) =>
 {
-    var userId = ctx.Request.Headers["X-User-ID"].FirstOrDefault();
-    if (string.IsNullOrWhiteSpace(userId)) return Results.BadRequest("X-User-ID header is required.");
-
+    var userId = (string)ctx.Items["UserId"]!;
     var title = request.Title?.Trim();
     if (string.IsNullOrWhiteSpace(title))
         return Results.BadRequest("Title is required.");
@@ -111,11 +114,9 @@ app.MapPut("/api/tasks/{id}", async (int id, UpdateTaskRequest request, HttpCont
     return Results.Ok(ToTaskResponse(task));
 });
 
-app.MapDelete("/api/tasks/{id}", async (int id, HttpContext ctx, TaskDbContext db) =>
+api.MapDelete("/tasks/{id}", async (int id, HttpContext ctx, TaskDbContext db) =>
 {
-    var userId = ctx.Request.Headers["X-User-ID"].FirstOrDefault();
-    if (string.IsNullOrWhiteSpace(userId)) return Results.BadRequest("X-User-ID header is required.");
-
+    var userId = (string)ctx.Items["UserId"]!;
     var task = await db.Tasks.FirstOrDefaultAsync(t => t.Id == id && t.UserId == userId);
     if (task is null) return Results.NotFound();
 
@@ -124,22 +125,18 @@ app.MapDelete("/api/tasks/{id}", async (int id, HttpContext ctx, TaskDbContext d
     return Results.NoContent();
 });
 
-app.MapDelete("/api/tasks", async (HttpContext ctx, TaskDbContext db) =>
+api.MapDelete("/tasks", async (HttpContext ctx, TaskDbContext db) =>
 {
-    var userId = ctx.Request.Headers["X-User-ID"].FirstOrDefault();
-    if (string.IsNullOrWhiteSpace(userId)) return Results.BadRequest("X-User-ID header is required.");
-
+    var userId = (string)ctx.Items["UserId"]!;
     var userTasks = await db.Tasks.Where(t => t.UserId == userId).ToListAsync();
     db.Tasks.RemoveRange(userTasks);
     await db.SaveChangesAsync();
     return Results.NoContent();
 });
 
-app.MapPost("/api/coach/chat", async (CoachChatRequest request, HttpContext ctx, CoachService coach, TaskDbContext db, CancellationToken cancellationToken) =>
+api.MapPost("/coach/chat", async (CoachChatRequest request, HttpContext ctx, CoachService coach, TaskDbContext db, CancellationToken cancellationToken) =>
 {
-    var userId = ctx.Request.Headers["X-User-ID"].FirstOrDefault();
-    if (string.IsNullOrWhiteSpace(userId)) return Results.BadRequest("X-User-ID header is required.");
-
+    var userId = (string)ctx.Items["UserId"]!;
     if (request.Snapshot is null)
         return Results.BadRequest("Snapshot is required.");
 
@@ -320,8 +317,6 @@ class TaskDbContext : DbContext
     public TaskDbContext(DbContextOptions<TaskDbContext> options) : base(options) { }
 
     public DbSet<TaskItem> Tasks => Set<TaskItem>();
-
-    protected override void OnModelCreating(ModelBuilder modelBuilder) { }
 }
 
 public partial class Program { }

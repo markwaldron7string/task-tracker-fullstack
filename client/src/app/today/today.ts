@@ -40,7 +40,7 @@ export class Today {
     const hour = new Date().getHours();
     const hasActivity =
       this.store.completedDueTodayCount() > 0 ||
-      this.store.incompleteDueTodayCount() > 0 ||
+      this.store.openDueTodayCount() > 0 ||
       this.store.overdueTasks().length > 0;
     return hour >= 16 && hasActivity;
   });

@@ -1,15 +1,15 @@
 import { Injectable, signal } from '@angular/core';
-import { EnrichedTask } from './task-store';
+import { Task } from './task-store';
 
 export type DetailsView =
-  | { kind: 'task'; task: EnrichedTask }
+  | { kind: 'task'; task: Task }
   | { kind: 'day'; iso: string; planFilter: string };
 
 @Injectable({ providedIn: 'root' })
 export class TaskDetailsOverlayService {
   readonly view = signal<DetailsView | null>(null);
 
-  open(task: EnrichedTask): void {
+  open(task: Task): void {
     this.view.set({ kind: 'task', task });
   }
 
