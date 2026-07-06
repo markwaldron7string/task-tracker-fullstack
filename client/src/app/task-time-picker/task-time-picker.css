@@ -79,10 +79,14 @@
   -webkit-overflow-scrolling: touch;
   border-radius: 8px;
   background: var(--overlay-surface-muted, var(--surface-hover));
+  /* Half the column height minus half an option's height, so the first and
+     last options have room to scroll all the way to the visual center. */
+  padding-block: 3.8rem;
 }
 
 .time-col--period {
   max-height: 9.5rem;
+  padding-block: 0;
 }
 
 .time-option {

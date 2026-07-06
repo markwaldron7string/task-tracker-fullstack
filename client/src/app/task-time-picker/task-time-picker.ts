@@ -76,19 +76,19 @@ export class TaskTimePicker {
   protected pickHour(hour: number): void {
     this.hour12.set(hour);
     this.emitValue();
-    queueMicrotask(() => this.scrollColumnIntoView('hour'));
+    queueMicrotask(() => this.scrollColumnIntoView('hour', hour - 1));
   }
 
   protected pickMinute(minute: number): void {
     this.minute.set(minute);
     this.emitValue();
-    queueMicrotask(() => this.scrollColumnIntoView('minute'));
+    queueMicrotask(() => this.scrollColumnIntoView('minute', minute));
   }
 
   protected pickPeriod(next: 'AM' | 'PM'): void {
     this.period.set(next);
     this.emitValue();
-    queueMicrotask(() => this.scrollColumnIntoView('period'));
+    queueMicrotask(() => this.scrollColumnIntoView('period', this.periods.indexOf(next)));
   }
 
   protected pad(value: number): string {
@@ -100,19 +100,21 @@ export class TaskTimePicker {
   }
 
   private scrollSelectionIntoView(): void {
-    this.scrollColumnIntoView('hour');
-    this.scrollColumnIntoView('minute');
-    this.scrollColumnIntoView('period');
+    this.scrollColumnIntoView('hour', this.hour12() - 1);
+    this.scrollColumnIntoView('minute', this.minute());
+    this.scrollColumnIntoView('period', this.periods.indexOf(this.period()));
   }
 
-  private scrollColumnIntoView(column: 'hour' | 'minute' | 'period'): void {
+  /** Indexes directly into the column's children so this doesn't race the
+   *  `.time-option--selected` class binding's own render. */
+  private scrollColumnIntoView(column: 'hour' | 'minute' | 'period', index: number): void {
     const ref = column === 'hour'
       ? this.hourCol()
       : column === 'minute'
         ? this.minuteCol()
         : this.periodCol();
-    const selected = ref?.nativeElement.querySelector('.time-option--selected') as HTMLElement | null;
-    selected?.scrollIntoView({ block: 'center', behavior: 'auto' });
+    const target = ref?.nativeElement.children[index] as HTMLElement | undefined;
+    target?.scrollIntoView({ block: 'center', behavior: 'auto' });
   }
 }
 
