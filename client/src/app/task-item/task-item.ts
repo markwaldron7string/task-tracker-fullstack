@@ -1,6 +1,7 @@
 import { CdkDrag, CdkDragHandle } from '@angular/cdk/drag-drop';
 import { Component, computed, effect, inject, input, OnDestroy, output, signal } from '@angular/core';
 import { OnboardingService } from '../onboarding/onboarding.service';
+import { isMobileSwipeLayout } from '../onboarding/onboarding-layout';
 import { ProService } from '../pro.service';
 import { TaskDetailsOverlayService } from '../task-details-overlay.service';
 import { TaskEditOverlayService } from '../task-edit-overlay.service';
@@ -114,6 +115,17 @@ export class TaskItem implements OnDestroy {
   constructor() {
     effect(() => {
       this.drag.disabled = this.dragDisabled();
+    });
+
+    effect(() => {
+      const demoActive = this.onboarding.introTaskControlsStepActive() && this.position() === 1;
+      if (demoActive && isMobileSwipeLayout()) {
+        this.snapSwipe('left');
+        return;
+      }
+      if (!demoActive && this.swipeOpen() !== 'none') {
+        this.resetSwipe(false);
+      }
     });
   }
 

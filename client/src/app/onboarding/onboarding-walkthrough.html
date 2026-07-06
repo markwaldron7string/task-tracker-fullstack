@@ -42,8 +42,8 @@
       [attr.data-placement]="flagPlacement()"
     >
       <p class="tour-progress">{{ onboarding.progressLabel() }}</p>
-      <h2 class="tour-title">{{ current.title }}</h2>
-      <p class="tour-body">{{ current.body }}</p>
+      <h2 class="tour-title">{{ stepTitle(current) }}</h2>
+      <p class="tour-body">{{ stepBody(current) }}</p>
       <div class="tour-actions">
         <div class="tour-actions-left">
           <button type="button" class="tour-skip" (click)="onboarding.skip()">{{ skipLabel() }}</button>

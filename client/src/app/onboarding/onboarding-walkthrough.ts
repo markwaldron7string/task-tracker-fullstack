@@ -27,6 +27,7 @@ import {
   isCoarsePointer,
   isKeyboardOpen,
   isMobileTour,
+  isMobileSwipeLayout,
   resolveTourTarget,
   spotlightDomRect,
   SpotlightBox,
@@ -107,6 +108,23 @@ export class OnboardingWalkthrough {
     }
     return 'Next';
   });
+
+  protected stepTitle(step: TourStep): string {
+    if (step.id === 'task-controls' && isMobileSwipeLayout()) {
+      return 'Swipe to manage tasks';
+    }
+    return step.title;
+  }
+
+  protected stepBody(step: TourStep): string {
+    if (step.id === 'task-controls' && isMobileSwipeLayout()) {
+      return 'Swipe right to edit or set a reminder. Swipe left to delete. Try it on the sample task below.';
+    }
+    if (step.id === 'task-controls') {
+      return 'Hover a task to reveal Edit and Delete. On touch devices, swipe right to edit or left to delete.';
+    }
+    return step.body;
+  }
 
   private lastStepId: string | null = null;
   private layoutAttempts = 0;
@@ -431,7 +449,8 @@ export class OnboardingWalkthrough {
 
   private spotlightTargetRect(step: TourStep, target: Element, box: SpotlightBox): DOMRect {
     if (
-      step.target === 'first-task-actions'
+      step.target === 'first-task'
+      || step.target === 'first-task-actions'
       || step.target === 'add-task'
       || step.target === 'nav'
       || step.target === 'nav-calendar'
@@ -460,7 +479,7 @@ export class OnboardingWalkthrough {
 }
 
 function spotlightPaddingForStep(targetId: string): number {
-  if (targetId === 'first-task-actions') return 3;
+  if (targetId === 'first-task' || targetId === 'first-task-actions') return 3;
   if (targetId === 'add-task') return 4;
   if (targetId === 'nav') return 4;
   if (targetId === 'nav-calendar') return 3;

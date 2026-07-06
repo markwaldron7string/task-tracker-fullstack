@@ -39,7 +39,7 @@ export function resolveTourTarget(root: Element, targetId: string): Element {
 export function spotlightPadding(targetId: string, rect: DOMRect): number {
   if (targetId === 'theme-picker') return PAD_THEME;
   if (targetId === 'upgrade') return PAD_UPGRADE;
-  if (targetId === 'first-task-actions') return PAD_TIGHT;
+  if (targetId === 'first-task' || targetId === 'first-task-actions') return PAD_TIGHT;
   if (ROOMY_TARGETS.has(targetId)) {
     return rect.height > 100 ? PAD_ROOMY : PAD_DEFAULT;
   }
@@ -126,6 +126,11 @@ export function buildSpotlightBox(step: TourStep, target: Element): SpotlightBox
 
   if (step.target === 'add-task') {
     return buildAddTaskSpotlight(target);
+  }
+
+  if (step.target === 'first-task') {
+    const rect = target.getBoundingClientRect();
+    return boxFromRect(rect, PAD_TIGHT, readBorderRadius(target as HTMLElement));
   }
 
   if (step.target === 'first-task-actions') {
@@ -238,6 +243,10 @@ export function computeHeaderPinnedFlagPosition(
 /** Animated pointer between the card edge and the highlighted target. */
 export function isMobileTour(): boolean {
   return window.matchMedia('(max-width: 768px)').matches;
+}
+
+export function isMobileSwipeLayout(): boolean {
+  return window.matchMedia('(max-width: 640px)').matches;
 }
 
 export function isCoarsePointer(): boolean {

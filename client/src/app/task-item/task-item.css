@@ -384,12 +384,11 @@
   }
 
   :host(.tour-demo-locked) .task-swipe-actions {
-    display: none;
+    display: flex;
   }
 
   :host(.tour-demo-locked) .task-actions {
-    display: flex;
-    opacity: 1;
+    display: none;
   }
 
   .task-swipe,
@@ -400,6 +399,7 @@
   .task-swipe {
     position: relative;
     overflow: hidden;
+    background: var(--overlay-surface-muted, var(--overlay-surface, var(--surface)));
   }
 
   .task-swipe-actions {
@@ -456,7 +456,8 @@
   .task-swipe-panel {
     position: relative;
     z-index: 1;
-    background: var(--surface);
+    background-color: var(--overlay-surface, var(--surface));
+    background-image: var(--overlay-sheen, none);
     touch-action: pan-y;
     will-change: transform;
   }
@@ -503,7 +504,7 @@
     height: 2rem;
     margin-top: -0.05rem;
     border-radius: 6px;
-    background: var(--surface-hover);
+    background: var(--overlay-surface-muted, var(--surface-hover));
     border: 1px solid var(--border-light);
     flex-shrink: 0;
   }

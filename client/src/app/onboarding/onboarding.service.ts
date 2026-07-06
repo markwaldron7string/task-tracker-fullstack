@@ -41,9 +41,9 @@ const INTRO_TOUR_STEPS: TourStep[] = [
   },
   {
     id: 'task-controls',
-    target: 'first-task-actions',
+    target: 'first-task',
     title: 'Manage each task',
-    body: 'Use Edit to update a task or Delete to remove it.',
+    body: 'Hover a task to reveal Edit and Delete, or use the buttons on the right.',
     placement: 'top',
     route: '/',
   },
