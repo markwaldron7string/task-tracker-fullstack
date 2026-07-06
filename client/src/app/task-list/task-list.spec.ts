@@ -7,6 +7,7 @@ const taskStoreStub = {
   tasks: () => [],
   enrichedTasks: () => [],
   filteredEnrichedTasks: () => [],
+  filteredManualOrderTasks: () => [],
   projectOptions: () => [],
   searchQuery: () => '',
   projectFilter: () => null,
@@ -21,7 +22,8 @@ const taskStoreStub = {
   editTask: () => {},
   updateTask: () => {},
   removeTask: () => {},
-  clearTasks: () => {}
+  clearTasks: () => {},
+  reorderTasks: () => {},
 };
 
 describe('TaskList', () => {

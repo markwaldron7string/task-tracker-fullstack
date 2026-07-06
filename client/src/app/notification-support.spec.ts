@@ -1,8 +1,25 @@
 import { getNotificationSupport, hasNotificationApi, isIosDevice, isStandaloneDisplay } from './notification-support';
 
+function stubMatchMedia(matches: boolean): void {
+  Object.defineProperty(window, 'matchMedia', {
+    configurable: true,
+    writable: true,
+    value: (query: string) => ({
+      matches: query === '(display-mode: standalone)' ? matches : false,
+      media: query,
+      onchange: null,
+      addListener: () => {},
+      removeListener: () => {},
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      dispatchEvent: () => false,
+    }),
+  });
+}
+
 describe('notification-support', () => {
   it('detects iOS browser tabs as needing install before notifications work', () => {
-    vi.spyOn(window, 'matchMedia').mockReturnValue({ matches: false } as MediaQueryList);
+    stubMatchMedia(false);
     Object.defineProperty(navigator, 'userAgent', {
       configurable: true,
       value: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)',
@@ -13,8 +30,7 @@ describe('notification-support', () => {
   });
 
   it('treats installed iOS PWAs as promptable when Notification exists', () => {
-    vi.spyOn(window, 'matchMedia').mockReturnValue({ matches: true } as MediaQueryList);
-    Object.defineProperty(Notification, 'permission', { configurable: true, value: 'default' });
+    stubMatchMedia(true);
     vi.stubGlobal('Notification', class NotificationMock {
       static permission = 'default';
     });

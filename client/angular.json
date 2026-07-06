@@ -66,7 +66,14 @@
           "defaultConfiguration": "development"
         },
         "test": {
-          "builder": "@angular/build:unit-test"
+          "builder": "@angular/build:unit-test",
+          "configurations": {
+            "ci": {
+              "watch": false,
+              "isolate": true,
+              "runnerConfig": true
+            }
+          }
         }
       }
     }

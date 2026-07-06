@@ -1,13 +1,30 @@
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
+import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClientTesting } from '@angular/common/http/testing';
+import { SwUpdate } from '@angular/service-worker';
+import { Subject } from 'rxjs';
 import { App } from './app';
+
+const swUpdateMock = {
+  isEnabled: false,
+  versionUpdates: new Subject(),
+  unrecoverable: new Subject(),
+  checkForUpdate: () => Promise.resolve(false),
+  activateUpdate: () => Promise.resolve(true),
+};
 
 describe('App', () => {
   beforeEach(async () => {
     localStorage.setItem('ttf-onboarding-complete', '1');
     await TestBed.configureTestingModule({
       imports: [App],
-      providers: [provideRouter([])]
+      providers: [
+        provideRouter([]),
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        { provide: SwUpdate, useValue: swUpdateMock },
+      ],
     }).compileComponents();
   });
 

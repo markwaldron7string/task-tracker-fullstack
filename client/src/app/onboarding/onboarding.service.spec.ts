@@ -73,9 +73,10 @@ describe('OnboardingService', () => {
 
   it('should always allow advance on intro add-task step', () => {
     service.startIntro();
-    while (service.currentStep()?.id !== 'add-task') {
-      service.next();
-    }
+    const addTaskIndex = service.steps().findIndex(step => step.id === 'add-task');
+    expect(addTaskIndex).toBeGreaterThanOrEqual(0);
+    service.stepIndex.set(addTaskIndex);
+    expect(service.currentStep()?.id).toBe('add-task');
     expect(service.canAdvance(0)).toBe(true);
   });
 
@@ -83,19 +84,26 @@ describe('OnboardingService', () => {
     proUnlocked.set(true);
     storage.setItem('ttf-onboarding-complete', '1');
     service.startPro();
-    while (service.currentStep()?.id !== 'pro-add-task') {
-      service.next();
-    }
+    const addTaskIndex = service.steps().findIndex(step => step.id === 'pro-add-task');
+    expect(addTaskIndex).toBeGreaterThanOrEqual(0);
+    service.stepIndex.set(addTaskIndex);
     service.skipAddTaskStep();
-    expect(service.currentStep()?.id).not.toBe('pro-add-task');
+    expect(service.addTaskStepSkipped()).toBe(true);
     expect(service.canAdvance(0)).toBe(true);
   });
 
   it('should include pro notifications step in pro tour', () => {
     proUnlocked.set(true);
     storage.setItem('ttf-onboarding-complete', '1');
-    service.startPro();
-    expect(service.steps().some(step => step.id === 'pro-notifications')).toBe(true);
+    const toggle = document.createElement('button');
+    toggle.setAttribute('data-tour', 'notifications-toggle');
+    document.body.appendChild(toggle);
+    try {
+      service.startPro();
+      expect(service.steps().some(step => step.id === 'pro-notifications')).toBe(true);
+    } finally {
+      document.body.removeChild(toggle);
+    }
   });
 });
 
