@@ -1,4 +1,5 @@
 <div class="task-swipe">
+  @if (showStartActions()) {
   <div class="task-swipe-actions task-swipe-actions--start">
     <button type="button" class="swipe-action swipe-action--edit" aria-label="Edit task" (click)="onSwipeEdit($event)">
       <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -21,7 +22,9 @@
     </button>
     }
   </div>
+  }
 
+  @if (showEndActions()) {
   <div class="task-swipe-actions task-swipe-actions--end">
     <button type="button" class="swipe-action swipe-action--delete" aria-label="Delete task" (click)="onSwipeDelete($event)">
       <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -30,16 +33,12 @@
       <span>Delete</span>
     </button>
   </div>
+  }
 
   <div
     class="task-swipe-panel"
     [class.task-swipe-panel--animating]="swipeAnimating()"
     [style.transform]="swipeTransform()"
-    (pointerdown)="onSwipePointerDown($event)"
-    (pointermove)="onSwipePointerMove($event)"
-    (pointerup)="onSwipePointerEnd($event)"
-    (pointercancel)="onSwipePointerEnd($event)"
-    (lostpointercapture)="onSwipePointerEnd($event)"
   >
     <div class="task-head">
       <label class="task-label">

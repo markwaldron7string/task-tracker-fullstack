@@ -2,6 +2,7 @@ import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
 import { ProService } from '../pro.service';
+import { OnboardingService } from '../onboarding/onboarding.service';
 import { TaskReminderService } from '../task-reminder.service';
 import { TaskItem } from './task-item';
 
@@ -19,6 +20,12 @@ describe('TaskItem', () => {
       imports: [TaskItem],
       providers: [
         { provide: ProService, useValue: { unlocked: signal(true) } },
+        {
+          provide: OnboardingService,
+          useValue: {
+            introTaskControlsStepActive: () => false,
+          },
+        },
         {
           provide: TaskReminderService,
           useValue: {

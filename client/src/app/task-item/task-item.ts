@@ -1,5 +1,17 @@
 import { CdkDrag, CdkDragHandle } from '@angular/cdk/drag-drop';
-import { Component, computed, effect, inject, input, OnDestroy, output, signal } from '@angular/core';
+import {
+  afterNextRender,
+  Component,
+  computed,
+  DestroyRef,
+  effect,
+  ElementRef,
+  inject,
+  input,
+  OnDestroy,
+  output,
+  signal,
+} from '@angular/core';
 import { OnboardingService } from '../onboarding/onboarding.service';
 import { isMobileSwipeLayout } from '../onboarding/onboarding-layout';
 import { ProService } from '../pro.service';
@@ -13,6 +25,7 @@ import { EnrichedTask } from '../task-store';
 
 const SWIPE_ACTION_WIDTH = 72;
 const SWIPE_OPEN_THRESHOLD = 36;
+const SWIPE_AXIS_LOCK_PX = 8;
 
 const swipeCloseRegistry = new Set<() => void>();
 
@@ -20,6 +33,12 @@ function closeOpenSwipes(except?: () => void) {
   for (const close of swipeCloseRegistry) {
     if (close !== except) close();
   }
+}
+
+function isSwipeIgnoredTarget(target: EventTarget | null): boolean {
+  return !!(target as HTMLElement | null)?.closest(
+    '.drag-handle, .task-checkbox, .details-chip, .task-chips button, .swipe-action'
+  );
 }
 
 @Component({
@@ -50,6 +69,8 @@ export class TaskItem implements OnDestroy {
   private onboarding = inject(OnboardingService);
   private pro = inject(ProService);
   private drag = inject(CdkDrag);
+  private host = inject(ElementRef<HTMLElement>);
+  private destroyRef = inject(DestroyRef);
 
   task = input.required<EnrichedTask>();
   position = input<number>();
@@ -68,13 +89,20 @@ export class TaskItem implements OnDestroy {
   swipeOffset = signal(0);
   swipeOpen = signal<'none' | 'left' | 'right'>('none');
   swipeAnimating = signal(false);
+  swipeActive = signal(false);
   dragDisabled = computed(() => !this.dragEnabled() || this.tourDemoLocked());
   protected leftRevealWidth = computed(() =>
     this.showReminders() ? SWIPE_ACTION_WIDTH * 2 : SWIPE_ACTION_WIDTH
   );
+  protected showStartActions = computed(() =>
+    this.swipeOffset() > 4 || this.swipeOpen() === 'left'
+  );
+  protected showEndActions = computed(() =>
+    this.swipeOffset() < -4 || this.swipeOpen() === 'right'
+  );
   protected swipeTransform = computed(() => {
     const offset = this.swipeOffset();
-    return offset === 0 ? '' : `translateX(${offset}px)`;
+    return offset === 0 ? '' : `translate3d(${offset}px, 0, 0)`;
   });
 
   toggle = output<number>();
@@ -104,18 +132,25 @@ export class TaskItem implements OnDestroy {
   });
 
   private pressTimer: ReturnType<typeof setTimeout> | null = null;
-  private swipePointerId: number | null = null;
+  private activeTouchId: number | null = null;
   private swipeStartX = 0;
+  private swipeStartY = 0;
   private swipeStartOffset = 0;
   private swipeTracking = false;
+  private swipeAxisLocked = false;
   private demoSwipePrimed = false;
   private readonly closeSwipe = () => this.resetSwipe();
   private readonly dragStartedSub = this.drag.started.subscribe(() => this.onDragStarted());
   private readonly dragEndedSub = this.drag.ended.subscribe(() => this.onDragEnded());
+  private readonly onTouchStart = (event: TouchEvent) => this.handleTouchStart(event);
+  private readonly onTouchMove = (event: TouchEvent) => this.handleTouchMove(event);
+  private readonly onTouchEnd = (event: TouchEvent) => this.handleTouchEnd(event);
 
   constructor() {
     effect(() => {
-      this.drag.disabled = this.dragDisabled();
+      const blockDrag = this.dragDisabled()
+        || (isMobileSwipeLayout() && this.swipeActive());
+      this.drag.disabled = blockDrag;
     });
 
     effect(() => {
@@ -131,6 +166,25 @@ export class TaskItem implements OnDestroy {
         this.demoSwipePrimed = true;
         this.snapSwipe('left');
       }
+    });
+
+    afterNextRender(() => {
+      if (!isMobileSwipeLayout()) return;
+
+      const panel = this.host.nativeElement.querySelector('.task-swipe-panel');
+      if (!panel) return;
+
+      panel.addEventListener('touchstart', this.onTouchStart, { passive: true });
+      panel.addEventListener('touchmove', this.onTouchMove, { passive: false });
+      panel.addEventListener('touchend', this.onTouchEnd, { passive: true });
+      panel.addEventListener('touchcancel', this.onTouchEnd, { passive: true });
+
+      this.destroyRef.onDestroy(() => {
+        panel.removeEventListener('touchstart', this.onTouchStart);
+        panel.removeEventListener('touchmove', this.onTouchMove);
+        panel.removeEventListener('touchend', this.onTouchEnd);
+        panel.removeEventListener('touchcancel', this.onTouchEnd);
+      });
     });
   }
 
@@ -186,43 +240,86 @@ export class TaskItem implements OnDestroy {
     this.onBellClick(event);
   }
 
-  onSwipePointerDown(event: PointerEvent) {
-    if (event.pointerType === 'mouse') return;
+  onPressStart(event: PointerEvent) {
+    if (this.dragDisabled() || event.pointerType === 'mouse') return;
 
-    const target = event.target as HTMLElement;
-    if (target.closest('.drag-handle, .task-checkbox, .details-chip, .task-chips button, .swipe-action')) {
-      return;
-    }
-
-    closeOpenSwipes(this.closeSwipe);
-    this.swipePointerId = event.pointerId;
-    this.swipeStartX = event.clientX;
-    this.swipeStartOffset = this.swipeOffset();
-    this.swipeTracking = true;
-    this.swipeAnimating.set(false);
-    (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+    this.clearPressState();
+    this.pressTimer = setTimeout(() => {
+      this.isPressing.set(true);
+    }, Math.max(0, this.dragStartDelay() - 80));
   }
 
-  onSwipePointerMove(event: PointerEvent) {
-    if (!this.swipeTracking || this.swipePointerId !== event.pointerId) return;
+  onPressEnd() {
+    this.clearPressState();
+  }
 
-    const delta = event.clientX - this.swipeStartX;
-    const leftMax = this.leftRevealWidth();
-    const rightMax = SWIPE_ACTION_WIDTH;
-    const next = Math.max(-rightMax, Math.min(leftMax, this.swipeStartOffset + delta));
+  private handleTouchStart(event: TouchEvent) {
+    if (event.touches.length !== 1 || isSwipeIgnoredTarget(event.target)) return;
 
-    if (Math.abs(next) > 6) {
-      event.preventDefault();
+    event.stopPropagation();
+
+    const touch = event.touches[0];
+    closeOpenSwipes(this.closeSwipe);
+    this.activeTouchId = touch.identifier;
+    this.swipeStartX = touch.clientX;
+    this.swipeStartY = touch.clientY;
+    this.swipeStartOffset = this.swipeOffset();
+    this.swipeTracking = true;
+    this.swipeAxisLocked = false;
+    this.swipeAnimating.set(false);
+    this.swipeActive.set(true);
+  }
+
+  private handleTouchMove(event: TouchEvent) {
+    if (!this.swipeTracking || this.activeTouchId === null) return;
+
+    const touch = Array.from(event.touches).find(item => item.identifier === this.activeTouchId);
+    if (!touch) return;
+
+    const deltaX = touch.clientX - this.swipeStartX;
+    const deltaY = touch.clientY - this.swipeStartY;
+
+    if (!this.swipeAxisLocked) {
+      if (Math.abs(deltaX) < SWIPE_AXIS_LOCK_PX && Math.abs(deltaY) < SWIPE_AXIS_LOCK_PX) {
+        return;
+      }
+      this.swipeAxisLocked = Math.abs(deltaX) > Math.abs(deltaY);
+      if (!this.swipeAxisLocked) {
+        this.cancelTouchSwipe();
+        return;
+      }
     }
 
+    event.preventDefault();
+    event.stopPropagation();
+
+    const leftMax = this.leftRevealWidth();
+    const rightMax = SWIPE_ACTION_WIDTH;
+    const next = Math.max(-rightMax, Math.min(leftMax, this.swipeStartOffset + deltaX));
     this.swipeOffset.set(next);
   }
 
-  onSwipePointerEnd(event: PointerEvent) {
-    if (!this.swipeTracking || this.swipePointerId !== event.pointerId) return;
+  private handleTouchEnd(event: TouchEvent) {
+    if (this.activeTouchId === null) return;
 
+    const touch = Array.from(event.changedTouches).find(item => item.identifier === this.activeTouchId);
+    if (!touch || !this.swipeTracking) return;
+
+    event.stopPropagation();
+    this.finishSwipe();
+  }
+
+  private cancelTouchSwipe() {
     this.swipeTracking = false;
-    this.swipePointerId = null;
+    this.activeTouchId = null;
+    this.swipeAxisLocked = false;
+    this.updateSwipeActive();
+  }
+
+  private finishSwipe() {
+    this.swipeTracking = false;
+    this.activeTouchId = null;
+    this.swipeAxisLocked = false;
     this.swipeAnimating.set(true);
 
     const offset = this.swipeOffset();
@@ -231,6 +328,8 @@ export class TaskItem implements OnDestroy {
     if (moved < 8) {
       if (this.swipeOpen() !== 'none') {
         this.resetSwipe();
+      } else {
+        this.updateSwipeActive();
       }
       return;
     }
@@ -252,19 +351,6 @@ export class TaskItem implements OnDestroy {
     this.resetSwipe();
   }
 
-  onPressStart(event: PointerEvent) {
-    if (this.dragDisabled() || event.pointerType === 'mouse') return;
-
-    this.clearPressState();
-    this.pressTimer = setTimeout(() => {
-      this.isPressing.set(true);
-    }, Math.max(0, this.dragStartDelay() - 80));
-  }
-
-  onPressEnd() {
-    this.clearPressState();
-  }
-
   private onDragStarted() {
     this.isDragging.set(true);
     this.clearPressState();
@@ -282,6 +368,7 @@ export class TaskItem implements OnDestroy {
     this.swipeOpen.set(direction);
     this.swipeAnimating.set(true);
     this.swipeOffset.set(direction === 'left' ? this.leftRevealWidth() : -SWIPE_ACTION_WIDTH);
+    this.updateSwipeActive();
   }
 
   private resetSwipe(animate = true) {
@@ -289,6 +376,11 @@ export class TaskItem implements OnDestroy {
     this.swipeOffset.set(0);
     this.swipeOpen.set('none');
     swipeCloseRegistry.delete(this.closeSwipe);
+    this.updateSwipeActive();
+  }
+
+  private updateSwipeActive() {
+    this.swipeActive.set(this.swipeTracking || this.swipeOpen() !== 'none');
   }
 
   private clearPressState() {

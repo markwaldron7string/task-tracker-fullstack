@@ -401,7 +401,6 @@
   .task-swipe {
     position: relative;
     overflow: hidden;
-    contain: paint;
     background: var(--overlay-surface-muted, var(--overlay-surface, var(--surface)));
     border-bottom: 1px solid var(--border-light);
     --swipe-action-width: 72px;
@@ -468,13 +467,13 @@
   .task-swipe-panel {
     position: relative;
     z-index: 1;
+    width: 100%;
+    box-sizing: border-box;
     background-color: var(--overlay-surface, var(--surface));
     background-image: var(--overlay-sheen, none);
-    touch-action: manipulation;
+    touch-action: none;
     will-change: transform;
     overflow: hidden;
-    backface-visibility: hidden;
-    box-shadow: 0 1px 0 0 var(--overlay-surface, var(--surface));
   }
 
   .task-swipe-panel--animating {
@@ -485,7 +484,7 @@
     display: flex;
     align-items: flex-start;
     gap: 0.45rem;
-    padding: 0.65rem 0;
+    padding: 0.7rem 0.4rem 0.7rem 0.65rem;
     min-width: 0;
   }
 
@@ -518,6 +517,7 @@
     width: 2rem;
     height: 2rem;
     margin-top: -0.05rem;
+    margin-right: 0.1rem;
     border-radius: 6px;
     background: var(--overlay-surface-muted, var(--surface-hover));
     border: 1px solid var(--border-light);
@@ -531,14 +531,14 @@
 
   .task-controls {
     display: block;
-    padding: 0 0 0.55rem;
+    padding: 0 0.4rem 0.55rem 0.65rem;
   }
 
   .task-chips {
     display: flex;
     flex-wrap: wrap;
     gap: 0.35rem;
-    margin-left: 2.35rem;
+    margin-left: 1.85rem;
     margin-bottom: 0.35rem;
   }
 
