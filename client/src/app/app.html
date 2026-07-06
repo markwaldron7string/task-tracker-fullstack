@@ -28,7 +28,7 @@
   </div>
 </header>
 
-@if (appUpdate.updateReady() && (!onboarding.active() || appUpdate.unrecoverable())) {
+@if (appUpdate.updateReady()) {
   <section class="app-update-card" role="status" aria-live="polite" aria-label="App update">
     <div class="app-update-copy">
       <strong>{{ appUpdate.title() }}</strong>

@@ -25,6 +25,8 @@
 }
 
 .app-update-card {
+  position: relative;
+  z-index: 130;
   display: flex;
   align-items: center;
   justify-content: space-between;

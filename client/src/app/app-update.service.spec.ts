@@ -18,6 +18,7 @@ describe('AppUpdateService', () => {
   let storage: Storage;
   let prepareForAppRefresh: ReturnType<typeof vi.fn>;
   let reload: ReturnType<typeof vi.fn>;
+  let fetchMock: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     storage = createStorage();
@@ -34,8 +35,13 @@ describe('AppUpdateService', () => {
     });
     Object.defineProperty(window, 'location', {
       configurable: true,
-      value: { ...window.location, reload },
+      value: { ...window.location, reload, hostname: 'task-tracker-fullstack-nu.vercel.app' },
     });
+
+    fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+
+    document.body.innerHTML = '<script src="main-OLDHASH1.js" type="module"></script>';
 
     TestBed.configureTestingModule({
       providers: [
@@ -51,6 +57,11 @@ describe('AppUpdateService', () => {
     service = TestBed.inject(AppUpdateService);
   });
 
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    document.body.innerHTML = '';
+  });
+
   it('flushes tasks and keeps local data on update refresh', async () => {
     await expect(service.refresh()).rejects.toThrow('reload');
 
@@ -63,6 +74,40 @@ describe('AppUpdateService', () => {
 
     expect(prepareForAppRefresh).not.toHaveBeenCalled();
     expect(storage.getItem('ttf-offline-tasks-v1')).toBeNull();
+  });
+
+  it('detects a newer deploy via live index.html hash', async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      text: () => Promise.resolve('<script src="main-NEWHASH2.js" type="module"></script>'),
+    });
+
+    await service.checkNow();
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringMatching(/ngsw-bypass=true/),
+      expect.objectContaining({
+        cache: 'no-store',
+        headers: { 'ngsw-bypass': 'true' },
+      }),
+    );
+    expect(service.updateReady()).toBe(true);
+  });
+
+  it('re-shows the update card after dismiss when a newer deploy is still available', async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      text: () => Promise.resolve('<script src="main-NEWHASH2.js" type="module"></script>'),
+    });
+
+    await service.checkNow();
+    expect(service.updateReady()).toBe(true);
+
+    service.dismiss();
+    expect(service.updateReady()).toBe(false);
+
+    await service.checkNow();
+    expect(service.updateReady()).toBe(true);
   });
 
   function createStorage(): Storage {

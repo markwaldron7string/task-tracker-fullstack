@@ -155,7 +155,10 @@ export class AppUpdateService {
     if (!this.loadedBundleHash || this.updateReady()) return;
 
     try {
-      const response = await fetch(this.buildCheckUrl(), { cache: 'no-store' });
+      const response = await fetch(this.buildCheckUrl(), {
+        cache: 'no-store',
+        headers: { 'ngsw-bypass': 'true' },
+      });
       if (!response.ok) return;
 
       const html = await response.text();
@@ -179,6 +182,8 @@ export class AppUpdateService {
     const baseHref = document.querySelector('base')?.getAttribute('href') ?? '/';
     const url = new URL(baseHref, window.location.origin);
     url.searchParams.set('update-check', String(Date.now()));
+    // Bypass the Angular service worker so we read the live deploy hash.
+    url.searchParams.set('ngsw-bypass', 'true');
     return url.toString();
   }
 
@@ -189,7 +194,7 @@ export class AppUpdateService {
   }
 
   private extractMainBundleHash(source: string): string | null {
-    const match = source.match(/main-([A-Z0-9]+)\.js/);
+    const match = source.match(/main-([A-Za-z0-9]+)\.js/);
     return match?.[1] ?? null;
   }
 }
