@@ -77,15 +77,23 @@ describe('AppUpdateService', () => {
   });
 
   it('detects a newer deploy via live index.html hash', async () => {
-    fetchMock.mockResolvedValue({
-      ok: true,
-      text: () => Promise.resolve('<script src="main-NEWHASH2.js" type="module"></script>'),
+    fetchMock.mockImplementation((url: string) => {
+      if (url.includes('ngsw.json')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ assetGroups: [{ urls: ['/main-NEWHASH2.js'] }] }),
+        });
+      }
+      return Promise.resolve({
+        ok: true,
+        text: () => Promise.resolve('<script src="main-NEWHASH2.js" type="module"></script>'),
+      });
     });
 
     await service.checkNow();
 
     expect(fetchMock).toHaveBeenCalledWith(
-      expect.stringMatching(/ngsw-bypass=true/),
+      expect.stringMatching(/ngsw\.json.*ngsw-bypass=true/),
       expect.objectContaining({
         cache: 'no-store',
         headers: { 'ngsw-bypass': 'true' },
@@ -95,9 +103,17 @@ describe('AppUpdateService', () => {
   });
 
   it('re-shows the update card after dismiss when a newer deploy is still available', async () => {
-    fetchMock.mockResolvedValue({
-      ok: true,
-      text: () => Promise.resolve('<script src="main-NEWHASH2.js" type="module"></script>'),
+    fetchMock.mockImplementation((url: string) => {
+      if (url.includes('ngsw.json')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ assetGroups: [{ urls: ['/main-NEWHASH2.js'] }] }),
+        });
+      }
+      return Promise.resolve({
+        ok: true,
+        text: () => Promise.resolve('<script src="main-NEWHASH2.js" type="module"></script>'),
+      });
     });
 
     await service.checkNow();

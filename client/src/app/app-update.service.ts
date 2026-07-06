@@ -2,12 +2,16 @@ import { DestroyRef, Injectable, NgZone, computed, inject, signal } from '@angul
 import { SwUpdate } from '@angular/service-worker';
 import { TaskStore } from './task-store';
 
-const FIRST_CHECK_DELAY_MS = 15_000;
+const STARTUP_CHECK_DELAYS_MS = [0, 2_000, 10_000];
 const UPDATE_CHECK_INTERVAL_MS = 5 * 60_000;
 
 export interface AppRefreshOptions {
   /** Wipe persisted app data (manual refresh). Update refresh keeps user data. */
   clearUserData?: boolean;
+}
+
+interface NgswManifest {
+  assetGroups?: Array<{ urls?: string[] }>;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -22,8 +26,6 @@ export class AppUpdateService {
   readonly activating = signal(false);
   readonly unrecoverable = signal(false);
   readonly checking = signal(false);
-
-  private readonly loadedBundleHash = this.readCurrentBundleHash();
 
   readonly title = computed(() =>
     this.unrecoverable() ? 'App refresh needed' : 'New update available'
@@ -113,29 +115,35 @@ export class AppUpdateService {
     if (!this.shouldCheckForUpdates()) return;
 
     this.ngZone.runOutsideAngular(() => {
-      const firstCheckId = window.setTimeout(() => {
-        this.ngZone.run(() => void this.checkNow());
-      }, FIRST_CHECK_DELAY_MS);
+      const startupCheckIds = STARTUP_CHECK_DELAYS_MS.map(delay =>
+        window.setTimeout(() => {
+          this.ngZone.run(() => void this.checkNow());
+        }, delay)
+      );
 
       const intervalId = window.setInterval(() => {
         this.ngZone.run(() => void this.checkNow());
       }, UPDATE_CHECK_INTERVAL_MS);
 
-      const checkOnFocus = () => this.ngZone.run(() => void this.checkNow());
+      const checkOnResume = () => this.ngZone.run(() => void this.checkNow());
       const checkOnVisibility = () => {
         if (document.visibilityState === 'visible') {
-          this.ngZone.run(() => void this.checkNow());
+          checkOnResume();
         }
       };
 
-      window.addEventListener('focus', checkOnFocus, { passive: true });
+      window.addEventListener('focus', checkOnResume, { passive: true });
       document.addEventListener('visibilitychange', checkOnVisibility);
+      window.addEventListener('pageshow', checkOnResume, { passive: true });
 
       this.destroyRef.onDestroy(() => {
-        window.clearTimeout(firstCheckId);
+        for (const id of startupCheckIds) {
+          window.clearTimeout(id);
+        }
         window.clearInterval(intervalId);
-        window.removeEventListener('focus', checkOnFocus);
+        window.removeEventListener('focus', checkOnResume);
         document.removeEventListener('visibilitychange', checkOnVisibility);
+        window.removeEventListener('pageshow', checkOnResume);
       });
     });
   }
@@ -152,23 +160,57 @@ export class AppUpdateService {
   }
 
   private async checkDeployHash(): Promise<void> {
-    if (!this.loadedBundleHash || this.updateReady()) return;
+    const loadedHash = this.readCurrentBundleHash();
+    if (!loadedHash || this.updateReady()) return;
 
     try {
-      const response = await fetch(this.buildCheckUrl(), {
-        cache: 'no-store',
-        headers: { 'ngsw-bypass': 'true' },
-      });
-      if (!response.ok) return;
-
-      const html = await response.text();
-      const latestHash = this.extractMainBundleHash(html);
-
-      if (latestHash && latestHash !== this.loadedBundleHash) {
+      const latestHash = await this.fetchLatestMainBundleHash();
+      if (latestHash && latestHash !== loadedHash) {
         this.updateReady.set(true);
       }
     } catch {
       // Ignore network errors during background checks.
+    }
+  }
+
+  private async fetchLatestMainBundleHash(): Promise<string | null> {
+    const fromManifest = await this.fetchMainHashFromManifest();
+    if (fromManifest) return fromManifest;
+    return this.fetchMainHashFromIndex();
+  }
+
+  private async fetchMainHashFromManifest(): Promise<string | null> {
+    const response = await this.fetchBypass('/ngsw.json');
+    if (!response) return null;
+
+    const manifest = await response.json() as NgswManifest;
+    for (const group of manifest.assetGroups ?? []) {
+      for (const asset of group.urls ?? []) {
+        const hash = this.extractMainBundleHash(asset);
+        if (hash) return hash;
+      }
+    }
+
+    return null;
+  }
+
+  private async fetchMainHashFromIndex(): Promise<string | null> {
+    const response = await this.fetchBypass('/');
+    if (!response) return null;
+
+    const html = await response.text();
+    return this.extractMainBundleHash(html);
+  }
+
+  private async fetchBypass(path: string): Promise<Response | null> {
+    try {
+      const response = await fetch(this.buildBypassUrl(path), {
+        cache: 'no-store',
+        headers: { 'ngsw-bypass': 'true' },
+      });
+      return response.ok ? response : null;
+    } catch {
+      return null;
     }
   }
 
@@ -178,9 +220,8 @@ export class AppUpdateService {
     return host !== 'localhost' && host !== '127.0.0.1';
   }
 
-  private buildCheckUrl(): string {
-    const baseHref = document.querySelector('base')?.getAttribute('href') ?? '/';
-    const url = new URL(baseHref, window.location.origin);
+  private buildBypassUrl(path: string): string {
+    const url = new URL(path, window.location.origin);
     url.searchParams.set('update-check', String(Date.now()));
     // Bypass the Angular service worker so we read the live deploy hash.
     url.searchParams.set('ngsw-bypass', 'true');
@@ -189,12 +230,25 @@ export class AppUpdateService {
 
   private readCurrentBundleHash(): string | null {
     const script = document.querySelector('script[src*="main-"]') as HTMLScriptElement | null;
-    if (!script?.src) return null;
-    return this.extractMainBundleHash(script.src);
+    if (script?.src) {
+      const hash = this.extractMainBundleHash(script.src);
+      if (hash) return hash;
+    }
+
+    if (typeof performance !== 'undefined') {
+      const entry = performance.getEntriesByType('resource')
+        .find(item => /main-[A-Za-z0-9]+\.js/i.test(item.name));
+      if (entry) {
+        const hash = this.extractMainBundleHash(entry.name);
+        if (hash) return hash;
+      }
+    }
+
+    return null;
   }
 
   private extractMainBundleHash(source: string): string | null {
-    const match = source.match(/main-([A-Za-z0-9]+)\.js/);
+    const match = source.match(/main-([A-Za-z0-9]+)\.js/i);
     return match?.[1] ?? null;
   }
 }
