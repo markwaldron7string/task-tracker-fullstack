@@ -28,23 +28,15 @@
   </div>
 </header>
 
-<main>
-  <router-outlet />
-</main>
-
-<app-onboarding-walkthrough />
-
-<app-pro-assistant />
-
 @if (appUpdate.updateReady() && (!onboarding.active() || appUpdate.unrecoverable())) {
-  <aside class="app-update-toast" role="status" aria-live="polite" aria-label="App update">
+  <section class="app-update-card" role="status" aria-live="polite" aria-label="App update">
     <div class="app-update-copy">
       <strong>{{ appUpdate.title() }}</strong>
       <span>{{ appUpdate.body() }}</span>
     </div>
     <div class="app-update-actions">
       @if (!appUpdate.unrecoverable()) {
-        <button type="button" class="app-update-later" (click)="appUpdate.dismiss()">Later</button>
+        <button type="button" class="app-update-later" (click)="appUpdate.dismiss()">Not now</button>
       }
       <button
         type="button"
@@ -53,8 +45,16 @@
         (click)="appUpdate.refresh()"
       >{{ appUpdate.activating() ? 'Refreshing...' : 'Refresh' }}</button>
     </div>
-  </aside>
+  </section>
 }
+
+<main>
+  <router-outlet />
+</main>
+
+<app-onboarding-walkthrough />
+
+<app-pro-assistant />
 
 @if (appUpdate.enabled && !appUpdate.updateReady() && !onboarding.active()) {
   <button

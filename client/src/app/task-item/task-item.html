@@ -20,14 +20,6 @@
       </svg>
     </button>
   }
-  <button
-    type="button"
-    class="priority-flag"
-    [attr.data-priority]="priority()"
-    (click)="onCyclePriority()"
-    [title]="'Priority: ' + priority() + ' (click to change)'"
-    [attr.aria-label]="'Priority: ' + priority()"
-  >&#9873;</button>
   <label class="task-label">
     <input class="task-checkbox" type="checkbox" [checked]="task().done" (change)="onToggle()" />
     @if (position(); as num) {

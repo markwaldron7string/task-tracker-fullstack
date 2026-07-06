@@ -58,9 +58,6 @@ export class TaskItem implements OnDestroy {
   remove = output<number>();
   edit = output<{ id: number; title: string }>();
   update = output<{ id: number; title: string; priority: EnrichedTask['priority']; due: string | null; estimateMinutes: number | null; done: boolean }>();
-  cyclePriority = output<number>();
-
-  protected priority = computed(() => this.task().priority ?? 'none');
   protected hasChecklist = computed(() => (this.task().checklist?.length ?? 0) > 0);
   protected masterEnabled = computed(() => this.reminders.isMasterEnabled());
   protected reminderEnabled = computed(() => this.reminders.isEnabled(this.task().id));
@@ -99,11 +96,6 @@ export class TaskItem implements OnDestroy {
     if (this.tourDemoLocked()) return;
     this.remove.emit(this.task().id);
   }
-  onCyclePriority(): void {
-    if (this.tourDemoLocked()) return;
-    this.cyclePriority.emit(this.task().id);
-  }
-
   openEditDialog(event: Event): void {
     if (this.tourDemoLocked()) return;
     event.stopPropagation();

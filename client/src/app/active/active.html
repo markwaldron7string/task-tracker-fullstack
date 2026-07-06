@@ -9,7 +9,6 @@
         (remove)="store.removeTask($event)"
         (edit)="store.editTask($event.id, $event.title)"
         (update)="store.updateTask($event.id, $event)"
-        (cyclePriority)="store.cyclePriority($event)"
       />
     } @empty {
       <div class="empty-state">All caught up — nothing active!</div>

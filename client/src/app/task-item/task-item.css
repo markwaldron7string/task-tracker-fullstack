@@ -90,35 +90,6 @@
   flex-shrink: 0;
 }
 
-.priority-flag {
-  flex-shrink: 0;
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-size: 0.95rem;
-  line-height: 1;
-  padding: 0.1rem;
-  color: var(--text-faint);
-  transition: opacity 0.15s, transform 0.1s, color 0.15s;
-}
-
-.priority-flag:hover {
-  color: var(--text-muted);
-  transform: scale(1.15);
-}
-
-.priority-flag[data-priority="low"] {
-  color: var(--priority-low);
-}
-
-.priority-flag[data-priority="medium"] {
-  color: var(--priority-medium);
-}
-
-.priority-flag[data-priority="high"] {
-  color: var(--priority-high);
-}
-
 .task-label {
   display: flex;
   align-items: center;
@@ -378,8 +349,9 @@
 
 @media (max-width: 640px) {
   :host {
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: 0.5rem 0.65rem;
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto;
+    gap: 0.55rem;
     padding: 0.85rem 0;
   }
 
@@ -390,17 +362,15 @@
   .task-head {
     align-items: flex-start;
     min-width: 0;
+    width: 100%;
   }
 
   .task-label {
     align-items: flex-start;
+    padding-right: 0;
   }
 
   .task-checkbox {
-    margin-top: 0.15rem;
-  }
-
-  .priority-flag {
     margin-top: 0.15rem;
   }
 
@@ -414,8 +384,10 @@
   }
 
   .task-controls {
-    flex-direction: column;
-    align-items: flex-end;
+    width: 100%;
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-end;
     gap: 0.35rem;
   }
 

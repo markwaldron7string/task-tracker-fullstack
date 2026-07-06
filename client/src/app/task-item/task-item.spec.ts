@@ -34,6 +34,7 @@ describe('TaskItem', () => {
       id: 1,
       title: 'Test task',
       done: false,
+      sortOrder: 1,
       priority: 'none',
       due: null,
       estimateMinutes: null,

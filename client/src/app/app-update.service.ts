@@ -1,8 +1,8 @@
 import { DestroyRef, Injectable, NgZone, computed, inject, signal } from '@angular/core';
 import { SwUpdate } from '@angular/service-worker';
 
-const FIRST_CHECK_DELAY_MS = 45_000;
-const UPDATE_CHECK_INTERVAL_MS = 15 * 60_000;
+const FIRST_CHECK_DELAY_MS = 15_000;
+const UPDATE_CHECK_INTERVAL_MS = 5 * 60_000;
 
 @Injectable({ providedIn: 'root' })
 export class AppUpdateService {
@@ -16,51 +16,55 @@ export class AppUpdateService {
   readonly unrecoverable = signal(false);
   readonly checking = signal(false);
 
+  private readonly loadedBundleHash = this.readCurrentBundleHash();
+
   readonly title = computed(() =>
-    this.unrecoverable() ? 'App refresh needed' : 'New version available'
+    this.unrecoverable() ? 'App refresh needed' : 'New update available'
   );
 
   readonly body = computed(() =>
     this.unrecoverable()
       ? 'Refresh this app to recover from an old cached version.'
-      : 'Refresh this app to use the latest fixes.'
+      : 'A newer version of Task Tracker was deployed. Refresh to get the latest changes.'
   );
 
   constructor() {
-    if (!this.swUpdate.isEnabled || typeof window === 'undefined') return;
+    if (typeof window === 'undefined') return;
 
-    const versionSub = this.swUpdate.versionUpdates.subscribe(event => {
-      if (event.type === 'VERSION_READY') {
+    if (this.swUpdate.isEnabled) {
+      const versionSub = this.swUpdate.versionUpdates.subscribe(event => {
+        if (event.type === 'VERSION_READY') {
+          this.updateReady.set(true);
+        }
+        if (event.type === 'VERSION_INSTALLATION_FAILED') {
+          console.warn('App update failed to install.', event.error);
+        }
+      });
+
+      const unrecoverableSub = this.swUpdate.unrecoverable.subscribe(event => {
+        console.warn('App is in an unrecoverable service worker state.', event.reason);
+        this.unrecoverable.set(true);
         this.updateReady.set(true);
-      }
-      if (event.type === 'VERSION_INSTALLATION_FAILED') {
-        console.warn('App update failed to install.', event.error);
-      }
-    });
+      });
 
-    const unrecoverableSub = this.swUpdate.unrecoverable.subscribe(event => {
-      console.warn('App is in an unrecoverable service worker state.', event.reason);
-      this.unrecoverable.set(true);
-      this.updateReady.set(true);
-    });
-
-    this.destroyRef.onDestroy(() => {
-      versionSub.unsubscribe();
-      unrecoverableSub.unsubscribe();
-    });
+      this.destroyRef.onDestroy(() => {
+        versionSub.unsubscribe();
+        unrecoverableSub.unsubscribe();
+      });
+    }
 
     this.scheduleUpdateChecks();
   }
 
   async checkNow(): Promise<void> {
-    if (!this.swUpdate.isEnabled || this.checking() || this.updateReady()) return;
+    if (this.checking() || this.updateReady()) return;
 
     this.checking.set(true);
     try {
-      const ready = await this.swUpdate.checkForUpdate();
-      if (ready) this.updateReady.set(true);
-    } catch (error) {
-      console.warn('App update check failed.', error);
+      await Promise.all([
+        this.checkServiceWorkerUpdate(),
+        this.checkDeployHash(),
+      ]);
     } finally {
       this.checking.set(false);
     }
@@ -71,18 +75,17 @@ export class AppUpdateService {
 
     this.activating.set(true);
     try {
-      if (!this.unrecoverable()) {
+      if (this.swUpdate.isEnabled && !this.unrecoverable()) {
         await this.swUpdate.activateUpdate().catch(() => false);
       }
-      // Clear all Cache Storage so the browser fetches a fresh build.
       if ('caches' in window) {
         const keys = await caches.keys();
         await Promise.all(keys.map(k => caches.delete(k)));
       }
-      // Wipe all persisted state so the app restarts from defaults —
-      // tutorials will run again, theme resets, tasks cleared locally.
-      try { localStorage.clear(); } catch { /* storage may be unavailable */ }
-      try { sessionStorage.clear(); } catch { /* storage may be unavailable */ }
+      if (this.unrecoverable()) {
+        try { localStorage.clear(); } catch { /* storage may be unavailable */ }
+        try { sessionStorage.clear(); } catch { /* storage may be unavailable */ }
+      }
     } finally {
       window.location.reload();
     }
@@ -95,6 +98,8 @@ export class AppUpdateService {
   }
 
   private scheduleUpdateChecks(): void {
+    if (!this.shouldCheckForUpdates()) return;
+
     this.ngZone.runOutsideAngular(() => {
       const firstCheckId = window.setTimeout(() => {
         this.ngZone.run(() => void this.checkNow());
@@ -121,5 +126,58 @@ export class AppUpdateService {
         document.removeEventListener('visibilitychange', checkOnVisibility);
       });
     });
+  }
+
+  private async checkServiceWorkerUpdate(): Promise<void> {
+    if (!this.swUpdate.isEnabled || this.updateReady()) return;
+
+    try {
+      const ready = await this.swUpdate.checkForUpdate();
+      if (ready) this.updateReady.set(true);
+    } catch (error) {
+      console.warn('App update check failed.', error);
+    }
+  }
+
+  private async checkDeployHash(): Promise<void> {
+    if (!this.loadedBundleHash || this.updateReady()) return;
+
+    try {
+      const response = await fetch(this.buildCheckUrl(), { cache: 'no-store' });
+      if (!response.ok) return;
+
+      const html = await response.text();
+      const latestHash = this.extractMainBundleHash(html);
+
+      if (latestHash && latestHash !== this.loadedBundleHash) {
+        this.updateReady.set(true);
+      }
+    } catch {
+      // Ignore network errors during background checks.
+    }
+  }
+
+  private shouldCheckForUpdates(): boolean {
+    if (typeof window === 'undefined') return false;
+    const host = window.location.hostname;
+    return host !== 'localhost' && host !== '127.0.0.1';
+  }
+
+  private buildCheckUrl(): string {
+    const baseHref = document.querySelector('base')?.getAttribute('href') ?? '/';
+    const url = new URL(baseHref, window.location.origin);
+    url.searchParams.set('update-check', String(Date.now()));
+    return url.toString();
+  }
+
+  private readCurrentBundleHash(): string | null {
+    const script = document.querySelector('script[src*="main-"]') as HTMLScriptElement | null;
+    if (!script?.src) return null;
+    return this.extractMainBundleHash(script.src);
+  }
+
+  private extractMainBundleHash(source: string): string | null {
+    const match = source.match(/main-([A-Z0-9]+)\.js/);
+    return match?.[1] ?? null;
   }
 }

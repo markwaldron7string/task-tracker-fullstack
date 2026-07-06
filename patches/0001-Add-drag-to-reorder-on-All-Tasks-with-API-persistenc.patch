@@ -1,0 +1,964 @@
+From 022f7fddaa69060e4b2cb7e03b13c7d84d44b941 Mon Sep 17 00:00:00 2001
+From: Cursor Agent <cursoragent@cursor.com>
+Date: Sun, 5 Jul 2026 23:18:13 +0000
+Subject: [PATCH] Add drag-to-reorder on All Tasks with API persistence
+
+- Add SortOrder column and PATCH /api/tasks/reorder endpoint
+- Return tasks ordered by sortOrder from GET /api/tasks
+- Assign sortOrder on create and sync reorder through offline queue
+- Use manual list order on All Tasks with CDK drag-and-drop
+- Support long-press pop-out drag on touch devices
+---
+ client/package.json                           |   1 +
+ client/src/app/task-day-groups.spec.ts        |   1 +
+ client/src/app/task-domains.spec.ts           |   2 +
+ client/src/app/task-item/task-item.css        |  42 ++++++-
+ client/src/app/task-item/task-item.html       |  21 ++++
+ client/src/app/task-item/task-item.ts         |  72 +++++++++++-
+ client/src/app/task-list/task-list.css        |  21 ++++
+ client/src/app/task-list/task-list.html       |  14 ++-
+ client/src/app/task-list/task-list.ts         |  23 +++-
+ client/src/app/task-store.ts                  | 106 +++++++++++++++++-
+ client/yarn.lock                              |   8 ++
+ ...60705230910_AddSortOrderToTask.Designer.cs |  67 +++++++++++
+ .../20260705230910_AddSortOrderToTask.cs      |  31 +++++
+ .../Migrations/TaskDbContextModelSnapshot.cs  |   3 +
+ server/Program.cs                             |  43 ++++++-
+ tests/TaskTracker.Api.Tests/TaskApiTests.cs   |  33 ++++++
+ 16 files changed, 478 insertions(+), 10 deletions(-)
+ create mode 100644 server/Migrations/20260705230910_AddSortOrderToTask.Designer.cs
+ create mode 100644 server/Migrations/20260705230910_AddSortOrderToTask.cs
+
+diff --git a/client/package.json b/client/package.json
+index 2d46658..03f0e1e 100644
+--- a/client/package.json
++++ b/client/package.json
+@@ -12,6 +12,7 @@
+   "private": true,
+   "packageManager": "yarn@1.22.22",
+   "dependencies": {
++    "@angular/cdk": "^22.0.0",
+     "@angular/common": "^22.0.0",
+     "@angular/compiler": "^22.0.0",
+     "@angular/core": "^22.0.0",
+diff --git a/client/src/app/task-day-groups.spec.ts b/client/src/app/task-day-groups.spec.ts
+index e926eba..a423ad8 100644
+--- a/client/src/app/task-day-groups.spec.ts
++++ b/client/src/app/task-day-groups.spec.ts
+@@ -7,6 +7,7 @@ describe('buildDayTaskGroups', () => {
+     id: 1,
+     title: 'Task',
+     done: false,
++    sortOrder: 1,
+     priority: 'none',
+     due: '2026-06-25',
+     estimateMinutes: null,
+diff --git a/client/src/app/task-domains.spec.ts b/client/src/app/task-domains.spec.ts
+index 2428c88..09f9465 100644
+--- a/client/src/app/task-domains.spec.ts
++++ b/client/src/app/task-domains.spec.ts
+@@ -14,6 +14,7 @@ describe('countOpenDayTasks', () => {
+     id: 1,
+     title: 'Day 1',
+     done: false,
++    sortOrder: 1,
+     priority: 'none',
+     due: '2026-06-25',
+     estimateMinutes: null,
+@@ -46,6 +47,7 @@ describe('countCompletedDayTasks', () => {
+     id: 1,
+     title: 'Day 1',
+     done: false,
++    sortOrder: 1,
+     priority: 'none',
+     due: '2026-06-25',
+     estimateMinutes: null,
+diff --git a/client/src/app/task-item/task-item.css b/client/src/app/task-item/task-item.css
+index 7e72eb1..d683c8d 100644
+--- a/client/src/app/task-item/task-item.css
++++ b/client/src/app/task-item/task-item.css
+@@ -16,7 +16,47 @@
+   padding: 0.7rem 0.5rem;
+   border-bottom: 1px solid var(--border-light);
+   border-radius: 4px;
+-  transition: background 0.12s;
++  transition: background 0.12s, transform 0.18s ease, box-shadow 0.18s ease;
++}
++
++:host(.task-item-pressing) {
++  transform: scale(1.02);
++  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
++  z-index: 2;
++}
++
++:host(.task-item-dragging) {
++  opacity: 0.35;
++}
++
++.drag-handle {
++  display: inline-flex;
++  align-items: center;
++  justify-content: center;
++  width: 1.35rem;
++  height: 1.35rem;
++  padding: 0;
++  border: none;
++  border-radius: 4px;
++  background: transparent;
++  color: var(--text-faint);
++  cursor: grab;
++  flex-shrink: 0;
++  touch-action: none;
++}
++
++.drag-handle:active {
++  cursor: grabbing;
++}
++
++.drag-handle svg {
++  width: 1rem;
++  height: 1rem;
++  fill: currentColor;
++}
++
++:host(:hover) .drag-handle {
++  color: var(--text-muted);
+ }
+ 
+ :host:last-child {
+diff --git a/client/src/app/task-item/task-item.html b/client/src/app/task-item/task-item.html
+index 1fada5c..1e2259e 100644
+--- a/client/src/app/task-item/task-item.html
++++ b/client/src/app/task-item/task-item.html
+@@ -1,4 +1,25 @@
+ <div class="task-head">
++  @if (dragEnabled()) {
++    <button
++      type="button"
++      class="drag-handle"
++      cdkDragHandle
++      aria-label="Drag to reorder task"
++      (pointerdown)="onPressStart($event)"
++      (pointerup)="onPressEnd()"
++      (pointercancel)="onPressEnd()"
++      (pointerleave)="onPressEnd()"
++    >
++      <svg viewBox="0 0 24 24" aria-hidden="true">
++        <circle cx="9" cy="7" r="1.4" />
++        <circle cx="15" cy="7" r="1.4" />
++        <circle cx="9" cy="12" r="1.4" />
++        <circle cx="15" cy="12" r="1.4" />
++        <circle cx="9" cy="17" r="1.4" />
++        <circle cx="15" cy="17" r="1.4" />
++      </svg>
++    </button>
++  }
+   <button
+     type="button"
+     class="priority-flag"
+diff --git a/client/src/app/task-item/task-item.ts b/client/src/app/task-item/task-item.ts
+index 3198b98..508a3e3 100644
+--- a/client/src/app/task-item/task-item.ts
++++ b/client/src/app/task-item/task-item.ts
+@@ -1,4 +1,5 @@
+-import { Component, computed, inject, input, output } from '@angular/core';
++import { CdkDrag, CdkDragHandle } from '@angular/cdk/drag-drop';
++import { Component, computed, effect, inject, input, OnDestroy, output, signal } from '@angular/core';
+ import { OnboardingService } from '../onboarding/onboarding.service';
+ import { ProService } from '../pro.service';
+ import { TaskDetailsOverlayService } from '../task-details-overlay.service';
+@@ -11,30 +12,48 @@ import { EnrichedTask } from '../task-store';
+ 
+ @Component({
+   selector: 'app-task-item',
++  hostDirectives: [
++    {
++      directive: CdkDrag,
++      inputs: ['cdkDragStartDelay: dragStartDelay', 'cdkDragBoundary: dragBoundary'],
++    },
++  ],
+   host: {
+     class: 'task-item-host',
+     '[attr.data-tour]': 'position() === 1 ? "first-task" : null',
+     '[class.tour-demo-locked]': 'tourDemoLocked()',
++    '[class.task-item-dragging]': 'isDragging()',
++    '[class.task-item-pressing]': 'isPressing()',
+   },
+-  imports: [],
++  imports: [CdkDragHandle],
+   templateUrl: './task-item.html',
+   styleUrl: './task-item.css',
+ })
+-export class TaskItem {
++export class TaskItem implements OnDestroy {
+   private editOverlay = inject(TaskEditOverlayService);
+   private detailsOverlay = inject(TaskDetailsOverlayService);
+   private reminderOverlay = inject(TaskReminderOverlayService);
+   private reminders = inject(TaskReminderService);
+   private onboarding = inject(OnboardingService);
+   private pro = inject(ProService);
++  private drag = inject(CdkDrag);
+ 
+   task = input.required<EnrichedTask>();
+   position = input<number>();
++  dragEnabled = input(true);
++  dragStartDelay = input(0);
++  readonly dragBoundary = '.task-list';
++
+   protected showReminders = computed(() => this.pro.unlocked());
+   protected tourDemoLocked = computed(() => this.onboarding.introTaskControlsStepActive());
+   protected projectLabel = projectLabel;
+   protected isCoachPlan = isCoachPlan;
+   protected recurrenceLabel = recurrenceLabel;
++
++  isDragging = signal(false);
++  isPressing = signal(false);
++  dragDisabled = computed(() => !this.dragEnabled() || this.tourDemoLocked());
++
+   toggle = output<number>();
+   remove = output<number>();
+   edit = output<{ id: number; title: string }>();
+@@ -56,6 +75,22 @@ export class TaskItem {
+     return `${items.filter(item => item.done).length}/${items.length}`;
+   });
+ 
++  private pressTimer: ReturnType<typeof setTimeout> | null = null;
++  private readonly dragStartedSub = this.drag.started.subscribe(() => this.onDragStarted());
++  private readonly dragEndedSub = this.drag.ended.subscribe(() => this.onDragEnded());
++
++  constructor() {
++    effect(() => {
++      this.drag.disabled = this.dragDisabled();
++    });
++  }
++
++  ngOnDestroy() {
++    this.dragStartedSub.unsubscribe();
++    this.dragEndedSub.unsubscribe();
++    this.clearPressState();
++  }
++
+   onToggle(): void {
+     if (this.tourDemoLocked()) return;
+     this.toggle.emit(this.task().id);
+@@ -86,4 +121,35 @@ export class TaskItem {
+     event.stopPropagation();
+     this.reminderOverlay.open(this.task());
+   }
++
++  onPressStart(event: PointerEvent) {
++    if (this.dragDisabled() || event.pointerType === 'mouse') return;
++
++    this.clearPressState();
++    this.pressTimer = setTimeout(() => {
++      this.isPressing.set(true);
++    }, Math.max(0, this.dragStartDelay() - 80));
++  }
++
++  onPressEnd() {
++    this.clearPressState();
++  }
++
++  private onDragStarted() {
++    this.isDragging.set(true);
++    this.clearPressState();
++  }
++
++  private onDragEnded() {
++    this.isDragging.set(false);
++    this.clearPressState();
++  }
++
++  private clearPressState() {
++    if (this.pressTimer) {
++      clearTimeout(this.pressTimer);
++      this.pressTimer = null;
++    }
++    this.isPressing.set(false);
++  }
+ }
+diff --git a/client/src/app/task-list/task-list.css b/client/src/app/task-list/task-list.css
+index a75f59e..91ee6d6 100644
+--- a/client/src/app/task-list/task-list.css
++++ b/client/src/app/task-list/task-list.css
+@@ -304,6 +304,27 @@ h2 {
+   flex-direction: column;
+ }
+ 
++.task-list.cdk-drop-list-dragging .task-item-host:not(.cdk-drag-placeholder) {
++  transition: transform 200ms cubic-bezier(0, 0, 0.2, 1);
++}
++
++.task-list .cdk-drag-preview {
++  box-sizing: border-box;
++  border-radius: 8px;
++  background: var(--surface);
++  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.16);
++  transform: scale(1.03);
++  opacity: 0.98;
++}
++
++.task-list .cdk-drag-placeholder {
++  opacity: 0;
++}
++
++.task-list .cdk-drag-animating {
++  transition: transform 250ms cubic-bezier(0, 0, 0.2, 1);
++}
++
+ .empty-state {
+   text-align: center;
+   color: var(--text-muted);
+diff --git a/client/src/app/task-list/task-list.html b/client/src/app/task-list/task-list.html
+index dbcd356..6840c76 100644
+--- a/client/src/app/task-list/task-list.html
++++ b/client/src/app/task-list/task-list.html
+@@ -102,7 +102,14 @@
+     </div>
+   }
+ 
+-  <div class="task-list" role="list">
++  <div
++    class="task-list"
++    cdkDropList
++    cdkDropListOrientation="vertical"
++    [cdkDropListDisabled]="!canReorder()"
++    (cdkDropListDropped)="onTaskDrop($event)"
++    role="list"
++  >
+     @if (onboarding.introTourActive() && store.tasks().length === 0) {
+       <app-task-item
+         role="listitem"
+@@ -110,6 +117,7 @@
+         [class.tour-demo-task--hidden]="!introTaskControlsStepActive()"
+         [task]="tourDemoTask"
+         [position]="1"
++        [dragEnabled]="false"
+         (toggle)="ignoreTourDemoAction()"
+         (remove)="ignoreTourDemoAction()"
+         (edit)="ignoreTourDemoAction()"
+@@ -117,11 +125,13 @@
+         (cyclePriority)="ignoreTourDemoAction()"
+       />
+     }
+-    @for (task of store.filteredEnrichedTasks(); track task.id) {
++    @for (task of store.filteredManualOrderTasks(); track task.id) {
+       <app-task-item
+         role="listitem"
+         [task]="task"
+         [position]="$index + 1"
++        [dragEnabled]="canReorder()"
++        [dragStartDelay]="dragStartDelay()"
+         (toggle)="store.toggleTask($event)"
+         (remove)="store.removeTask($event)"
+         (edit)="store.editTask($event.id, $event.title)"
+diff --git a/client/src/app/task-list/task-list.ts b/client/src/app/task-list/task-list.ts
+index 31adfa1..a564151 100644
+--- a/client/src/app/task-list/task-list.ts
++++ b/client/src/app/task-list/task-list.ts
+@@ -1,3 +1,4 @@
++import { CdkDragDrop, DragDropModule } from '@angular/cdk/drag-drop';
+ import { Component, ElementRef, computed, effect, inject, signal } from '@angular/core';
+ import { injectOverlayDismissBinding } from '../overlay-dismiss.service';
+ import { OnboardingService } from '../onboarding/onboarding.service';
+@@ -12,6 +13,7 @@ const TOUR_DEMO_TASK: Task = {
+   id: 0,
+   title: 'Walk the dog',
+   done: false,
++  sortOrder: 0,
+   priority: 'none',
+   due: null,
+   estimateMinutes: null,
+@@ -24,7 +26,7 @@ const SEARCH_MIN_TASKS = 10;
+ 
+ @Component({
+   selector: 'app-task-list',
+-  imports: [TaskItem, TaskSummary],
++  imports: [TaskItem, TaskSummary, DragDropModule],
+   templateUrl: './task-list.html',
+   styleUrl: './task-list.css',
+ })
+@@ -41,6 +43,13 @@ export class TaskList {
+   protected introTaskControlsStepActive = this.onboarding.introTaskControlsStepActive;
+   protected tourDemoTask = TOUR_DEMO_TASK;
+   protected showSearch = computed(() => this.store.tasks().length >= SEARCH_MIN_TASKS);
++  readonly dragStartDelay = signal(this.getDragStartDelay());
++  protected canReorder = computed(
++    () =>
++      !this.store.searchQuery().trim() &&
++      !this.store.projectFilter() &&
++      !this.onboarding.introTourActive()
++  );
+ 
+   constructor() {
+     injectOverlayDismissBinding(() => {
+@@ -112,4 +121,16 @@ export class TaskList {
+   }
+ 
+   protected ignoreTourDemoAction(): void {}
++
++  protected onTaskDrop(event: CdkDragDrop<unknown>) {
++    this.store.reorderTasks(event.previousIndex, event.currentIndex);
++  }
++
++  private getDragStartDelay(): number {
++    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
++      return 0;
++    }
++
++    return window.matchMedia('(pointer: coarse)').matches ? 450 : 0;
++  }
+ }
+diff --git a/client/src/app/task-store.ts b/client/src/app/task-store.ts
+index 33c6edc..c1e495a 100644
+--- a/client/src/app/task-store.ts
++++ b/client/src/app/task-store.ts
+@@ -18,6 +18,7 @@ export interface Task {
+   title: string;
+   done: boolean;
+   pending?: boolean;
++  sortOrder: number;
+   priority: Priority;
+   due: string | null;
+   estimateMinutes: number | null;
+@@ -103,16 +104,18 @@ type SyncStatus = 'loading' | 'synced' | 'syncing' | 'offline' | 'error';
+ 
+ interface QueuedTaskChange {
+   id: string;
+-  type: 'create' | 'update' | 'delete';
++  type: 'create' | 'update' | 'delete' | 'reorder';
+   taskId: number;
+   title?: string;
+   done?: boolean;
++  sortOrder?: number;
+   priority?: Priority;
+   due?: string | null;
+   estimateMinutes?: number | null;
+   project?: string | null;
+   recurrence?: RecurrenceRule | null;
+   checklist?: ChecklistItem[];
++  sortOrders?: Array<{ taskId: number; sortOrder: number }>;
+   createdAt: string;
+ }
+ 
+@@ -156,6 +159,7 @@ function normalizeTask(raw: Partial<Task> & Pick<Task, 'id' | 'title' | 'done'>)
+     id: raw.id,
+     title: raw.title,
+     done: raw.done,
++    sortOrder: typeof raw.sortOrder === 'number' ? raw.sortOrder : raw.id,
+     priority: normalizePriority(raw.priority),
+     due: raw.due ?? null,
+     estimateMinutes: raw.estimateMinutes ?? null,
+@@ -165,6 +169,10 @@ function normalizeTask(raw: Partial<Task> & Pick<Task, 'id' | 'title' | 'done'>)
+   };
+ }
+ 
++function compareTaskOrder(a: Task, b: Task): number {
++  return a.sortOrder - b.sortOrder || a.id - b.id;
++}
++
+ function stripFlags(task: Task): Task {
+   return normalizeTask(task);
+ }
+@@ -220,6 +228,13 @@ export class TaskStore {
+   activeEnrichedTasks = computed(() => this.enrichedTasks().filter(task => !task.done));
+   completedEnrichedTasks = computed(() => this.enrichedTasks().filter(task => task.done));
+ 
++  /** Tasks in the user's manual list order. */
++  manualOrderTasks = computed<Task[]>(() =>
++    this.tasks()
++      .map(stripFlags)
++      .sort(compareTaskOrder)
++  );
++
+   /** Tasks ordered by status, priority, then due date. */
+   enrichedTasks = computed<Task[]>(() =>
+     this.tasks()
+@@ -235,6 +250,27 @@ export class TaskStore {
+       })
+   );
+ 
++  /** Manual-order tasks filtered by search query and optional project. */
++  filteredManualOrderTasks = computed(() => {
++    const query = this.searchQuery().trim().toLowerCase();
++    const project = this.projectFilter();
++
++    return this.manualOrderTasks().filter(task => {
++      if (project && task.project !== project) return false;
++      if (!query) return true;
++
++      const haystack = [
++        task.title,
++        task.project ?? '',
++        ...(task.checklist.map(item => item.title)),
++      ]
++        .join(' ')
++        .toLowerCase();
++
++      return haystack.includes(query);
++    });
++  });
++
+   /** Tasks filtered by search query and optional project. */
+   filteredEnrichedTasks = computed(() => {
+     const query = this.searchQuery().trim().toLowerCase();
+@@ -377,6 +413,32 @@ export class TaskStore {
+     void this.syncNow();
+   }
+ 
++  reorderTasks(previousIndex: number, currentIndex: number) {
++    if (previousIndex === currentIndex) return;
++
++    const visibleTasks = this.filteredManualOrderTasks();
++    const reorderedVisible = [...visibleTasks];
++    const [moved] = reorderedVisible.splice(previousIndex, 1);
++    reorderedVisible.splice(currentIndex, 0, moved);
++
++    const orderMap = new Map(
++      reorderedVisible.map((task, index) => [task.id, (index + 1) * 10])
++    );
++
++    const updated = this.tasks().map(task => {
++      const stripped = stripFlags(task);
++      return orderMap.has(task.id)
++        ? { ...stripped, sortOrder: orderMap.get(task.id)! }
++        : stripped;
++    });
++
++    this.setLocalTasks(updated);
++    this.queueReorder(
++      [...orderMap.entries()].map(([taskId, sortOrder]) => ({ taskId, sortOrder }))
++    );
++    void this.syncNow();
++  }
++
+   addTask(raw: string) {
+     const parsed = parseQuickAdd(raw);
+     if (parsed.title === '') return;
+@@ -386,6 +448,7 @@ export class TaskStore {
+       title: parsed.title,
+       done: false,
+       pending: true,
++      sortOrder: this.nextSortOrder(),
+       priority: parsed.priority,
+       due: parsed.due,
+       estimateMinutes: parsed.estimateMinutes,
+@@ -421,6 +484,7 @@ export class TaskStore {
+       title: parsed.title,
+       done: false,
+       pending: true,
++      sortOrder: this.nextSortOrder(),
+       priority: parsed.priority,
+       due: dueIso,
+       estimateMinutes: parsed.estimateMinutes,
+@@ -656,6 +720,7 @@ export class TaskStore {
+         title,
+         done: false,
+         pending: true,
++        sortOrder: this.nextSortOrder(),
+         priority: 'none',
+         due: assignment.due,
+         estimateMinutes: assignment.estimateMinutes ?? null,
+@@ -719,6 +784,7 @@ export class TaskStore {
+       id: task.id!,
+       title: task.title ?? '',
+       done: task.done ?? false,
++      sortOrder: task.sortOrder,
+       priority: task.priority,
+       due: task.due,
+       estimateMinutes: task.estimateMinutes,
+@@ -794,6 +860,7 @@ export class TaskStore {
+               id: task.id!,
+               title: task.title ?? '',
+               done: task.done ?? false,
++              sortOrder: task.sortOrder,
+               priority: task.priority,
+               due: task.due,
+               estimateMinutes: task.estimateMinutes,
+@@ -823,6 +890,16 @@ export class TaskStore {
+   }
+ 
+   private async syncChange(change: QueuedTaskChange) {
++    if (change.type === 'reorder') {
++      await firstValueFrom(this.http.patch(`${this.tasksApiUrl}/reorder`, {
++        tasks: (change.sortOrders ?? []).map(item => ({
++          id: item.taskId,
++          sortOrder: item.sortOrder,
++        })),
++      }));
++      return;
++    }
++
+     if (change.type === 'create') {
+       const createdTask = await firstValueFrom(this.http.post<Partial<Task>>(this.tasksApiUrl, {
+         title: change.title,
+@@ -837,6 +914,7 @@ export class TaskStore {
+         id: createdTask.id!,
+         title: createdTask.title ?? change.title ?? '',
+         done: createdTask.done ?? false,
++        sortOrder: createdTask.sortOrder ?? change.sortOrder,
+         priority: createdTask.priority ?? change.priority,
+         due: createdTask.due ?? change.due ?? null,
+         estimateMinutes: createdTask.estimateMinutes ?? change.estimateMinutes ?? null,
+@@ -854,6 +932,7 @@ export class TaskStore {
+           id: doneResponse.id ?? normalized.id,
+           title: doneResponse.title ?? normalized.title,
+           done: doneResponse.done ?? true,
++          sortOrder: doneResponse.sortOrder ?? normalized.sortOrder,
+           priority: doneResponse.priority ?? normalized.priority,
+           due: doneResponse.due ?? normalized.due,
+           estimateMinutes: doneResponse.estimateMinutes ?? normalized.estimateMinutes,
+@@ -885,6 +964,7 @@ export class TaskStore {
+           id: updatedTask.id ?? change.taskId,
+           title: updatedTask.title ?? change.title ?? '',
+           done: updatedTask.done ?? change.done ?? false,
++          sortOrder: updatedTask.sortOrder ?? change.sortOrder,
+           priority: updatedTask.priority ?? change.priority,
+           due: updatedTask.due ?? change.due ?? null,
+           estimateMinutes: updatedTask.estimateMinutes ?? change.estimateMinutes ?? null,
+@@ -908,6 +988,7 @@ export class TaskStore {
+           id: recreatedTask.id!,
+           title: recreatedTask.title ?? change.title ?? '',
+           done: recreatedTask.done ?? false,
++          sortOrder: recreatedTask.sortOrder ?? change.sortOrder,
+           priority: recreatedTask.priority ?? change.priority,
+           due: recreatedTask.due ?? change.due ?? null,
+           estimateMinutes: recreatedTask.estimateMinutes ?? change.estimateMinutes ?? null,
+@@ -924,6 +1005,7 @@ export class TaskStore {
+             id: doneResponse.id ?? normalized.id,
+             title: doneResponse.title ?? normalized.title,
+             done: doneResponse.done ?? true,
++            sortOrder: doneResponse.sortOrder ?? normalized.sortOrder,
+             priority: doneResponse.priority ?? normalized.priority,
+             due: doneResponse.due ?? normalized.due,
+             estimateMinutes: doneResponse.estimateMinutes ?? normalized.estimateMinutes,
+@@ -1003,6 +1085,7 @@ export class TaskStore {
+       title: completed.title,
+       done: false,
+       pending: true,
++      sortOrder: this.nextSortOrder(),
+       priority: completed.priority,
+       due: nextDue,
+       estimateMinutes: completed.estimateMinutes,
+@@ -1091,10 +1174,29 @@ export class TaskStore {
+     ));
+   }
+ 
++  private queueReorder(sortOrders: Array<{ taskId: number; sortOrder: number }>) {
++    this.queuedChanges = this.queuedChanges.filter(change => change.type !== 'reorder');
++    this.enqueueChange({
++      id: crypto.randomUUID(),
++      type: 'reorder',
++      taskId: -1,
++      sortOrders,
++      createdAt: new Date().toISOString(),
++    });
++  }
++
++  private nextSortOrder() {
++    const maxSortOrder = this.tasks().reduce(
++      (max, task) => Math.max(max, stripFlags(task).sortOrder),
++      0
++    );
++    return maxSortOrder + 10;
++  }
++
+   private setLocalTasks(tasks: Task[]) {
+     const sortedTasks = tasks
+       .map(stripFlags)
+-      .sort((a, b) => a.id - b.id);
++      .sort(compareTaskOrder);
+ 
+     this.tasks.set(this.withPendingFlags(sortedTasks));
+     writeStoredJson(LOCAL_TASKS_STORAGE_KEY, sortedTasks);
+diff --git a/client/yarn.lock b/client/yarn.lock
+index dc14cd2..648d58e 100644
+--- a/client/yarn.lock
++++ b/client/yarn.lock
+@@ -205,6 +205,14 @@
+   optionalDependencies:
+     lmdb "3.5.4"
+ 
++"@angular/cdk@^22.0.0":
++  version "22.0.3"
++  resolved "https://registry.yarnpkg.com/@angular/cdk/-/cdk-22.0.3.tgz#5763950577d0e91ea876a3aed33c63ca364b946d"
++  integrity sha512-dNPQHkxIM8Hkn028eJxBjBDXFBYJtYjGZCZTG6xGb6OugIuDvPM4hGVqOdXkGnvabfuLNgxbtiSL8l3xXPjUqQ==
++  dependencies:
++    parse5 "^8.0.0"
++    tslib "^2.3.0"
++
+ "@angular/cli@^22.0.3":
+   version "22.0.3"
+   resolved "https://registry.npmjs.org/@angular/cli/-/cli-22.0.3.tgz"
+diff --git a/server/Migrations/20260705230910_AddSortOrderToTask.Designer.cs b/server/Migrations/20260705230910_AddSortOrderToTask.Designer.cs
+new file mode 100644
+index 0000000..deb5f92
+--- /dev/null
++++ b/server/Migrations/20260705230910_AddSortOrderToTask.Designer.cs
+@@ -0,0 +1,67 @@
++﻿// <auto-generated />
++using Microsoft.EntityFrameworkCore;
++using Microsoft.EntityFrameworkCore.Infrastructure;
++using Microsoft.EntityFrameworkCore.Migrations;
++using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
++
++#nullable disable
++
++namespace TaskTracker.Api.Migrations
++{
++    [DbContext(typeof(TaskDbContext))]
++    [Migration("20260705230910_AddSortOrderToTask")]
++    partial class AddSortOrderToTask
++    {
++        /// <inheritdoc />
++        protected override void BuildTargetModel(ModelBuilder modelBuilder)
++        {
++#pragma warning disable 612, 618
++            modelBuilder.HasAnnotation("ProductVersion", "10.0.9");
++
++            modelBuilder.Entity("TaskItem", b =>
++                {
++                    b.Property<int>("Id")
++                        .ValueGeneratedOnAdd()
++                        .HasColumnType("INTEGER");
++
++                    b.Property<string>("ChecklistJson")
++                        .HasColumnType("TEXT");
++
++                    b.Property<bool>("Done")
++                        .HasColumnType("INTEGER");
++
++                    b.Property<string>("Due")
++                        .HasColumnType("TEXT");
++
++                    b.Property<int?>("EstimateMinutes")
++                        .HasColumnType("INTEGER");
++
++                    b.Property<string>("Priority")
++                        .IsRequired()
++                        .HasColumnType("TEXT");
++
++                    b.Property<string>("Project")
++                        .HasColumnType("TEXT");
++
++                    b.Property<string>("Recurrence")
++                        .HasColumnType("TEXT");
++
++                    b.Property<int>("SortOrder")
++                        .HasColumnType("INTEGER");
++
++                    b.Property<string>("Title")
++                        .IsRequired()
++                        .HasColumnType("TEXT");
++
++                    b.Property<string>("UserId")
++                        .IsRequired()
++                        .HasColumnType("TEXT");
++
++                    b.HasKey("Id");
++
++                    b.ToTable("Tasks");
++                });
++#pragma warning restore 612, 618
++        }
++    }
++}
+diff --git a/server/Migrations/20260705230910_AddSortOrderToTask.cs b/server/Migrations/20260705230910_AddSortOrderToTask.cs
+new file mode 100644
+index 0000000..b1f541d
+--- /dev/null
++++ b/server/Migrations/20260705230910_AddSortOrderToTask.cs
+@@ -0,0 +1,31 @@
++﻿using Microsoft.EntityFrameworkCore.Migrations;
++
++#nullable disable
++
++namespace TaskTracker.Api.Migrations
++{
++    /// <inheritdoc />
++    public partial class AddSortOrderToTask : Migration
++    {
++        /// <inheritdoc />
++        protected override void Up(MigrationBuilder migrationBuilder)
++        {
++            migrationBuilder.AddColumn<int>(
++                name: "SortOrder",
++                table: "Tasks",
++                type: "INTEGER",
++                nullable: false,
++                defaultValue: 0);
++
++            migrationBuilder.Sql("UPDATE Tasks SET SortOrder = Id WHERE SortOrder = 0;");
++        }
++
++        /// <inheritdoc />
++        protected override void Down(MigrationBuilder migrationBuilder)
++        {
++            migrationBuilder.DropColumn(
++                name: "SortOrder",
++                table: "Tasks");
++        }
++    }
++}
+diff --git a/server/Migrations/TaskDbContextModelSnapshot.cs b/server/Migrations/TaskDbContextModelSnapshot.cs
+index 6e8c137..cc636f0 100644
+--- a/server/Migrations/TaskDbContextModelSnapshot.cs
++++ b/server/Migrations/TaskDbContextModelSnapshot.cs
+@@ -43,6 +43,9 @@ namespace TaskTracker.Api.Migrations
+                     b.Property<string>("Recurrence")
+                         .HasColumnType("TEXT");
+ 
++                    b.Property<int>("SortOrder")
++                        .HasColumnType("INTEGER");
++
+                     b.Property<string>("Title")
+                         .IsRequired()
+                         .HasColumnType("TEXT");
+diff --git a/server/Program.cs b/server/Program.cs
+index 3f1857e..84b6333 100644
+--- a/server/Program.cs
++++ b/server/Program.cs
+@@ -48,7 +48,11 @@ app.MapGet("/api/tasks", async (HttpContext ctx, TaskDbContext db) =>
+ {
+     var userId = ctx.Request.Headers["X-User-ID"].FirstOrDefault();
+     if (string.IsNullOrWhiteSpace(userId)) return Results.BadRequest("X-User-ID header is required.");
+-    var tasks = await db.Tasks.Where(t => t.UserId == userId).OrderBy(t => t.Id).ToListAsync();
++    var tasks = await db.Tasks
++        .Where(t => t.UserId == userId)
++        .OrderBy(t => t.SortOrder)
++        .ThenBy(t => t.Id)
++        .ToListAsync();
+     return Results.Ok(tasks.Select(ToTaskResponse));
+ });
+ 
+@@ -69,11 +73,17 @@ app.MapPost("/api/tasks", async (CreateTaskRequest request, HttpContext ctx, Tas
+     if (string.IsNullOrWhiteSpace(title))
+         return Results.BadRequest("Title is required.");
+ 
++    var maxSortOrder = await db.Tasks
++        .Where(t => t.UserId == userId)
++        .Select(t => (int?)t.SortOrder)
++        .MaxAsync() ?? 0;
++
+     var newTask = new TaskItem
+     {
+         UserId = userId,
+         Title = title,
+         Done = false,
++        SortOrder = maxSortOrder + 10,
+         Priority = NormalizePriority(request.Priority),
+         Due = NormalizeDue(request.Due),
+         EstimateMinutes = request.EstimateMinutes,
+@@ -135,6 +145,30 @@ app.MapDelete("/api/tasks", async (HttpContext ctx, TaskDbContext db) =>
+     return Results.NoContent();
+ });
+ 
++app.MapPatch("/api/tasks/reorder", async (ReorderTasksRequest request, HttpContext ctx, TaskDbContext db) =>
++{
++    var userId = ctx.Request.Headers["X-User-ID"].FirstOrDefault();
++    if (string.IsNullOrWhiteSpace(userId)) return Results.BadRequest("X-User-ID header is required.");
++    if (request.Tasks is null || request.Tasks.Count == 0)
++        return Results.BadRequest("Tasks array is required.");
++
++    var requestedIds = request.Tasks.Select(item => item.Id).ToHashSet();
++    var tasks = await db.Tasks
++        .Where(task => task.UserId == userId && requestedIds.Contains(task.Id))
++        .ToListAsync();
++
++    if (tasks.Count != requestedIds.Count) return Results.NotFound();
++
++    foreach (var item in request.Tasks)
++    {
++        var task = tasks.First(existing => existing.Id == item.Id);
++        task.SortOrder = item.SortOrder;
++    }
++
++    await db.SaveChangesAsync();
++    return Results.NoContent();
++});
++
+ app.MapPost("/api/coach/chat", async (CoachChatRequest request, HttpContext ctx, CoachService coach, TaskDbContext db, CancellationToken cancellationToken) =>
+ {
+     var userId = ctx.Request.Headers["X-User-ID"].FirstOrDefault();
+@@ -262,6 +296,7 @@ static TaskResponse ToTaskResponse(TaskItem task) => new(
+     task.Id,
+     task.Title,
+     task.Done,
++    task.SortOrder,
+     task.Priority,
+     task.Due,
+     task.EstimateMinutes,
+@@ -275,6 +310,7 @@ class TaskItem
+     public string UserId { get; set; } = "";
+     public string Title { get; set; } = "";
+     public bool Done { get; set; }
++    public int SortOrder { get; set; }
+     public string Priority { get; set; } = "none";
+     public string? Due { get; set; }
+     public int? EstimateMinutes { get; set; }
+@@ -287,6 +323,7 @@ record TaskResponse(
+     int Id,
+     string Title,
+     bool Done,
++    int SortOrder,
+     string Priority,
+     string? Due,
+     int? EstimateMinutes,
+@@ -294,6 +331,10 @@ record TaskResponse(
+     string? Recurrence,
+     List<ChecklistItem> Checklist);
+ 
++record ReorderTasksRequest(IReadOnlyList<ReorderTaskItem> Tasks);
++
++record ReorderTaskItem(int Id, int SortOrder);
++
+ record CreateTaskRequest(
+     string? Title,
+     string? Due = null,
+diff --git a/tests/TaskTracker.Api.Tests/TaskApiTests.cs b/tests/TaskTracker.Api.Tests/TaskApiTests.cs
+index 9db0281..908106a 100644
+--- a/tests/TaskTracker.Api.Tests/TaskApiTests.cs
++++ b/tests/TaskTracker.Api.Tests/TaskApiTests.cs
+@@ -108,6 +108,39 @@ public class TaskApiTests : IClassFixture<TaskApiFactory>
+         Assert.Equal(HttpStatusCode.NotFound, getDeletedResponse.StatusCode);
+     }
+ 
++    [Fact]
++    public async Task Reorder_tasks_updates_list_order()
++    {
++        var firstResponse = await client.PostAsJsonAsync("/api/tasks", new { title = "First" });
++        firstResponse.EnsureSuccessStatusCode();
++        var first = await firstResponse.Content.ReadFromJsonAsync<JsonElement>();
++
++        var secondResponse = await client.PostAsJsonAsync("/api/tasks", new { title = "Second" });
++        secondResponse.EnsureSuccessStatusCode();
++        var second = await secondResponse.Content.ReadFromJsonAsync<JsonElement>();
++
++        var firstId = first.GetProperty("id").GetInt32();
++        var secondId = second.GetProperty("id").GetInt32();
++
++        var reorderResponse = await client.PatchAsJsonAsync("/api/tasks/reorder", new
++        {
++            tasks = new[]
++            {
++                new { id = secondId, sortOrder = 10 },
++                new { id = firstId, sortOrder = 20 },
++            }
++        });
++        Assert.Equal(HttpStatusCode.NoContent, reorderResponse.StatusCode);
++
++        var tasks = await client.GetFromJsonAsync<JsonElement[]>("/api/tasks");
++        Assert.NotNull(tasks);
++        Assert.Equal(2, tasks.Length);
++        Assert.Equal("Second", tasks[0].GetProperty("title").GetString());
++        Assert.Equal("First", tasks[1].GetProperty("title").GetString());
++        Assert.Equal(10, tasks[0].GetProperty("sortOrder").GetInt32());
++        Assert.Equal(20, tasks[1].GetProperty("sortOrder").GetInt32());
++    }
++
+     [Fact]
+     public async Task Create_task_accepts_project_and_recurrence()
+     {
+-- 
+2.43.0
+

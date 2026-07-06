@@ -122,7 +122,6 @@
         (remove)="ignoreTourDemoAction()"
         (edit)="ignoreTourDemoAction()"
         (update)="ignoreTourDemoAction()"
-        (cyclePriority)="ignoreTourDemoAction()"
       />
     }
     @for (task of store.filteredManualOrderTasks(); track task.id) {
@@ -136,7 +135,6 @@
         (remove)="store.removeTask($event)"
         (edit)="store.editTask($event.id, $event.title)"
         (update)="store.updateTask($event.id, $event)"
-        (cyclePriority)="store.cyclePriority($event)"
       />
     } @empty {
       @if (!(onboarding.introTourActive() && store.tasks().length === 0)) {
