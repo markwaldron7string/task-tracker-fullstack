@@ -19,6 +19,15 @@
   transition: background 0.12s, transform 0.18s ease, box-shadow 0.18s ease;
 }
 
+.task-swipe,
+.task-swipe-panel {
+  display: contents;
+}
+
+.task-swipe-actions {
+  display: none;
+}
+
 :host(.task-item-pressing) {
   transform: scale(1.02);
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
@@ -364,25 +373,108 @@
 
 @media (max-width: 640px) {
   :host {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 0.3rem 0.2rem;
-    padding: 0.65rem 0;
+    display: block;
+    overflow: hidden;
+    padding: 0;
+    gap: 0;
   }
 
   :host:hover {
     background: transparent;
   }
 
-  .task-head,
-  .task-controls {
-    display: contents;
+  :host(.tour-demo-locked) .task-swipe-actions {
+    display: none;
+  }
+
+  :host(.tour-demo-locked) .task-actions {
+    display: flex;
+    opacity: 1;
+  }
+
+  .task-swipe,
+  .task-swipe-panel {
+    display: block;
+  }
+
+  .task-swipe {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .task-swipe-actions {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    display: flex;
+    align-items: stretch;
+    z-index: 0;
+  }
+
+  .task-swipe-actions--start {
+    left: 0;
+  }
+
+  .task-swipe-actions--end {
+    right: 0;
+  }
+
+  .swipe-action {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.2rem;
+    width: 4.5rem;
+    border: none;
+    padding: 0.35rem 0.25rem;
+    font: inherit;
+    font-size: 0.68rem;
+    font-weight: 700;
+    line-height: 1.1;
+    cursor: pointer;
+    color: var(--text);
+    background: var(--surface-hover);
+  }
+
+  .swipe-action svg {
+    width: 1.05rem;
+    height: 1.05rem;
+    flex-shrink: 0;
+  }
+
+  .swipe-action--bell-active {
+    color: var(--red);
+    background: var(--red-light);
+  }
+
+  .swipe-action--delete {
+    color: var(--danger-fg);
+    background: var(--danger);
+  }
+
+  .task-swipe-panel {
+    position: relative;
+    z-index: 1;
+    background: var(--surface);
+    touch-action: pan-y;
+    will-change: transform;
+  }
+
+  .task-swipe-panel--animating {
+    transition: transform 0.2s ease;
+  }
+
+  .task-head {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.45rem;
+    padding: 0.65rem 0;
+    min-width: 0;
   }
 
   .task-label {
-    order: 1;
-    flex: 1 1 8rem;
+    flex: 1;
     min-width: 0;
     align-items: flex-start;
     padding-right: 0;
@@ -406,22 +498,14 @@
     line-height: 1.35;
   }
 
-  .task-actions {
-    order: 2;
-    opacity: 1;
-    gap: 0.25rem;
-    flex-shrink: 0;
-  }
-
   .drag-handle {
-    order: 3;
     width: 2rem;
     height: 2rem;
-    margin: 0;
-    align-self: center;
+    margin-top: -0.05rem;
     border-radius: 6px;
     background: var(--surface-hover);
     border: 1px solid var(--border-light);
+    flex-shrink: 0;
   }
 
   .drag-handle svg {
@@ -429,12 +513,21 @@
     height: 1.2rem;
   }
 
+  .task-controls {
+    display: block;
+    padding: 0 0 0.55rem;
+  }
+
   .task-chips {
-    order: 4;
-    flex: 0 0 100%;
-    margin-left: 2.35rem;
+    display: flex;
     flex-wrap: wrap;
     gap: 0.35rem;
+    margin-left: 2.35rem;
+    margin-bottom: 0.35rem;
+  }
+
+  .task-actions {
+    display: none;
   }
 
   .action-label {
@@ -443,19 +536,5 @@
 
   .action-icon {
     display: block;
-  }
-
-  .action-btn {
-    width: 2rem;
-    height: 2rem;
-    min-height: 2rem;
-    padding: 0;
-    border: 1px solid var(--border);
-    border-radius: 999px;
-  }
-
-  .bell-btn {
-    width: 2rem;
-    height: 2rem;
   }
 }
