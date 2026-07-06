@@ -365,9 +365,24 @@
     width: 100%;
   }
 
+  .drag-handle {
+    order: 2;
+    margin-left: auto;
+    align-self: flex-start;
+    width: 2.25rem;
+    height: 2.25rem;
+    margin-top: -0.1rem;
+  }
+
+  .drag-handle svg {
+    width: 1.35rem;
+    height: 1.35rem;
+  }
+
   .task-label {
+    order: 1;
     align-items: flex-start;
-    padding-right: 0;
+    padding-right: 0.35rem;
   }
 
   .task-checkbox {
@@ -387,17 +402,21 @@
     width: 100%;
     flex-direction: row;
     align-items: center;
-    justify-content: flex-end;
-    gap: 0.35rem;
+    justify-content: flex-start;
+    gap: 0.5rem;
   }
 
   .task-chips {
+    order: 2;
+    margin-left: auto;
     flex-wrap: wrap;
     justify-content: flex-end;
   }
 
   .task-actions {
+    order: 1;
     opacity: 1;
+    gap: 0.5rem;
   }
 
   .action-btn {

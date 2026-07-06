@@ -413,6 +413,15 @@ export class TaskStore {
     void this.syncNow();
   }
 
+  /** Best-effort sync before an app reload so tasks survive a refresh. */
+  async prepareForAppRefresh(maxWaitMs = 5000): Promise<void> {
+    this.setLocalTasks(this.tasks().map(stripFlags));
+    await Promise.race([
+      this.syncNow(),
+      new Promise<void>(resolve => setTimeout(resolve, maxWaitMs)),
+    ]);
+  }
+
   reorderTasks(previousIndex: number, currentIndex: number) {
     if (previousIndex === currentIndex) return;
 

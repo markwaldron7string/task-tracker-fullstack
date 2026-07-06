@@ -155,6 +155,6 @@ export class App {
 
   protected confirmAppRefresh(): void {
     this.refreshConfirmOpen.set(false);
-    void this.appUpdate.refresh();
+    void this.appUpdate.refresh({ clearUserData: true });
   }
 }

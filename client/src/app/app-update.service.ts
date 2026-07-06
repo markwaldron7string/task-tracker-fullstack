@@ -1,14 +1,21 @@
 import { DestroyRef, Injectable, NgZone, computed, inject, signal } from '@angular/core';
 import { SwUpdate } from '@angular/service-worker';
+import { TaskStore } from './task-store';
 
 const FIRST_CHECK_DELAY_MS = 15_000;
 const UPDATE_CHECK_INTERVAL_MS = 5 * 60_000;
+
+export interface AppRefreshOptions {
+  /** Wipe persisted app data (manual refresh). Update refresh keeps user data. */
+  clearUserData?: boolean;
+}
 
 @Injectable({ providedIn: 'root' })
 export class AppUpdateService {
   private swUpdate = inject(SwUpdate);
   private ngZone = inject(NgZone);
   private destroyRef = inject(DestroyRef);
+  private taskStore = inject(TaskStore);
 
   readonly enabled = this.swUpdate.isEnabled;
   readonly updateReady = signal(false);
@@ -70,11 +77,16 @@ export class AppUpdateService {
     }
   }
 
-  async refresh(): Promise<void> {
+  async refresh(options: AppRefreshOptions = {}): Promise<void> {
     if (this.activating()) return;
+
+    const clearUserData = options.clearUserData ?? this.unrecoverable();
 
     this.activating.set(true);
     try {
+      if (!clearUserData) {
+        await this.taskStore.prepareForAppRefresh();
+      }
       if (this.swUpdate.isEnabled && !this.unrecoverable()) {
         await this.swUpdate.activateUpdate().catch(() => false);
       }
@@ -82,7 +94,7 @@ export class AppUpdateService {
         const keys = await caches.keys();
         await Promise.all(keys.map(k => caches.delete(k)));
       }
-      if (this.unrecoverable()) {
+      if (clearUserData) {
         try { localStorage.clear(); } catch { /* storage may be unavailable */ }
         try { sessionStorage.clear(); } catch { /* storage may be unavailable */ }
       }

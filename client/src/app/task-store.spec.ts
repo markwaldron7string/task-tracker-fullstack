@@ -296,6 +296,21 @@ describe('TaskStore', () => {
     expect(service.pendingChanges()).toBe(1);
   });
 
+  it('prepares for app refresh by persisting tasks to local storage', async () => {
+    service = createStore();
+    await flushConfig('https://api.example.test/api/tasks');
+    httpTesting.expectOne('https://api.example.test/api/tasks').flush([]);
+    await settlePromises();
+
+    setNavigatorOnline(false);
+    service.addTask('Persist before refresh');
+
+    await service.prepareForAppRefresh(0);
+
+    expect(storage.getItem('ttf-offline-tasks-v1')).toContain('Persist before refresh');
+    httpTesting.expectNone('https://api.example.test/api/tasks');
+  });
+
   function createStore() {
     return TestBed.inject(TaskStore);
   }
