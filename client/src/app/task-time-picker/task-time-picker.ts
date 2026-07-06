@@ -17,6 +17,11 @@ interface ParsedTime {
   period: 'AM' | 'PM';
 }
 
+/** How many copies of the hour/minute list to render so the wheel can be
+ *  scrolled continuously; the middle copy is where we settle after any
+ *  scroll, giving a full copy's worth of slack in each direction. */
+const LOOP_COPIES = 3;
+
 @Component({
   selector: 'app-task-time-picker',
   templateUrl: './task-time-picker.html',
@@ -38,6 +43,9 @@ export class TaskTimePicker {
   protected readonly minutes = Array.from({ length: 60 }, (_, index) => index);
   protected readonly periods: Array<'AM' | 'PM'> = ['AM', 'PM'];
 
+  protected readonly hoursLoop = repeat(this.hours, LOOP_COPIES);
+  protected readonly minutesLoop = repeat(this.minutes, LOOP_COPIES);
+
   protected hourCol = viewChild<ElementRef<HTMLElement>>('hourCol');
   protected minuteCol = viewChild<ElementRef<HTMLElement>>('minuteCol');
   protected periodCol = viewChild<ElementRef<HTMLElement>>('periodCol');
@@ -45,6 +53,8 @@ export class TaskTimePicker {
   protected displayValue = computed(() =>
     `${padNumber(this.hour12())}:${padNumber(this.minute())} ${this.period()}`
   );
+
+  private wheelCleanups: Array<() => void> = [];
 
   constructor() {
     injectOverlayDismissBinding(() => {
@@ -63,8 +73,18 @@ export class TaskTimePicker {
     });
 
     effect(() => {
-      if (!this.open()) return;
-      queueMicrotask(() => this.scrollSelectionIntoView());
+      if (!this.open()) {
+        this.teardownInfiniteWheels();
+        return;
+      }
+      queueMicrotask(() => {
+        this.scrollSelectionIntoView();
+        this.teardownInfiniteWheels();
+        this.wheelCleanups.push(
+          bindInfiniteWheel(this.hourCol()?.nativeElement, this.hours.length),
+          bindInfiniteWheel(this.minuteCol()?.nativeElement, this.minutes.length),
+        );
+      });
     });
   }
 
@@ -76,19 +96,21 @@ export class TaskTimePicker {
   protected pickHour(hour: number): void {
     this.hour12.set(hour);
     this.emitValue();
-    queueMicrotask(() => this.scrollColumnIntoView('hour', hour - 1));
+    queueMicrotask(() => this.scrollColumnIntoView(this.hourCol(), hour - 1, this.hours.length));
   }
 
   protected pickMinute(minute: number): void {
     this.minute.set(minute);
     this.emitValue();
-    queueMicrotask(() => this.scrollColumnIntoView('minute', minute));
+    queueMicrotask(() => this.scrollColumnIntoView(this.minuteCol(), minute, this.minutes.length));
   }
 
   protected pickPeriod(next: 'AM' | 'PM'): void {
     this.period.set(next);
     this.emitValue();
-    queueMicrotask(() => this.scrollColumnIntoView('period', this.periods.indexOf(next)));
+    queueMicrotask(() =>
+      this.scrollColumnIntoView(this.periodCol(), this.periods.indexOf(next), this.periods.length)
+    );
   }
 
   protected pad(value: number): string {
@@ -99,23 +121,84 @@ export class TaskTimePicker {
     this.select.emit(to24Hour(this.hour12(), this.minute(), this.period()));
   }
 
-  private scrollSelectionIntoView(): void {
-    this.scrollColumnIntoView('hour', this.hour12() - 1);
-    this.scrollColumnIntoView('minute', this.minute());
-    this.scrollColumnIntoView('period', this.periods.indexOf(this.period()));
+  private teardownInfiniteWheels(): void {
+    for (const cleanup of this.wheelCleanups) cleanup();
+    this.wheelCleanups = [];
   }
 
-  /** Indexes directly into the column's children so this doesn't race the
-   *  `.time-option--selected` class binding's own render. */
-  private scrollColumnIntoView(column: 'hour' | 'minute' | 'period', index: number): void {
-    const ref = column === 'hour'
-      ? this.hourCol()
-      : column === 'minute'
-        ? this.minuteCol()
-        : this.periodCol();
-    const target = ref?.nativeElement.children[index] as HTMLElement | undefined;
+  private scrollSelectionIntoView(): void {
+    this.scrollColumnIntoView(this.hourCol(), this.hour12() - 1, this.hours.length, true);
+    this.scrollColumnIntoView(this.minuteCol(), this.minute(), this.minutes.length, true);
+    this.scrollColumnIntoView(this.periodCol(), this.periods.indexOf(this.period()), this.periods.length);
+  }
+
+  /** Indexes directly into the column's children (rather than re-querying
+   *  `.time-option--selected`) so this doesn't race Angular's own class
+   *  binding update. When a column is looped, picks whichever copy of the
+   *  value is closest to the current scroll position — or, on first open
+   *  (`preferMiddleCopy`), the middle copy, so there's slack on both sides. */
+  private scrollColumnIntoView(
+    ref: ElementRef<HTMLElement> | undefined,
+    value: number,
+    listLength: number,
+    preferMiddleCopy = false,
+  ): void {
+    const el = ref?.nativeElement;
+    if (!el) return;
+    const copies = Math.max(1, Math.round(el.children.length / listLength));
+
+    let target: HTMLElement | undefined;
+    if (preferMiddleCopy) {
+      const middleCopy = Math.floor(copies / 2);
+      target = el.children[middleCopy * listLength + value] as HTMLElement | undefined;
+    } else {
+      const viewportCenter = el.scrollTop + el.clientHeight / 2;
+      let bestDist = Infinity;
+      for (let copy = 0; copy < copies; copy++) {
+        const child = el.children[copy * listLength + value] as HTMLElement | undefined;
+        if (!child) continue;
+        const center = child.offsetTop + child.offsetHeight / 2;
+        const dist = Math.abs(center - viewportCenter);
+        if (dist < bestDist) {
+          bestDist = dist;
+          target = child;
+        }
+      }
+    }
+
     target?.scrollIntoView({ block: 'center', behavior: 'auto' });
   }
+}
+
+/** Silently jumps the scroll position by one copy's height whenever it
+ *  drifts into the first or last copy, so scrolling past either end of the
+ *  middle copy feels like it continues into identical content forever. */
+function bindInfiniteWheel(el: HTMLElement | undefined, listLength: number): () => void {
+  if (!el) return () => {};
+  const copies = Math.round(el.children.length / listLength);
+  if (copies < 3) return () => {};
+
+  // Measured from actual layout rather than el.scrollHeight / copies, so
+  // this stays correct regardless of any container padding.
+  const first = el.children[0] as HTMLElement | undefined;
+  const nextCopyStart = el.children[listLength] as HTMLElement | undefined;
+  if (!first || !nextCopyStart) return () => {};
+  const segment = nextCopyStart.offsetTop - first.offsetTop;
+  if (!(segment > 0)) return () => {};
+
+  const handler = () => {
+    if (el.scrollTop < segment * 0.5) {
+      el.scrollTop += segment;
+    } else if (el.scrollTop > segment * (copies - 0.5)) {
+      el.scrollTop -= segment;
+    }
+  };
+  el.addEventListener('scroll', handler, { passive: true });
+  return () => el.removeEventListener('scroll', handler);
+}
+
+function repeat<T>(values: readonly T[], times: number): T[] {
+  return Array.from({ length: values.length * times }, (_, index) => values[index % values.length]);
 }
 
 function padNumber(value: number): string {

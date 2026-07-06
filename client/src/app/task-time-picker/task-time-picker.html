@@ -16,7 +16,7 @@
   @if (open()) {
     <div class="time-dropdown" role="listbox" aria-label="Choose time">
       <div class="time-col" #hourCol>
-        @for (hour of hours; track hour) {
+        @for (hour of hoursLoop; track $index) {
           <button
             type="button"
             class="time-option"
@@ -26,7 +26,7 @@
         }
       </div>
       <div class="time-col" #minuteCol>
-        @for (m of minutes; track m) {
+        @for (m of minutesLoop; track $index) {
           <button
             type="button"
             class="time-option"
