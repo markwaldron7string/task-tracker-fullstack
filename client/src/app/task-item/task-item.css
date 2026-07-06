@@ -1,4 +1,5 @@
-:host(.tour-demo-locked) {
+:host(.tour-demo-locked) .task-checkbox,
+:host(.tour-demo-locked) .drag-handle {
   pointer-events: none;
 }
 
@@ -377,6 +378,7 @@
     overflow: hidden;
     padding: 0;
     gap: 0;
+    border-bottom: none;
   }
 
   :host:hover {
@@ -399,7 +401,14 @@
   .task-swipe {
     position: relative;
     overflow: hidden;
+    contain: paint;
     background: var(--overlay-surface-muted, var(--overlay-surface, var(--surface)));
+    border-bottom: 1px solid var(--border-light);
+    --swipe-action-width: 72px;
+  }
+
+  :host(:last-child) .task-swipe {
+    border-bottom: none;
   }
 
   .task-swipe-actions {
@@ -409,6 +418,8 @@
     display: flex;
     align-items: stretch;
     z-index: 0;
+    overflow: hidden;
+    max-height: 100%;
   }
 
   .task-swipe-actions--start {
@@ -425,7 +436,8 @@
     align-items: center;
     justify-content: center;
     gap: 0.2rem;
-    width: 4.5rem;
+    width: var(--swipe-action-width);
+    min-width: var(--swipe-action-width);
     border: none;
     padding: 0.35rem 0.25rem;
     font: inherit;
@@ -434,7 +446,7 @@
     line-height: 1.1;
     cursor: pointer;
     color: var(--text);
-    background: var(--surface-hover);
+    background: var(--overlay-surface-muted, var(--surface-hover));
   }
 
   .swipe-action svg {
@@ -458,8 +470,11 @@
     z-index: 1;
     background-color: var(--overlay-surface, var(--surface));
     background-image: var(--overlay-sheen, none);
-    touch-action: pan-y;
+    touch-action: manipulation;
     will-change: transform;
+    overflow: hidden;
+    backface-visibility: hidden;
+    box-shadow: 0 1px 0 0 var(--overlay-surface, var(--surface));
   }
 
   .task-swipe-panel--animating {

@@ -108,6 +108,7 @@ export class TaskItem implements OnDestroy {
   private swipeStartX = 0;
   private swipeStartOffset = 0;
   private swipeTracking = false;
+  private demoSwipePrimed = false;
   private readonly closeSwipe = () => this.resetSwipe();
   private readonly dragStartedSub = this.drag.started.subscribe(() => this.onDragStarted());
   private readonly dragEndedSub = this.drag.ended.subscribe(() => this.onDragEnded());
@@ -119,12 +120,16 @@ export class TaskItem implements OnDestroy {
 
     effect(() => {
       const demoActive = this.onboarding.introTaskControlsStepActive() && this.position() === 1;
-      if (demoActive && isMobileSwipeLayout()) {
-        this.snapSwipe('left');
+      if (!demoActive) {
+        this.demoSwipePrimed = false;
+        if (this.swipeOpen() !== 'none') {
+          this.resetSwipe(false);
+        }
         return;
       }
-      if (!demoActive && this.swipeOpen() !== 'none') {
-        this.resetSwipe(false);
+      if (!this.demoSwipePrimed && isMobileSwipeLayout()) {
+        this.demoSwipePrimed = true;
+        this.snapSwipe('left');
       }
     });
   }
@@ -164,30 +169,28 @@ export class TaskItem implements OnDestroy {
   }
 
   onSwipeEdit(event: Event): void {
+    if (this.tourDemoLocked()) return;
     this.resetSwipe();
     this.openEditDialog(event);
   }
 
   onSwipeDelete(event: Event): void {
+    if (this.tourDemoLocked()) return;
     this.resetSwipe();
     this.onRemove();
   }
 
   onSwipeBell(event: Event): void {
+    if (this.tourDemoLocked()) return;
     this.resetSwipe();
     this.onBellClick(event);
   }
 
   onSwipePointerDown(event: PointerEvent) {
-    if (this.tourDemoLocked() || event.pointerType === 'mouse') return;
+    if (event.pointerType === 'mouse') return;
 
     const target = event.target as HTMLElement;
     if (target.closest('.drag-handle, .task-checkbox, .details-chip, .task-chips button, .swipe-action')) {
-      return;
-    }
-
-    if (this.swipeOpen() !== 'none') {
-      this.resetSwipe();
       return;
     }
 
@@ -223,12 +226,26 @@ export class TaskItem implements OnDestroy {
     this.swipeAnimating.set(true);
 
     const offset = this.swipeOffset();
+    const moved = Math.abs(offset - this.swipeStartOffset);
+
+    if (moved < 8) {
+      if (this.swipeOpen() !== 'none') {
+        this.resetSwipe();
+      }
+      return;
+    }
+
     if (offset > SWIPE_OPEN_THRESHOLD) {
       this.snapSwipe('left');
       return;
     }
     if (offset < -SWIPE_OPEN_THRESHOLD) {
       this.snapSwipe('right');
+      return;
+    }
+
+    if (this.swipeOpen() !== 'none') {
+      this.resetSwipe();
       return;
     }
 
@@ -263,6 +280,7 @@ export class TaskItem implements OnDestroy {
     closeOpenSwipes(this.closeSwipe);
     swipeCloseRegistry.add(this.closeSwipe);
     this.swipeOpen.set(direction);
+    this.swipeAnimating.set(true);
     this.swipeOffset.set(direction === 'left' ? this.leftRevealWidth() : -SWIPE_ACTION_WIDTH);
   }
 
