@@ -59,6 +59,14 @@ export class TaskItem implements OnDestroy {
   edit = output<{ id: number; title: string }>();
   update = output<{ id: number; title: string; priority: EnrichedTask['priority']; due: string | null; estimateMinutes: number | null; done: boolean }>();
   protected hasChecklist = computed(() => (this.task().checklist?.length ?? 0) > 0);
+  protected hasChips = computed(() => {
+    const task = this.task();
+    return !!(
+      (task.project && !isCoachPlan(task.project))
+      || task.pending
+      || this.hasChecklist()
+    );
+  });
   protected masterEnabled = computed(() => this.reminders.isMasterEnabled());
   protected reminderEnabled = computed(() => this.reminders.isEnabled(this.task().id));
   protected bellTitle = computed(() => {
