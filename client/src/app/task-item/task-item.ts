@@ -11,6 +11,7 @@ import {
   OnDestroy,
   output,
   signal,
+  untracked,
 } from '@angular/core';
 import { OnboardingService } from '../onboarding/onboarding.service';
 import { isMobileSwipeLayout } from '../onboarding/onboarding-layout';
@@ -165,7 +166,7 @@ export class TaskItem implements OnDestroy {
       const demoActive = this.onboarding.introTaskControlsStepActive() && this.position() === 1;
       if (!demoActive) {
         this.demoSwipePrimed = false;
-        if (this.swipeOpen() !== 'none') {
+        if (untracked(this.swipeOpen) !== 'none') {
           this.resetSwipe(false);
         }
         return;
