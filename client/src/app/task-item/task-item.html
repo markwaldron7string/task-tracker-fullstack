@@ -35,11 +35,7 @@
   </div>
   }
 
-  <div
-    class="task-swipe-panel"
-    [class.task-swipe-panel--animating]="swipeAnimating()"
-    [style.transform]="swipeTransform()"
-  >
+  <ng-template #taskPanelBody>
     <div class="task-head">
       <label class="task-label">
         <input class="task-checkbox" type="checkbox" [checked]="task().done" (change)="onToggle()" />
@@ -138,5 +134,24 @@
         </button>
       </div>
     </div>
+  </ng-template>
+
+  @if (usePanelDragHandle()) {
+  <div
+    class="task-swipe-panel task-swipe-panel--drag-handle"
+    cdkDragHandle
+    [class.task-swipe-panel--animating]="swipeAnimating()"
+    [style.transform]="swipeTransform()"
+  >
+    <ng-container *ngTemplateOutlet="taskPanelBody" />
   </div>
+  } @else {
+  <div
+    class="task-swipe-panel"
+    [class.task-swipe-panel--animating]="swipeAnimating()"
+    [style.transform]="swipeTransform()"
+  >
+    <ng-container *ngTemplateOutlet="taskPanelBody" />
+  </div>
+  }
 </div>

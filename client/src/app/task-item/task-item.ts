@@ -1,4 +1,5 @@
 import { CdkDrag, CdkDragHandle } from '@angular/cdk/drag-drop';
+import { NgTemplateOutlet } from '@angular/common';
 import {
   afterNextRender,
   Component,
@@ -24,10 +25,11 @@ import { TaskReminderOverlayService } from '../task-reminder-overlay.service';
 import { TaskReminderService } from '../task-reminder.service';
 import { EnrichedTask } from '../task-store';
 
+export const MOBILE_DRAG_HOLD_MS = 420;
+
 const SWIPE_ACTION_WIDTH = 72;
 const SWIPE_OPEN_THRESHOLD = 36;
 const SWIPE_AXIS_LOCK_PX = 10;
-const MOBILE_DRAG_HOLD_MS = 420;
 
 const swipeCloseRegistry = new Set<() => void>();
 
@@ -60,7 +62,7 @@ function isInteractiveTarget(target: EventTarget | null): boolean {
     '[class.task-swipe-open]': 'swipeOpen() !== "none"',
     '[class.task-item-mobile]': 'mobileSwipeLayout()',
   },
-  imports: [CdkDragHandle],
+  imports: [CdkDragHandle, NgTemplateOutlet],
   templateUrl: './task-item.html',
   styleUrl: './task-item.css',
 })
@@ -82,6 +84,7 @@ export class TaskItem implements OnDestroy {
   readonly dragBoundary = '.task-list';
 
   protected mobileSwipeLayout = computed(() => isMobileSwipeLayout());
+  protected usePanelDragHandle = computed(() => this.mobileSwipeLayout() && this.dragEnabled());
   protected showReminders = computed(() => this.pro.unlocked());
   protected tourDemoLocked = computed(() => this.onboarding.introTaskControlsStepActive());
   protected projectLabel = projectLabel;
@@ -90,7 +93,6 @@ export class TaskItem implements OnDestroy {
 
   isDragging = signal(false);
   isPressing = signal(false);
-  dragPressActive = signal(false);
   swipeOffset = signal(0);
   swipeOpen = signal<'none' | 'left' | 'right'>('none');
   swipeAnimating = signal(false);
@@ -136,8 +138,7 @@ export class TaskItem implements OnDestroy {
     return `${items.filter(item => item.done).length}/${items.length}`;
   });
 
-  private dragArmTimer: ReturnType<typeof setTimeout> | null = null;
-  private dragArmed = signal(false);
+  private pressFeedbackTimer: ReturnType<typeof setTimeout> | null = null;
   private activePointerId: number | null = null;
   private swipeStartX = 0;
   private swipeStartY = 0;
@@ -154,15 +155,9 @@ export class TaskItem implements OnDestroy {
 
   constructor() {
     effect(() => {
-      if (isMobileSwipeLayout()) {
-        this.drag.disabled =
-          this.dragDisabled()
-          || this.swipeActive()
-          || !this.dragPressActive();
-        return;
-      }
-
-      this.drag.disabled = this.dragDisabled();
+      this.drag.disabled =
+        this.dragDisabled()
+        || (isMobileSwipeLayout() && this.swipeActive());
     });
 
     effect(() => {
@@ -201,8 +196,7 @@ export class TaskItem implements OnDestroy {
   ngOnDestroy() {
     this.dragStartedSub.unsubscribe();
     this.dragEndedSub.unsubscribe();
-    this.clearDragArmTimer();
-    this.clearPressState();
+    this.clearPressFeedback();
     swipeCloseRegistry.delete(this.closeSwipe);
     this.resetSwipe(false);
   }
@@ -270,16 +264,18 @@ export class TaskItem implements OnDestroy {
     this.swipeAxisLocked = false;
     this.swipeAnimating.set(false);
 
-    this.clearDragArmTimer();
-    this.dragArmTimer = setTimeout(() => {
-      if (this.activePointerId !== event.pointerId || this.swipeTracking || this.isDragging()) return;
-      this.armDrag();
-    }, MOBILE_DRAG_HOLD_MS);
+    this.clearPressFeedback();
+    const holdMs = this.dragStartDelay() || MOBILE_DRAG_HOLD_MS;
+    this.pressFeedbackTimer = setTimeout(() => {
+      if (!this.isDragging() && !this.swipeTracking) {
+        this.isPressing.set(true);
+      }
+    }, Math.max(0, holdMs - 80));
   }
 
   private handlePointerMove(event: PointerEvent) {
     if (!isMobileSwipeLayout() || this.activePointerId !== event.pointerId) return;
-    if (this.isDragging() || this.dragArmed()) return;
+    if (this.isDragging()) return;
 
     const deltaX = event.clientX - this.swipeStartX;
     const deltaY = event.clientY - this.swipeStartY;
@@ -291,12 +287,12 @@ export class TaskItem implements OnDestroy {
 
       this.swipeAxisLocked = true;
       if (Math.abs(deltaX) > Math.abs(deltaY)) {
-        this.clearDragArmTimer();
+        this.clearPressFeedback();
         this.swipeTracking = true;
         this.swipeActive.set(true);
-        this.disarmDrag();
+        this.drag.disabled = true;
       } else {
-        this.cancelPointerGesture();
+        this.releasePointerGesture();
         return;
       }
     }
@@ -314,58 +310,21 @@ export class TaskItem implements OnDestroy {
   private handlePointerUp(event: PointerEvent) {
     if (!isMobileSwipeLayout() || this.activePointerId !== event.pointerId) return;
 
-    this.clearDragArmTimer();
+    this.clearPressFeedback();
 
     if (this.swipeTracking) {
       this.finishSwipe();
       return;
     }
 
-    if (this.dragArmed()) {
-      this.disarmDrag();
-    }
+    this.releasePointerGesture();
+  }
 
+  private releasePointerGesture() {
     this.activePointerId = null;
     this.swipeAxisLocked = false;
-  }
-
-  private armDrag() {
-    if (this.dragDisabled() || this.isDragging()) return;
-
-    this.dragArmed.set(true);
-    this.beginDragPress();
-    this.isPressing.set(true);
-    this.resetSwipe(false);
-  }
-
-  private beginDragPress() {
-    this.dragPressActive.set(true);
-    if (isMobileSwipeLayout()) {
-      this.drag.disabled = false;
-    }
-  }
-
-  private endDragPress() {
-    this.dragPressActive.set(false);
-    this.disarmDrag();
-  }
-
-  private disarmDrag() {
-    this.dragArmed.set(false);
-    this.dragPressActive.set(false);
-    this.isPressing.set(false);
-    if (isMobileSwipeLayout() && !this.isDragging()) {
-      this.drag.disabled = true;
-    }
-  }
-
-  private cancelPointerGesture() {
-    this.clearDragArmTimer();
     this.swipeTracking = false;
-    this.activePointerId = null;
-    this.swipeAxisLocked = false;
-    this.disarmDrag();
-    this.updateSwipeActive();
+    this.isPressing.set(false);
   }
 
   private finishSwipe() {
@@ -402,19 +361,17 @@ export class TaskItem implements OnDestroy {
     if (isMobileSwipeLayout() && this.swipeTracking) return;
 
     this.isDragging.set(true);
-    this.clearDragArmTimer();
-    this.clearPressState();
-    this.disarmDrag();
+    this.clearPressFeedback();
+    this.isPressing.set(false);
     this.resetSwipe(false);
-    this.activePointerId = null;
-    this.swipeTracking = false;
+    this.releasePointerGesture();
     this.swipeActive.set(false);
   }
 
   private onDragEnded() {
     this.isDragging.set(false);
-    this.endDragPress();
-    this.clearPressState();
+    this.isPressing.set(false);
+    this.releasePointerGesture();
   }
 
   private snapSwipe(direction: 'left' | 'right') {
@@ -438,16 +395,10 @@ export class TaskItem implements OnDestroy {
     this.swipeActive.set(this.swipeTracking || this.swipeOpen() !== 'none');
   }
 
-  private clearDragArmTimer() {
-    if (this.dragArmTimer) {
-      clearTimeout(this.dragArmTimer);
-      this.dragArmTimer = null;
-    }
-  }
-
-  private clearPressState() {
-    if (!this.dragArmed()) {
-      this.isPressing.set(false);
+  private clearPressFeedback() {
+    if (this.pressFeedbackTimer) {
+      clearTimeout(this.pressFeedbackTimer);
+      this.pressFeedbackTimer = null;
     }
   }
 }

@@ -3,7 +3,7 @@ import { Component, ElementRef, computed, effect, inject, signal } from '@angula
 import { injectOverlayDismissBinding } from '../overlay-dismiss.service';
 import { OnboardingService } from '../onboarding/onboarding.service';
 import { ProService } from '../pro.service';
-import { TaskItem } from '../task-item/task-item';
+import { TaskItem, MOBILE_DRAG_HOLD_MS } from '../task-item/task-item';
 import { TaskSummary } from '../task-summary/task-summary';
 import { TASK_DOMAINS, projectLabel } from '../task-domains';
 import { TaskReminderService } from '../task-reminder.service';
@@ -44,7 +44,7 @@ export class TaskList {
   protected introTaskControlsStepActive = this.onboarding.introTaskControlsStepActive;
   protected tourDemoTask = TOUR_DEMO_TASK;
   protected showSearch = computed(() => this.store.tasks().length >= SEARCH_MIN_TASKS);
-  readonly dragStartDelay = signal(isMobileSwipeLayout() ? 0 : this.getDragStartDelay());
+  readonly dragStartDelay = signal(isMobileSwipeLayout() ? MOBILE_DRAG_HOLD_MS : this.getDragStartDelay());
   protected canReorder = computed(
     () =>
       !this.store.searchQuery().trim() &&

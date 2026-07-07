@@ -475,8 +475,13 @@
     box-sizing: border-box;
     background-color: var(--overlay-surface, var(--surface));
     background-image: var(--overlay-sheen, none);
-    touch-action: pan-y;
+    touch-action: manipulation;
     overflow: hidden;
+  }
+
+  .task-swipe-panel--drag-handle {
+    touch-action: none;
+    cursor: grab;
   }
 
   :host(.task-item-pressing) .task-swipe-panel {
@@ -509,6 +514,8 @@
 
   .task-checkbox {
     margin-top: 0;
+    position: relative;
+    z-index: 2;
   }
 
   .task-number {
