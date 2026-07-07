@@ -7,6 +7,7 @@ import { TaskItem } from '../task-item/task-item';
 import { TaskSummary } from '../task-summary/task-summary';
 import { TASK_DOMAINS, projectLabel } from '../task-domains';
 import { TaskReminderService } from '../task-reminder.service';
+import { isMobileSwipeLayout } from '../onboarding/onboarding-layout';
 import { TaskStore, Task } from '../task-store';
 
 const TOUR_DEMO_TASK: Task = {
@@ -43,7 +44,7 @@ export class TaskList {
   protected introTaskControlsStepActive = this.onboarding.introTaskControlsStepActive;
   protected tourDemoTask = TOUR_DEMO_TASK;
   protected showSearch = computed(() => this.store.tasks().length >= SEARCH_MIN_TASKS);
-  readonly dragStartDelay = signal(this.getDragStartDelay());
+  readonly dragStartDelay = signal(isMobileSwipeLayout() ? 0 : this.getDragStartDelay());
   protected canReorder = computed(
     () =>
       !this.store.searchQuery().trim() &&

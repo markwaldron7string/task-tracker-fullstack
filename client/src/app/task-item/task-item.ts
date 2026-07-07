@@ -26,7 +26,8 @@ import { EnrichedTask } from '../task-store';
 
 const SWIPE_ACTION_WIDTH = 72;
 const SWIPE_OPEN_THRESHOLD = 36;
-const SWIPE_AXIS_LOCK_PX = 8;
+const SWIPE_AXIS_LOCK_PX = 10;
+const MOBILE_DRAG_HOLD_MS = 420;
 
 const swipeCloseRegistry = new Set<() => void>();
 
@@ -36,9 +37,9 @@ function closeOpenSwipes(except?: () => void) {
   }
 }
 
-function isSwipeIgnoredTarget(target: EventTarget | null): boolean {
+function isInteractiveTarget(target: EventTarget | null): boolean {
   return !!(target as HTMLElement | null)?.closest(
-    '.drag-handle, .task-checkbox, .details-chip, .task-chips button, .swipe-action'
+    '.task-checkbox, .details-chip, .task-chips button, .swipe-action, .bell-btn, .action-btn'
   );
 }
 
@@ -55,8 +56,9 @@ function isSwipeIgnoredTarget(target: EventTarget | null): boolean {
     '[attr.data-tour]': 'position() === 1 ? "first-task" : null',
     '[class.tour-demo-locked]': 'tourDemoLocked()',
     '[class.task-item-dragging]': 'isDragging()',
-    '[class.task-item-pressing]': 'isPressing()',
+    '[class.task-item-pressing]': 'isPressing() && !isDragging()',
     '[class.task-swipe-open]': 'swipeOpen() !== "none"',
+    '[class.task-item-mobile]': 'mobileSwipeLayout()',
   },
   imports: [CdkDragHandle],
   templateUrl: './task-item.html',
@@ -79,6 +81,7 @@ export class TaskItem implements OnDestroy {
   dragStartDelay = input(0);
   readonly dragBoundary = '.task-list';
 
+  protected mobileSwipeLayout = computed(() => isMobileSwipeLayout());
   protected showReminders = computed(() => this.pro.unlocked());
   protected tourDemoLocked = computed(() => this.onboarding.introTaskControlsStepActive());
   protected projectLabel = projectLabel;
@@ -87,7 +90,7 @@ export class TaskItem implements OnDestroy {
 
   isDragging = signal(false);
   isPressing = signal(false);
-  dragHandlePressed = signal(false);
+  dragPressActive = signal(false);
   swipeOffset = signal(0);
   swipeOpen = signal<'none' | 'left' | 'right'>('none');
   swipeAnimating = signal(false);
@@ -133,8 +136,9 @@ export class TaskItem implements OnDestroy {
     return `${items.filter(item => item.done).length}/${items.length}`;
   });
 
-  private pressTimer: ReturnType<typeof setTimeout> | null = null;
-  private activeTouchId: number | null = null;
+  private dragArmTimer: ReturnType<typeof setTimeout> | null = null;
+  private dragArmed = signal(false);
+  private activePointerId: number | null = null;
   private swipeStartX = 0;
   private swipeStartY = 0;
   private swipeStartOffset = 0;
@@ -144,18 +148,17 @@ export class TaskItem implements OnDestroy {
   private readonly closeSwipe = () => this.resetSwipe();
   private readonly dragStartedSub = this.drag.started.subscribe(() => this.onDragStarted());
   private readonly dragEndedSub = this.drag.ended.subscribe(() => this.onDragEnded());
-  private readonly onTouchStart = (event: TouchEvent) => this.handleTouchStart(event);
-  private readonly onTouchMove = (event: TouchEvent) => this.handleTouchMove(event);
-  private readonly onTouchEnd = (event: TouchEvent) => this.handleTouchEnd(event);
+  private readonly onPointerDown = (event: PointerEvent) => this.handlePointerDown(event);
+  private readonly onPointerMove = (event: PointerEvent) => this.handlePointerMove(event);
+  private readonly onPointerUp = (event: PointerEvent) => this.handlePointerUp(event);
 
   constructor() {
     effect(() => {
       if (isMobileSwipeLayout()) {
-        // Keep host drag off unless the handle is pressed so swipes are not stolen.
         this.drag.disabled =
           this.dragDisabled()
           || this.swipeActive()
-          || !this.dragHandlePressed();
+          || !this.dragPressActive();
         return;
       }
 
@@ -178,18 +181,19 @@ export class TaskItem implements OnDestroy {
     });
 
     afterNextRender(() => {
-      const host = this.host.nativeElement;
+      if (!isMobileSwipeLayout()) return;
 
-      host.addEventListener('touchstart', this.onTouchStart, { capture: true, passive: true });
-      host.addEventListener('touchmove', this.onTouchMove, { capture: true, passive: false });
-      host.addEventListener('touchend', this.onTouchEnd, { capture: true, passive: true });
-      host.addEventListener('touchcancel', this.onTouchEnd, { capture: true, passive: true });
+      const host = this.host.nativeElement;
+      host.addEventListener('pointerdown', this.onPointerDown, { passive: true });
+      host.addEventListener('pointermove', this.onPointerMove, { passive: false });
+      host.addEventListener('pointerup', this.onPointerUp, { passive: true });
+      host.addEventListener('pointercancel', this.onPointerUp, { passive: true });
 
       this.destroyRef.onDestroy(() => {
-        host.removeEventListener('touchstart', this.onTouchStart, { capture: true });
-        host.removeEventListener('touchmove', this.onTouchMove, { capture: true });
-        host.removeEventListener('touchend', this.onTouchEnd, { capture: true });
-        host.removeEventListener('touchcancel', this.onTouchEnd, { capture: true });
+        host.removeEventListener('pointerdown', this.onPointerDown);
+        host.removeEventListener('pointermove', this.onPointerMove);
+        host.removeEventListener('pointerup', this.onPointerUp);
+        host.removeEventListener('pointercancel', this.onPointerUp);
       });
     });
   }
@@ -197,6 +201,7 @@ export class TaskItem implements OnDestroy {
   ngOnDestroy() {
     this.dragStartedSub.unsubscribe();
     this.dragEndedSub.unsubscribe();
+    this.clearDragArmTimer();
     this.clearPressState();
     swipeCloseRegistry.delete(this.closeSwipe);
     this.resetSwipe(false);
@@ -246,68 +251,59 @@ export class TaskItem implements OnDestroy {
     this.onBellClick(event);
   }
 
-  onPressStart(event: PointerEvent) {
-    if (this.dragDisabled() || event.pointerType === 'mouse') return;
+  private handlePointerDown(event: PointerEvent) {
+    if (!isMobileSwipeLayout() || event.pointerType === 'mouse') return;
+    if (this.dragDisabled() || isInteractiveTarget(event.target)) return;
+    if (this.isDragging()) return;
 
-    this.dragHandlePressed.set(true);
-    if (isMobileSwipeLayout() && !this.swipeActive()) {
-      this.drag.disabled = false;
-    }
-    this.clearPressState();
-    this.pressTimer = setTimeout(() => {
-      this.isPressing.set(true);
-    }, Math.max(0, this.dragStartDelay() - 80));
-  }
-
-  onPressEnd() {
-    this.dragHandlePressed.set(false);
-    if (isMobileSwipeLayout()) {
-      this.drag.disabled = true;
-    }
-    this.clearPressState();
-  }
-
-  private handleTouchStart(event: TouchEvent) {
-    if (!isMobileSwipeLayout() || event.touches.length !== 1 || isSwipeIgnoredTarget(event.target)) {
+    if (this.swipeOpen() !== 'none' && !this.swipeTracking) {
+      this.resetSwipe();
       return;
     }
 
-    event.stopPropagation();
-
-    const touch = event.touches[0];
     closeOpenSwipes(this.closeSwipe);
-    this.activeTouchId = touch.identifier;
-    this.swipeStartX = touch.clientX;
-    this.swipeStartY = touch.clientY;
+    this.activePointerId = event.pointerId;
+    this.swipeStartX = event.clientX;
+    this.swipeStartY = event.clientY;
     this.swipeStartOffset = this.swipeOffset();
-    this.swipeTracking = true;
+    this.swipeTracking = false;
     this.swipeAxisLocked = false;
     this.swipeAnimating.set(false);
-    this.swipeActive.set(true);
+
+    this.clearDragArmTimer();
+    this.dragArmTimer = setTimeout(() => {
+      if (this.activePointerId !== event.pointerId || this.swipeTracking || this.isDragging()) return;
+      this.armDrag();
+    }, MOBILE_DRAG_HOLD_MS);
   }
 
-  private handleTouchMove(event: TouchEvent) {
-    if (!isMobileSwipeLayout() || !this.swipeTracking || this.activeTouchId === null) return;
+  private handlePointerMove(event: PointerEvent) {
+    if (!isMobileSwipeLayout() || this.activePointerId !== event.pointerId) return;
+    if (this.isDragging() || this.dragArmed()) return;
 
-    const touch = Array.from(event.touches).find(item => item.identifier === this.activeTouchId);
-    if (!touch) return;
-
-    const deltaX = touch.clientX - this.swipeStartX;
-    const deltaY = touch.clientY - this.swipeStartY;
+    const deltaX = event.clientX - this.swipeStartX;
+    const deltaY = event.clientY - this.swipeStartY;
 
     if (!this.swipeAxisLocked) {
       if (Math.abs(deltaX) < SWIPE_AXIS_LOCK_PX && Math.abs(deltaY) < SWIPE_AXIS_LOCK_PX) {
         return;
       }
-      this.swipeAxisLocked = Math.abs(deltaX) > Math.abs(deltaY);
-      if (!this.swipeAxisLocked) {
-        this.cancelTouchSwipe();
+
+      this.swipeAxisLocked = true;
+      if (Math.abs(deltaX) > Math.abs(deltaY)) {
+        this.clearDragArmTimer();
+        this.swipeTracking = true;
+        this.swipeActive.set(true);
+        this.disarmDrag();
+      } else {
+        this.cancelPointerGesture();
         return;
       }
     }
 
+    if (!this.swipeTracking) return;
+
     event.preventDefault();
-    event.stopPropagation();
 
     const leftMax = this.leftRevealWidth();
     const rightMax = SWIPE_ACTION_WIDTH;
@@ -315,26 +311,66 @@ export class TaskItem implements OnDestroy {
     this.swipeOffset.set(next);
   }
 
-  private handleTouchEnd(event: TouchEvent) {
-    if (!isMobileSwipeLayout() || this.activeTouchId === null) return;
+  private handlePointerUp(event: PointerEvent) {
+    if (!isMobileSwipeLayout() || this.activePointerId !== event.pointerId) return;
 
-    const touch = Array.from(event.changedTouches).find(item => item.identifier === this.activeTouchId);
-    if (!touch || !this.swipeTracking) return;
+    this.clearDragArmTimer();
 
-    event.stopPropagation();
-    this.finishSwipe();
+    if (this.swipeTracking) {
+      this.finishSwipe();
+      return;
+    }
+
+    if (this.dragArmed()) {
+      this.disarmDrag();
+    }
+
+    this.activePointerId = null;
+    this.swipeAxisLocked = false;
   }
 
-  private cancelTouchSwipe() {
+  private armDrag() {
+    if (this.dragDisabled() || this.isDragging()) return;
+
+    this.dragArmed.set(true);
+    this.beginDragPress();
+    this.isPressing.set(true);
+    this.resetSwipe(false);
+  }
+
+  private beginDragPress() {
+    this.dragPressActive.set(true);
+    if (isMobileSwipeLayout()) {
+      this.drag.disabled = false;
+    }
+  }
+
+  private endDragPress() {
+    this.dragPressActive.set(false);
+    this.disarmDrag();
+  }
+
+  private disarmDrag() {
+    this.dragArmed.set(false);
+    this.dragPressActive.set(false);
+    this.isPressing.set(false);
+    if (isMobileSwipeLayout() && !this.isDragging()) {
+      this.drag.disabled = true;
+    }
+  }
+
+  private cancelPointerGesture() {
+    this.clearDragArmTimer();
     this.swipeTracking = false;
-    this.activeTouchId = null;
+    this.activePointerId = null;
     this.swipeAxisLocked = false;
+    this.disarmDrag();
     this.updateSwipeActive();
   }
 
   private finishSwipe() {
     this.swipeTracking = false;
-    this.activeTouchId = null;
+    this.activePointerId = null;
     this.swipeAxisLocked = false;
     this.swipeAnimating.set(true);
 
@@ -359,27 +395,25 @@ export class TaskItem implements OnDestroy {
       return;
     }
 
-    if (this.swipeOpen() !== 'none') {
-      this.resetSwipe();
-      return;
-    }
-
     this.resetSwipe();
   }
 
   private onDragStarted() {
-    if (isMobileSwipeLayout() && (this.swipeActive() || this.swipeTracking)) return;
+    if (isMobileSwipeLayout() && this.swipeTracking) return;
+
     this.isDragging.set(true);
+    this.clearDragArmTimer();
     this.clearPressState();
-    this.resetSwipe();
+    this.disarmDrag();
+    this.resetSwipe(false);
+    this.activePointerId = null;
+    this.swipeTracking = false;
+    this.swipeActive.set(false);
   }
 
   private onDragEnded() {
     this.isDragging.set(false);
-    this.dragHandlePressed.set(false);
-    if (isMobileSwipeLayout()) {
-      this.drag.disabled = true;
-    }
+    this.endDragPress();
     this.clearPressState();
   }
 
@@ -404,11 +438,16 @@ export class TaskItem implements OnDestroy {
     this.swipeActive.set(this.swipeTracking || this.swipeOpen() !== 'none');
   }
 
-  private clearPressState() {
-    if (this.pressTimer) {
-      clearTimeout(this.pressTimer);
-      this.pressTimer = null;
+  private clearDragArmTimer() {
+    if (this.dragArmTimer) {
+      clearTimeout(this.dragArmTimer);
+      this.dragArmTimer = null;
     }
-    this.isPressing.set(false);
+  }
+
+  private clearPressState() {
+    if (!this.dragArmed()) {
+      this.isPressing.set(false);
+    }
   }
 }
