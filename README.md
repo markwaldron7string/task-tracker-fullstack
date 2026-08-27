@@ -20,7 +20,12 @@ This is a learning project, but it is wired like a real full-stack app: separate
 ## Live App
 
 - Frontend: [task-tracker-fullstack-nu.vercel.app](https://task-tracker-fullstack-nu.vercel.app)
-- API: Render free web service. After the first deploy, set Vercel `TASKS_API_URL` to `https://<your-render-service>.onrender.com/api/tasks`. Setup is in [RENDER_DEPLOYMENT.md](RENDER_DEPLOYMENT.md).
+- API: [task-tracker-api-i1hl.onrender.com](https://task-tracker-api-i1hl.onrender.com)
+- Health: [task-tracker-api-i1hl.onrender.com/health](https://task-tracker-api-i1hl.onrender.com/health)
+
+The API runs on Render's free Docker web service. After 15 minutes idle it sleeps; the next request can take about a minute. SQLite on the free instance is ephemeral, so data can reset on deploy or spin-up. The frontend already caches tasks in the browser.
+
+Azure App Service is no longer used. Hosting details are in [RENDER_DEPLOYMENT.md](RENDER_DEPLOYMENT.md).
 
 ## Features
 
@@ -102,11 +107,13 @@ server/ ASP.NET Core Minimal API on Render
 │       └── task-store.ts         # Offline-first task state + sync
 ├── server/
 │   ├── Program.cs                # API endpoints
+│   ├── Dockerfile                # Render Linux image
 │   └── Coach/                    # LLM coach providers and schedule parsing
 ├── tests/TaskTracker.Api.Tests/  # Backend integration tests
 ├── .github/workflows/            # CI
 ├── render.yaml                   # Render Blueprint for the API
-├── RENDER_DEPLOYMENT.md          # Free Render API setup
+├── RENDER_DEPLOYMENT.md          # Render API hosting
+├── AZURE_DEPLOYMENT.md           # Legacy Azure notes (not used)
 └── TaskTracker.slnx              # .NET solution
 ```
 
@@ -141,16 +148,20 @@ http://localhost:4200
 
 Local frontend builds default to `http://localhost:5226/api/tasks`. Deployed frontend builds read `TASKS_API_URL` from Vercel and write it into `client/public/app-config.json`.
 
-### AI Coach (optional, local)
+### AI Coach (optional)
 
-The coach uses **Google Gemini 2.5 Flash** (free) when an API key is set. Create a key at [Google AI Studio](https://aistudio.google.com/apikey):
+The coach uses **Google Gemini 2.5 Flash** when an API key is set. Create a key at [Google AI Studio](https://aistudio.google.com/apikey). The laptop and Render each need their own copy; they do not have to be the same key.
+
+Local:
 
 ```bash
 cd server
 dotnet user-secrets set "Coach:ApiKey" "AIza-your-gemini-key"
 ```
 
-Restart the API. The coach panel will show **Powered by AI** when the cloud provider responds.
+Render: paste the key into **task-tracker-api → Environment → `Coach__ApiKey`**. Do not put this key in Vercel or in a project file.
+
+Restart the API (or wait for Render to redeploy). The coach panel shows **Powered by AI** when the cloud provider responds; otherwise it uses the on-device planner.
 
 ## Testing
 
@@ -188,6 +199,12 @@ Base URL locally:
 http://localhost:5226
 ```
 
+Live:
+
+```text
+https://task-tracker-api-i1hl.onrender.com
+```
+
 All task routes require an `X-User-ID` header (the client generates and persists a UUID per browser).
 
 | Method | Route | Description |
@@ -215,19 +232,29 @@ All task routes require an `X-User-ID` header (the client generates and persists
 
 ## Deployment
 
-Pushes to **`main`** run CI. Vercel deploys the frontend. Render rebuilds the API when `server/` changes (after you connect the repo once).
+Pushes to **`main`** run CI. Vercel deploys the Angular app. Render rebuilds the API when `server/` changes.
 
 ### Frontend (Vercel)
 
-Edit the existing `TASKS_API_URL` after Render is live. Do not add `Coach__ApiKey` on Vercel.
+The only Vercel env var is the Render task API. Do **not** add `Coach__ApiKey` on Vercel.
 
 ```text
-TASKS_API_URL=https://<your-render-service>.onrender.com/api/tasks
+TASKS_API_URL=https://task-tracker-api-i1hl.onrender.com/api/tasks
 ```
+
+If this still points at the old Azure hostname, edit the existing variable (do not create a second one) and redeploy.
 
 ### Backend (Render)
 
-Create the free web service from `render.yaml`, then set `Coach__ApiKey` in the Render dashboard. Full steps are in [RENDER_DEPLOYMENT.md](RENDER_DEPLOYMENT.md).
+The live service is **task-tracker-api** at `https://task-tracker-api-i1hl.onrender.com`.
+
+| Variable | Where | Notes |
+| --- | --- | --- |
+| `Coach__ApiKey` | Render dashboard only | Gemini key (`AIza…`). Independent of local user-secrets. |
+| `Coach__Provider` | `render.yaml` | `Auto` |
+| `Cors__AllowedOrigins__0` | `render.yaml` | `https://task-tracker-fullstack-nu.vercel.app` |
+
+Full setup is in [RENDER_DEPLOYMENT.md](RENDER_DEPLOYMENT.md).
 
 ## Install On Phone
 

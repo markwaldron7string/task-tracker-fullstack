@@ -40,7 +40,13 @@ Local API requests default to:
 http://localhost:5226/api/tasks
 ```
 
-For deployed builds, set `TASKS_API_URL` before running `yarn build`. The build writes `public/app-config.json`, and `TaskStore` reads that file at runtime.
+For deployed builds, set `TASKS_API_URL` before running `yarn build`. Vercel uses:
+
+```text
+TASKS_API_URL=https://task-tracker-api-i1hl.onrender.com/api/tasks
+```
+
+The build writes `public/app-config.json`, and `TaskStore` reads that file at runtime. Do not put `Coach__ApiKey` on Vercel.
 
 ## Scripts
 
