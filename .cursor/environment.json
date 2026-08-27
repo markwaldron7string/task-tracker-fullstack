@@ -1,0 +1,24 @@
+{
+  "name": "Task Tracker Fullstack",
+  "user": "ubuntu",
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+  "install": "dotnet restore TaskTracker.slnx && cd client && yarn install --frozen-lockfile",
+  "terminals": [
+    {
+      "name": "backend-api",
+      "command": "cd server && dotnet run --launch-profile http",
+      "description": "ASP.NET Core Minimal API with SQLite, serving http://localhost:5226 (health at /health)."
+    },
+    {
+      "name": "frontend-dev",
+      "command": "cd client && yarn start --host 0.0.0.0 --port 4200",
+      "description": "Angular dev server on http://localhost:4200, proxying tasks to the API at http://localhost:5226."
+    }
+  ],
+  "ports": [
+    { "name": "frontend", "port": 4200 },
+    { "name": "api", "port": 5226 }
+  ]
+}
