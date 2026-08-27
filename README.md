@@ -21,8 +21,7 @@ This is a learning project, but it is wired like a real full-stack app: separate
 ## Live App
 
 - Frontend: [task-tracker-fullstack-nu.vercel.app](https://task-tracker-fullstack-nu.vercel.app)
-- API health check: [Azure `/health`](https://task-tracker-fullstack-api-mark-h5aje3baaagnhvah.westus3-01.azurewebsites.net/health)
-- API tasks endpoint: [Azure `/api/tasks`](https://task-tracker-fullstack-api-mark-h5aje3baaagnhvah.westus3-01.azurewebsites.net/api/tasks)
+- API: Azure App Service (`task-tracker-fullstack-api-mark`). If the portal shows **subscription could not be found** or `/health` does not resolve, recreate the app using [AZURE_DEPLOYMENT.md](AZURE_DEPLOYMENT.md#troubleshooting-resource-not-found--subscription-could-not-be-found).
 
 ## Features
 
