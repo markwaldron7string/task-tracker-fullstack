@@ -1,11 +1,16 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace TaskTracker.Api.Tests;
 
-public class TaskApiTests : IClassFixture<TaskApiFactory>
+[CollectionDefinition(nameof(ApiCollection))]
+public sealed class ApiCollection : ICollectionFixture<TaskApiFactory>;
+
+[Collection(nameof(ApiCollection))]
+public class TaskApiTests
 {
     private readonly HttpClient client;
 
@@ -158,7 +163,8 @@ public class TaskApiTests : IClassFixture<TaskApiFactory>
     }
 }
 
-public sealed class CoachApiTests : IClassFixture<TaskApiFactory>
+[Collection(nameof(ApiCollection))]
+public sealed class CoachApiTests
 {
     private readonly TaskApiFactory factory;
     private readonly HttpClient client;
@@ -325,6 +331,12 @@ public sealed class TaskApiFactory : WebApplicationFactory<Program>
     {
         Environment.SetEnvironmentVariable("ConnectionStrings__Tasks", $"Data Source={databasePath}");
         Environment.SetEnvironmentVariable("Coach__Provider", "Stub");
+    }
+
+    protected override void ConfigureWebHost(IWebHostBuilder builder)
+    {
+        builder.UseSetting("ConnectionStrings:Tasks", $"Data Source={databasePath}");
+        builder.UseSetting("Coach:Provider", "Stub");
     }
 
     protected override void Dispose(bool disposing)
