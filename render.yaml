@@ -1,8 +1,9 @@
 services:
   - type: web
-    name: task-tracker-api
+    name: task-tracker-api-mark
     runtime: docker
     plan: free
+    region: oregon
     dockerfilePath: ./server/Dockerfile
     dockerContext: ./server
     healthCheckPath: /health

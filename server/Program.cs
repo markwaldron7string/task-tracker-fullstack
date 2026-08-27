@@ -3,8 +3,8 @@ using Microsoft.Data.Sqlite;
 using TaskTracker;
 using TaskTracker.Coach;
 
+BindToPlatformPort();
 var builder = WebApplication.CreateBuilder(args);
-BindToPlatformPort(builder);
 
 builder.Services.AddOpenApi();
 builder.Services.Configure<CoachOptions>(builder.Configuration.GetSection("Coach"));
@@ -204,11 +204,17 @@ app.Run();
 
 // ----- Data types -----
 
-static void BindToPlatformPort(WebApplicationBuilder builder)
+static void BindToPlatformPort()
 {
     var port = Environment.GetEnvironmentVariable("PORT");
-    if (!string.IsNullOrWhiteSpace(port))
-        builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
+    if (string.IsNullOrWhiteSpace(port))
+        return;
+
+    // Microsoft container images set ASPNETCORE_HTTP_PORTS=8080. Render health-
+    // checks $PORT (usually 10000), so override the image default before Kestrel
+    // is configured. Leave PORT unset locally so tests keep their random ports.
+    Environment.SetEnvironmentVariable("ASPNETCORE_HTTP_PORTS", port);
+    Environment.SetEnvironmentVariable("ASPNETCORE_URLS", $"http://0.0.0.0:{port}");
 }
 
 static string ResolveTasksConnectionString(IConfiguration configuration)

@@ -43,7 +43,7 @@ This is a learning project, but it is wired like a real full-stack app: separate
 ### Pro: AI Planning Coach
 
 - Floating **Coach** panel with task-aware suggestions (overdue, overcommitted, unscheduled)
-- Cloud LLM when configured (`OpenAI`), with on-device rule-based fallback offline
+- Cloud LLM when a Gemini key is set on the API, with on-device rule-based fallback otherwise
 - Multi-day plan generation (e.g. *30-day workout plan with meals*) with per-day checklists
 - **Apply to calendar** creates scheduled tasks with detailed sub-steps
 - Conversation history across turns; minimize (−), close (×), or click outside to dismiss
@@ -84,7 +84,7 @@ server/ ASP.NET Core Minimal API on Render
 | --- | --- |
 | Frontend | Angular 22, TypeScript 6, Angular Router, HttpClient, signals, PWA |
 | Backend | .NET 10, ASP.NET Core Minimal APIs, Entity Framework Core 10 |
-| AI Coach | OpenAI Chat Completions (optional), structured JSON schedule output |
+| AI Coach | Gemini 2.5 Flash by default (optional Groq/OpenAI), structured JSON schedule output |
 | Database | SQLite, EF Core migrations |
 | Tests | Vitest/Angular TestBed (30 tests), xUnit/WebApplicationFactory (11 tests) |
 | Deployment | Vercel (frontend), Render (API), GitHub Actions CI |
@@ -218,6 +218,8 @@ All task routes require an `X-User-ID` header (the client generates and persists
 Pushes to **`main`** run CI. Vercel deploys the frontend. Render rebuilds the API when `server/` changes (after you connect the repo once).
 
 ### Frontend (Vercel)
+
+Edit the existing `TASKS_API_URL` after Render is live. Do not add `Coach__ApiKey` on Vercel.
 
 ```text
 TASKS_API_URL=https://<your-render-service>.onrender.com/api/tasks
