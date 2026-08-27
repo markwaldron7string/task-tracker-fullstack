@@ -230,11 +230,11 @@ public sealed class CoachApiTests
   }
 
   [Fact]
-  public async Task Coach_chat_asks_clarifying_question_for_vague_input()
+  public async Task Coach_chat_asks_clarifying_question_for_help_only()
   {
     var response = await client.PostAsJsonAsync("/api/coach/chat", new
     {
-      question = "make a plan",
+      question = "help me",
       snapshot = SampleSnapshot()
     });
 
@@ -245,24 +245,45 @@ public sealed class CoachApiTests
   }
 
   [Fact]
-  public async Task Coach_chat_clarifies_vague_input_despite_prior_plan_history()
+  public async Task Coach_chat_builds_a_plan_for_build_me_something()
   {
-    var response = await client.PostAsJsonAsync("/api/coach/chat", new
+    var userId = Guid.NewGuid().ToString();
+    var planClient = factory.CreateClient();
+    planClient.DefaultRequestHeaders.Add("X-User-ID", userId);
+
+    var response = await planClient.PostAsJsonAsync("/api/coach/chat", new
     {
-      question = "make a plan",
-      snapshot = SampleSnapshot(),
-      history = new[]
-      {
-        new { role = "user", content = "30 day workout plan" },
-        new { role = "assistant", content = "30-day workout plan with daily checklists." }
-      }
+      question = "build me something",
+      snapshot = SampleSnapshot()
     });
 
     response.EnsureSuccessStatusCode();
     var body = await response.Content.ReadFromJsonAsync<JsonElement>();
-    Assert.True(body.GetProperty("awaitingReply").GetBoolean());
-    Assert.EndsWith("?", body.GetProperty("text").GetString());
-    Assert.False(body.TryGetProperty("schedule", out var schedule) && schedule.ValueKind == JsonValueKind.Array && schedule.GetArrayLength() > 0);
+    Assert.True(body.TryGetProperty("schedule", out var schedule));
+    Assert.Equal(JsonValueKind.Array, schedule.ValueKind);
+    Assert.True(schedule.GetArrayLength() >= 5);
+    Assert.Equal(JsonValueKind.Null, schedule[0].GetProperty("taskId").ValueKind);
+    Assert.DoesNotContain("No unscheduled tasks", body.GetProperty("text").GetString());
+  }
+
+  [Fact]
+  public async Task Coach_chat_builds_a_plan_when_week_has_no_unscheduled_tasks()
+  {
+    var userId = Guid.NewGuid().ToString();
+    var planClient = factory.CreateClient();
+    planClient.DefaultRequestHeaders.Add("X-User-ID", userId);
+
+    var response = await planClient.PostAsJsonAsync("/api/coach/chat", new
+    {
+      question = "Build a schedule for this week",
+      snapshot = SampleSnapshot()
+    });
+
+    response.EnsureSuccessStatusCode();
+    var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+    Assert.True(body.TryGetProperty("schedule", out var schedule));
+    Assert.Equal(JsonValueKind.Array, schedule.ValueKind);
+    Assert.Equal(5, schedule.GetArrayLength());
   }
 
   [Fact]

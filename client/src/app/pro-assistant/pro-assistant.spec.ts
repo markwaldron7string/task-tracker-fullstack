@@ -103,7 +103,7 @@ describe('ProAssistant', () => {
     expect(sendButton.querySelector('.coach-send-arrow svg')).toBeTruthy();
   });
 
-  it('blocks schedules for fresh vague asks even when the API returns one', async () => {
+  it('applies a schedule when the user asks to make a plan', async () => {
     coachApi.chat.mockResolvedValue({
       text: 'Here is your personalized task plan for the next 7 days.',
       source: 'ai',
@@ -119,9 +119,9 @@ describe('ProAssistant', () => {
     await fixture.componentInstance['askCoach'](input);
     fixture.detectChanges();
 
-    expect(fixture.componentInstance['scheduleProposal']()).toBeNull();
-    expect(fixture.componentInstance['awaitingReply']()).toBe(true);
-    expect(fixture.componentInstance['chatReply']()).toContain('?');
+    expect(fixture.componentInstance['scheduleProposal']()?.length).toBe(1);
+    expect(fixture.componentInstance['awaitingReply']()).toBe(false);
+    expect(fixture.componentInstance['chatReply']()).toContain('personalized task plan');
     expect(coachApi.chat).toHaveBeenCalledWith('make a plan', expect.anything(), []);
   });
 });

@@ -3,6 +3,7 @@ import {
   answerCoachQuestion,
   buildLocalOverview,
   buildLocalSchedule,
+  buildLocalGenericPlan,
   buildLocalWellnessPlan,
   buildLocalWorkoutPlan,
   buildPlanSummaryTag,
@@ -67,21 +68,19 @@ describe('pro-coach', () => {
   it('detects schedule intent', () => {
     expect(isScheduleRequest('Build a schedule for this week')).toBe(true);
     expect(isScheduleRequest('30 day workout plan')).toBe(true);
+    expect(isScheduleRequest('build me something')).toBe(true);
+    expect(isScheduleRequest('make a plan')).toBe(true);
     expect(isScheduleRequest('What should I focus on today?')).toBe(false);
-    expect(isScheduleRequest('make a plan')).toBe(false);
   });
 
-  it('asks clarifying questions for vague input', () => {
+  it('asks clarifying questions only for bare help', () => {
     expect(isVagueCoachInput('help me')).toBe(true);
-    expect(isVagueCoachInput('make a plan')).toBe(true);
-    expect(buildClarifyingReply('make a plan')).toContain('?');
-    expect(isCoachAwaitingReply(buildClarifyingReply('make a plan'))).toBe(true);
+    expect(isVagueCoachInput('make a plan')).toBe(false);
+    expect(isVagueCoachInput('build me something')).toBe(false);
+    expect(buildClarifyingReply('help me')).toContain('?');
+    expect(isCoachAwaitingReply(buildClarifyingReply('help me'))).toBe(true);
     expect(isCoachAwaitingReply("Just let me know if you're ready for me to add it to your calendar!")).toBe(true);
     expect(isVagueCoachInput('30 day mental health plan')).toBe(false);
-    expect(isScheduleRequest('make a plan', [
-      { role: 'user', content: '30 day workout plan' },
-      { role: 'assistant', content: '30-day workout plan with daily checklists.' },
-    ])).toBe(false);
   });
 
   it('treats confirmation as schedule when history mentions a plan', () => {
@@ -91,6 +90,13 @@ describe('pro-coach', () => {
     ];
     expect(isScheduleRequest('ok', history)).toBe(true);
     expect(isScheduleRequest('ok', [])).toBe(false);
+  });
+
+  it('builds a generic plan when asked to build something', () => {
+    const schedule = buildLocalGenericPlan('build me something');
+    expect(schedule).toHaveLength(7);
+    expect(schedule[0].title).toContain('Day 1');
+    expect(schedule[0].checklist?.length).toBeGreaterThan(2);
   });
 
   it('builds a local workout plan with new tasks', () => {

@@ -11,6 +11,11 @@ public static class CoachScheduleHelper
         RegexOptions.IgnoreCase | RegexOptions.CultureInvariant
     );
 
+    private static readonly Regex CreatePlanIntent = new(
+        @"\b(make|create|build|generate|design|draft|give\s+me)\b.{0,48}\b(plan|schedule|routine|program|something)\b",
+        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant
+    );
+
     private static readonly Regex MultiDayPlanIntent = new(
         @"\b(\d+\s*day|month|weekly|routine|workout|training|habit)\b",
         RegexOptions.IgnoreCase | RegexOptions.CultureInvariant
@@ -55,7 +60,7 @@ public static class CoachScheduleHelper
         if (IsVagueRequestCore(trimmed))
             return false;
 
-        if (ScheduleIntent.IsMatch(trimmed) || MultiDayPlanIntent.IsMatch(trimmed))
+        if (CreatePlanIntent.IsMatch(trimmed) || ScheduleIntent.IsMatch(trimmed) || MultiDayPlanIntent.IsMatch(trimmed))
             return true;
 
         return ConfirmationIntent.IsMatch(trimmed) && HistoryIndicatesPendingPlan(history);
@@ -76,36 +81,24 @@ public static class CoachScheduleHelper
         if (ConfirmationIntent.IsMatch(trimmed))
             return false;
 
+        if (CreatePlanIntent.IsMatch(trimmed) ||
+            ScheduleIntent.IsMatch(trimmed) ||
+            MultiDayPlanIntent.IsMatch(trimmed))
+        {
+            return false;
+        }
+
         var lower = trimmed.ToLowerInvariant();
 
         if (Regex.IsMatch(lower, @"overdue|today|focus|overcommit|capacity|priority|tomorrow"))
             return false;
 
-        if (Regex.IsMatch(trimmed, @"\d+\s*day", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant))
-            return false;
-
-        if (Regex.IsMatch(lower, @"mental health|wellness|mindfulness|workout|training|this week|next week|for this week"))
-            return false;
-
-        if (Regex.IsMatch(trimmed, @"^(help(\s+me)?|plan(s|ning)?|schedule)\.?$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant))
-            return true;
-
-        if (Regex.IsMatch(trimmed, @"^(make|create|build)\s+(a\s+)?(plan|schedule)\.?$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant))
-            return true;
-
-        if (Regex.IsMatch(trimmed, @"^(i\s+)?(need|want)\s+(a\s+)?(plan|schedule|help)\.?$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant))
+        if (Regex.IsMatch(trimmed, @"^(help(\s+me)?|hi|hey|hello|what|huh)\.?$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant))
             return true;
 
         var words = trimmed.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
         if (words.Length <= 2 && !Regex.IsMatch(trimmed, @"\d"))
             return true;
-
-        if (words.Length <= 4 &&
-            Regex.IsMatch(lower, @"\b(plan|schedule|help|something|better|health|fitness|wellness)\b") &&
-            !Regex.IsMatch(lower, @"\d+\s*day|week|workout|mental|mindfulness|today|overdue"))
-        {
-            return true;
-        }
 
         return false;
     }
@@ -177,12 +170,7 @@ public static class CoachScheduleHelper
         IReadOnlyList<CoachChatMessage>? history,
         IReadOnlyList<CoachTaskItem> tasks)
     {
-        if (IsVagueRequestCore(question))
-            return Array.Empty<ScheduleAssignment>();
-
         var planQuestion = ResolvePlanQuestion(question, history);
-        if (IsVagueRequestCore(planQuestion))
-            return Array.Empty<ScheduleAssignment>();
         var workout = BuildStubWorkoutPlan(planQuestion);
         if (workout.Count > 0)
             return workout;
@@ -191,7 +179,68 @@ public static class CoachScheduleHelper
         if (wellness.Count > 0)
             return wellness;
 
-        return BuildStubReschedule(tasks);
+        var reschedule = BuildStubReschedule(tasks);
+        if (reschedule.Count > 0)
+            return reschedule;
+
+        return BuildStubGenericPlan(planQuestion);
+    }
+
+    public static IReadOnlyList<ScheduleAssignment> BuildStubGenericPlan(string question)
+    {
+        var days = ResolvePlanDays(question);
+        var themes = new[]
+        {
+            "Clarify the top 3 priorities",
+            "Deep work block",
+            "Admin and follow-ups",
+            "Learn or practice",
+            "Move one stuck item forward",
+            "Review progress",
+            "Plan the next stretch",
+        };
+
+        var assignments = new List<ScheduleAssignment>();
+        var day = DateOnly.FromDateTime(DateTime.Now);
+
+        for (var index = 0; index < days; index++)
+        {
+            if (index > 0)
+                day = NextWeekday(day.AddDays(1));
+            else
+                day = NextWeekday(day);
+
+            var theme = themes[index % themes.Length];
+            assignments.Add(new ScheduleAssignment(
+                null,
+                day.ToString("yyyy-MM-dd"),
+                $"Day {index + 1} – {theme}",
+                45,
+                new List<ChecklistItem>
+                {
+                    MakeChecklistItem("Pick one outcome for the day"),
+                    MakeChecklistItem("Work a 25–45 min focus block"),
+                    MakeChecklistItem("Write down what's blocking you"),
+                    MakeChecklistItem("Park leftovers for tomorrow"),
+                }));
+        }
+
+        return assignments;
+    }
+
+    public static int ResolvePlanDays(string question)
+    {
+        var match = Regex.Match(question, @"(\d+)\s*day", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+        if (match.Success && int.TryParse(match.Groups[1].Value, out var parsed))
+            return Math.Clamp(parsed, 3, MaxAssignments);
+
+        if (Regex.IsMatch(question, @"\bmonth\b", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant))
+            return 20;
+
+        if (Regex.IsMatch(question, @"\b(this\s+week|next\s+week|week)\b", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant))
+            return 5;
+
+        return 7;
     }
 
     public static string ResolvePlanQuestionPublic(string question, IReadOnlyList<CoachChatMessage>? history) =>
@@ -199,16 +248,10 @@ public static class CoachScheduleHelper
 
     private static IReadOnlyList<ScheduleAssignment> BuildStubWellnessPlan(string question)
     {
-        var match = Regex.Match(question, @"(\d+)\s*day", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
-        if (!match.Success ||
-            !Regex.IsMatch(question, @"mental health|wellness|mindfulness|well-being|wellbeing", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant))
-        {
+        if (!Regex.IsMatch(question, @"mental health|wellness|mindfulness|well-being|wellbeing", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant))
             return Array.Empty<ScheduleAssignment>();
-        }
 
-        var days = Math.Min(int.Parse(match.Groups[1].Value), MaxAssignments);
-        if (days < 3)
-            return Array.Empty<ScheduleAssignment>();
+        var days = ResolvePlanDays(question);
 
         var themes = new[]
         {
@@ -283,13 +326,10 @@ public static class CoachScheduleHelper
 
     private static IReadOnlyList<ScheduleAssignment> BuildStubWorkoutPlan(string question)
     {
-        var match = Regex.Match(question, @"(\d+)\s*day", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
-        if (!match.Success || !Regex.IsMatch(question, @"workout|training|exercise|habit|routine", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant))
+        if (!Regex.IsMatch(question, @"workout|training|exercise|habit|routine", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant))
             return Array.Empty<ScheduleAssignment>();
 
-        var days = Math.Min(int.Parse(match.Groups[1].Value), MaxAssignments);
-        if (days < 3)
-            return Array.Empty<ScheduleAssignment>();
+        var days = ResolvePlanDays(question);
 
         var assignments = new List<ScheduleAssignment>();
         var day = DateOnly.FromDateTime(DateTime.Now);
@@ -324,7 +364,7 @@ public static class CoachScheduleHelper
                 if (IsVagueRequestCore(message.Content))
                     continue;
 
-                if (MultiDayPlanIntent.IsMatch(message.Content) || ScheduleIntent.IsMatch(message.Content))
+                if (MultiDayPlanIntent.IsMatch(message.Content) || ScheduleIntent.IsMatch(message.Content) || CreatePlanIntent.IsMatch(message.Content))
                     return message.Content;
             }
         }
@@ -384,12 +424,37 @@ public static class CoachScheduleHelper
         Done = false,
     };
 
+    public static string ExtractJsonObject(string content)
+    {
+        var trimmed = content.Trim();
+        if (string.IsNullOrWhiteSpace(trimmed))
+            return trimmed;
+
+        if (trimmed.StartsWith("```", StringComparison.Ordinal))
+        {
+            var fenceStart = trimmed.IndexOf('{');
+            var fenceEnd = trimmed.LastIndexOf('}');
+            if (fenceStart >= 0 && fenceEnd > fenceStart)
+                return trimmed[fenceStart..(fenceEnd + 1)];
+        }
+
+        if (trimmed.StartsWith('{'))
+            return trimmed;
+
+        var start = trimmed.IndexOf('{');
+        var end = trimmed.LastIndexOf('}');
+        if (start >= 0 && end > start)
+            return trimmed[start..(end + 1)];
+
+        return trimmed;
+    }
+
     public static CoachProviderResult ParseStructuredResponse(
         string json,
         IReadOnlyList<CoachTaskItem> tasks,
         IReadOnlyList<ScheduleAssignment>? currentSchedule = null)
     {
-        using var document = JsonDocument.Parse(json);
+        using var document = JsonDocument.Parse(ExtractJsonObject(json));
         var root = document.RootElement;
 
         var message = root.TryGetProperty("message", out var messageElement)
@@ -596,7 +661,7 @@ public static class CoachScheduleHelper
         return recent.Any(message =>
             string.Equals(message.Role, "user", StringComparison.OrdinalIgnoreCase) &&
             !IsVagueRequestCore(message.Content) &&
-            (ScheduleIntent.IsMatch(message.Content) || MultiDayPlanIntent.IsMatch(message.Content)));
+            (ScheduleIntent.IsMatch(message.Content) || MultiDayPlanIntent.IsMatch(message.Content) || CreatePlanIntent.IsMatch(message.Content)));
     }
 
     private static ScheduleAssignment EnrichExisting(

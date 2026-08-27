@@ -8,6 +8,7 @@ import {
   buildClarifyingReply,
   buildLocalOverview,
   buildLocalSchedule,
+  buildLocalGenericPlan,
   buildLocalWellnessPlan,
   buildLocalWorkoutPlan,
   buildPlanSummaryTag,
@@ -158,7 +159,7 @@ export class ProAssistant {
     const apiReply = await this.coachApi.chat(question, snapshot, history);
 
     if (apiReply?.text) {
-      if (isFreshVagueAsk) {
+      if (isFreshVagueAsk && apiReply.schedule.length === 0) {
         const clarifying = this.clarifyingReplyFromApi(question, apiReply);
         this.appendChatTurn('user', question);
         this.appendChatTurn('assistant', clarifying);
@@ -332,7 +333,8 @@ export class ProAssistant {
     const planQuestion = planQuestionFromHistory(history, question);
     const wellness = buildLocalWellnessPlan(planQuestion);
     const workout = wellness.length > 0 ? wellness : buildLocalWorkoutPlan(planQuestion);
-    const schedule = workout.length > 0 ? workout : buildLocalSchedule(this.store.activeEnrichedTasks());
+    const themed = workout.length > 0 ? workout : buildLocalGenericPlan(planQuestion);
+    const schedule = themed.length > 0 ? themed : buildLocalSchedule(this.store.activeEnrichedTasks());
 
     if (schedule.length === 0) return;
 

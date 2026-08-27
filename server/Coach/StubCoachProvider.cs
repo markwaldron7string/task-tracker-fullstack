@@ -49,11 +49,7 @@ public sealed class StubCoachProvider : ICoachProvider
         {
             var schedule = CoachScheduleHelper.BuildStubSchedule(question, history, tasks);
             if (schedule.Count == 0)
-            {
-                return Task.FromResult(new CoachProviderResult(
-                    "No unscheduled tasks to move onto the calendar. Ask me to create a plan like \"30 day workout plan\" and I'll add new tasks you can apply.",
-                    Array.Empty<ScheduleAssignment>()));
-            }
+                schedule = CoachScheduleHelper.BuildStubGenericPlan(question);
 
             var planQuestion = CoachScheduleHelper.ResolvePlanQuestionPublic(question, history);
             var isNewPlan = schedule.All(assignment => assignment.TaskId is null);
