@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: task-tracker-api
+    runtime: docker
+    plan: free
+    dockerfilePath: ./server/Dockerfile
+    dockerContext: ./server
+    healthCheckPath: /health
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      - key: Cors__AllowedOrigins__0
+        value: https://task-tracker-fullstack-nu.vercel.app
+      - key: ConnectionStrings__Tasks
+        value: Data Source=/tmp/data/tasks.db
+      - key: Coach__ApiKey
+        sync: false

@@ -4,6 +4,7 @@ using TaskTracker;
 using TaskTracker.Coach;
 
 var builder = WebApplication.CreateBuilder(args);
+BindToPlatformPort(builder);
 
 builder.Services.AddOpenApi();
 builder.Services.Configure<CoachOptions>(builder.Configuration.GetSection("Coach"));
@@ -203,12 +204,20 @@ app.Run();
 
 // ----- Data types -----
 
+static void BindToPlatformPort(WebApplicationBuilder builder)
+{
+    var port = Environment.GetEnvironmentVariable("PORT");
+    if (!string.IsNullOrWhiteSpace(port))
+        builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
+}
+
 static string ResolveTasksConnectionString(IConfiguration configuration)
 {
     var configuredConnectionString = configuration.GetConnectionString("Tasks");
-    if (IsRunningOnAzureAppService() && UsesLocalSqlitePath(configuredConnectionString))
+    if (UsesLocalSqlitePath(configuredConnectionString) &&
+        (IsRunningOnAzureAppService() || IsRunningOnRender()))
     {
-        return GetAzureSqliteConnectionString();
+        return GetHostedSqliteConnectionString();
     }
 
     return string.IsNullOrWhiteSpace(configuredConnectionString)
@@ -219,6 +228,11 @@ static string ResolveTasksConnectionString(IConfiguration configuration)
 static bool IsRunningOnAzureAppService()
 {
     return !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("WEBSITE_SITE_NAME"));
+}
+
+static bool IsRunningOnRender()
+{
+    return string.Equals(Environment.GetEnvironmentVariable("RENDER"), "true", StringComparison.OrdinalIgnoreCase);
 }
 
 static bool UsesLocalSqlitePath(string? connectionString)
@@ -232,10 +246,17 @@ static bool UsesLocalSqlitePath(string? connectionString)
     return string.IsNullOrWhiteSpace(dataSource) || !Path.IsPathRooted(dataSource);
 }
 
-static string GetAzureSqliteConnectionString()
+static string GetHostedSqliteConnectionString()
 {
-    var homeDirectory = Environment.GetEnvironmentVariable("HOME") ?? @"D:\home";
-    var databasePath = Path.Combine(homeDirectory, "data", "tasks.db");
+    var dataDirectory = Environment.GetEnvironmentVariable("DATA_DIRECTORY");
+    if (string.IsNullOrWhiteSpace(dataDirectory))
+    {
+        dataDirectory = IsRunningOnAzureAppService()
+            ? Path.Combine(Environment.GetEnvironmentVariable("HOME") ?? @"D:\home", "data")
+            : "/tmp/data";
+    }
+
+    var databasePath = Path.Combine(dataDirectory, "tasks.db");
     return $"Data Source={databasePath}";
 }
 
