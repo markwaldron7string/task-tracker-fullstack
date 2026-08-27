@@ -38,6 +38,7 @@ public sealed class OpenAiCoachProvider : ICoachProvider
                 AwaitingReply: true);
         }
 
+        var settings = CoachLlmSettings.Resolve(options);
         var scheduleMode = CoachScheduleHelper.ShouldUseScheduleMode(
             question, history, currentSchedule, reviseSchedule);
         var systemPrompt = scheduleMode
@@ -53,7 +54,7 @@ public sealed class OpenAiCoachProvider : ICoachProvider
 
         var payload = new Dictionary<string, object?>
         {
-            ["model"] = options.Model,
+            ["model"] = settings.Model,
             ["max_tokens"] = scheduleMode ? Math.Max(options.ScheduleMaxTokens, options.MaxTokens) : options.MaxTokens,
             ["temperature"] = scheduleMode ? 0.35 : 0.6,
             ["messages"] = messages
@@ -61,8 +62,10 @@ public sealed class OpenAiCoachProvider : ICoachProvider
 
         if (scheduleMode)
             payload["response_format"] = new { type = "json_object" };
+        if (settings.DisableThinking)
+            payload["reasoning_effort"] = "none";
 
-        using var request = new HttpRequestMessage(HttpMethod.Post, options.Endpoint);
+        using var request = new HttpRequestMessage(HttpMethod.Post, settings.Endpoint);
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", options.ApiKey);
         request.Content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
 

@@ -15,3 +15,9 @@ services:
         value: Data Source=/tmp/data/tasks.db
       - key: Coach__ApiKey
         sync: false
+      - key: Coach__Provider
+        value: Auto
+      - key: Coach__Model
+        value: gemini-2.5-flash
+      - key: Coach__Endpoint
+        value: https://generativelanguage.googleapis.com/v1beta/openai/chat/completions

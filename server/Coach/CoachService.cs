@@ -107,12 +107,7 @@ public sealed class CoachService
 
     private ICoachProvider ResolveProvider()
     {
-        var provider = options.Provider.Trim().ToLowerInvariant();
-        return provider switch
-        {
-            "stub" => stubProvider,
-            "openai" => openAiProvider,
-            _ => string.IsNullOrWhiteSpace(options.ApiKey) ? stubProvider : openAiProvider,
-        };
+        var settings = CoachLlmSettings.Resolve(options);
+        return settings.UseStub ? stubProvider : openAiProvider;
     }
 }

@@ -143,12 +143,11 @@ Local frontend builds default to `http://localhost:5226/api/tasks`. Deployed fro
 
 ### AI Coach (optional, local)
 
-By default the API uses the **stub** coach in development. To enable OpenAI locally:
+The coach uses **Google Gemini 2.5 Flash** (free) when an API key is set. Create a key at [Google AI Studio](https://aistudio.google.com/apikey):
 
 ```bash
 cd server
-dotnet user-secrets set "Coach:ApiKey" "sk-your-key-here"
-dotnet user-secrets set "Coach:Provider" "OpenAI"
+dotnet user-secrets set "Coach:ApiKey" "AIza-your-gemini-key"
 ```
 
 Restart the API. The coach panel will show **Powered by AI** when the cloud provider responds.

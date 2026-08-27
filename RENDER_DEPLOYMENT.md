@@ -27,18 +27,24 @@ https://task-tracker-api.onrender.com
 
 ## 2. Environment Variables
 
-Render Blueprint sets CORS and the SQLite path. Add the Coach key in the dashboard (it is marked `sync: false` so it is not committed):
+`Coach__ApiKey` is not in this repo. You create it, then paste it into Render.
 
-```text
-Coach__ApiKey=<your-llm-api-key>
-```
+### Get a free Gemini key
 
-Optional extras:
+1. Open [Google AI Studio](https://aistudio.google.com/apikey)
+2. Sign in with a Google account
+3. Click **Create API key**
+4. Copy the key (it starts with `AIza`)
 
-```text
-Cors__AllowedOrigins__0=https://task-tracker-fullstack-nu.vercel.app
-ConnectionStrings__Tasks=Data Source=/tmp/data/tasks.db
-```
+A key you set with `dotnet user-secrets` on your laptop stays on that machine. Render needs its own copy.
+
+### Paste it into Render
+
+On the Blueprint form, `Coach__ApiKey` is the empty secret field. Paste the Gemini key there.
+
+If the service already exists: **Render Dashboard > task-tracker-api > Environment > Environment Variables > Coach__ApiKey**.
+
+You can leave it blank for now. Coach still works with the on-device planner until the key is set.
 
 ## 3. Point Vercel At The API
 
