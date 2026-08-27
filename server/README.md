@@ -45,11 +45,13 @@ Optional CORS origin:
 Cors__AllowedOrigins__0=http://localhost:4200
 ```
 
-On Azure App Service, use the persistent home directory:
+On Render, SQLite lives on the ephemeral disk:
 
 ```text
-ConnectionStrings__Tasks=Data Source=D:/home/data/tasks.db
+ConnectionStrings__Tasks=Data Source=/tmp/data/tasks.db
 ```
+
+The live API is `https://task-tracker-api-i1hl.onrender.com`. Set `Coach__ApiKey` in the Render dashboard, not in this repo. See [RENDER_DEPLOYMENT.md](../RENDER_DEPLOYMENT.md).
 
 ## Endpoints
 
@@ -62,6 +64,7 @@ ConnectionStrings__Tasks=Data Source=D:/home/data/tasks.db
 | `PUT` | `/api/tasks/{id}` | Update task |
 | `DELETE` | `/api/tasks/{id}` | Delete one task |
 | `DELETE` | `/api/tasks` | Delete all tasks |
+| `POST` | `/api/coach/chat` | AI planning coach |
 
 ## Tests
 

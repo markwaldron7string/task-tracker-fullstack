@@ -3,11 +3,15 @@ using Microsoft.Data.Sqlite;
 using TaskTracker;
 using TaskTracker.Coach;
 
+BindToPlatformPort();
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddOpenApi();
 builder.Services.Configure<CoachOptions>(builder.Configuration.GetSection("Coach"));
-builder.Services.AddHttpClient<OpenAiCoachProvider>();
+builder.Services.AddHttpClient<OpenAiCoachProvider>(client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(90);
+});
 builder.Services.AddSingleton<StubCoachProvider>();
 builder.Services.AddSingleton<CoachService>();
 
@@ -203,12 +207,26 @@ app.Run();
 
 // ----- Data types -----
 
+static void BindToPlatformPort()
+{
+    var port = Environment.GetEnvironmentVariable("PORT");
+    if (string.IsNullOrWhiteSpace(port))
+        return;
+
+    // Microsoft container images set ASPNETCORE_HTTP_PORTS=8080. Render health-
+    // checks $PORT (usually 10000), so override the image default before Kestrel
+    // is configured. Leave PORT unset locally so tests keep their random ports.
+    Environment.SetEnvironmentVariable("ASPNETCORE_HTTP_PORTS", port);
+    Environment.SetEnvironmentVariable("ASPNETCORE_URLS", $"http://0.0.0.0:{port}");
+}
+
 static string ResolveTasksConnectionString(IConfiguration configuration)
 {
     var configuredConnectionString = configuration.GetConnectionString("Tasks");
-    if (IsRunningOnAzureAppService() && UsesLocalSqlitePath(configuredConnectionString))
+    if (UsesLocalSqlitePath(configuredConnectionString) &&
+        (IsRunningOnAzureAppService() || IsRunningOnRender()))
     {
-        return GetAzureSqliteConnectionString();
+        return GetHostedSqliteConnectionString();
     }
 
     return string.IsNullOrWhiteSpace(configuredConnectionString)
@@ -219,6 +237,11 @@ static string ResolveTasksConnectionString(IConfiguration configuration)
 static bool IsRunningOnAzureAppService()
 {
     return !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("WEBSITE_SITE_NAME"));
+}
+
+static bool IsRunningOnRender()
+{
+    return string.Equals(Environment.GetEnvironmentVariable("RENDER"), "true", StringComparison.OrdinalIgnoreCase);
 }
 
 static bool UsesLocalSqlitePath(string? connectionString)
@@ -232,10 +255,17 @@ static bool UsesLocalSqlitePath(string? connectionString)
     return string.IsNullOrWhiteSpace(dataSource) || !Path.IsPathRooted(dataSource);
 }
 
-static string GetAzureSqliteConnectionString()
+static string GetHostedSqliteConnectionString()
 {
-    var homeDirectory = Environment.GetEnvironmentVariable("HOME") ?? @"D:\home";
-    var databasePath = Path.Combine(homeDirectory, "data", "tasks.db");
+    var dataDirectory = Environment.GetEnvironmentVariable("DATA_DIRECTORY");
+    if (string.IsNullOrWhiteSpace(dataDirectory))
+    {
+        dataDirectory = IsRunningOnAzureAppService()
+            ? Path.Combine(Environment.GetEnvironmentVariable("HOME") ?? @"D:\home", "data")
+            : "/tmp/data";
+    }
+
+    var databasePath = Path.Combine(dataDirectory, "tasks.db");
     return $"Data Source={databasePath}";
 }
 

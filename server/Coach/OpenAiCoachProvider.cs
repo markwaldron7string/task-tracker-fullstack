@@ -38,6 +38,7 @@ public sealed class OpenAiCoachProvider : ICoachProvider
                 AwaitingReply: true);
         }
 
+        var settings = CoachLlmSettings.Resolve(options);
         var scheduleMode = CoachScheduleHelper.ShouldUseScheduleMode(
             question, history, currentSchedule, reviseSchedule);
         var systemPrompt = scheduleMode
@@ -53,7 +54,7 @@ public sealed class OpenAiCoachProvider : ICoachProvider
 
         var payload = new Dictionary<string, object?>
         {
-            ["model"] = options.Model,
+            ["model"] = settings.Model,
             ["max_tokens"] = scheduleMode ? Math.Max(options.ScheduleMaxTokens, options.MaxTokens) : options.MaxTokens,
             ["temperature"] = scheduleMode ? 0.35 : 0.6,
             ["messages"] = messages
@@ -61,12 +62,10 @@ public sealed class OpenAiCoachProvider : ICoachProvider
 
         if (scheduleMode)
             payload["response_format"] = new { type = "json_object" };
+        if (settings.DisableThinking)
+            payload["reasoning_effort"] = "none";
 
-        using var request = new HttpRequestMessage(HttpMethod.Post, options.Endpoint);
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", options.ApiKey);
-        request.Content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
-
-        using var response = await httpClient.SendAsync(request, cancellationToken);
+        using var response = await SendCoachRequestAsync(settings.Endpoint, payload, cancellationToken);
         response.EnsureSuccessStatusCode();
 
         using var document = await JsonDocument.ParseAsync(
@@ -90,17 +89,54 @@ public sealed class OpenAiCoachProvider : ICoachProvider
         return new CoachProviderResult(content, Array.Empty<ScheduleAssignment>(), AwaitingReply: awaitingReply);
     }
 
+    private async Task<HttpResponseMessage> SendCoachRequestAsync(
+        string endpoint,
+        Dictionary<string, object?> payload,
+        CancellationToken cancellationToken)
+    {
+        var response = await PostAsync(endpoint, payload, cancellationToken);
+        if (response.IsSuccessStatusCode)
+            return response;
+
+        if (payload.Remove("reasoning_effort"))
+        {
+            response.Dispose();
+            response = await PostAsync(endpoint, payload, cancellationToken);
+            if (response.IsSuccessStatusCode)
+                return response;
+        }
+
+        if (payload.Remove("response_format"))
+        {
+            response.Dispose();
+            response = await PostAsync(endpoint, payload, cancellationToken);
+        }
+
+        return response;
+    }
+
+    private async Task<HttpResponseMessage> PostAsync(
+        string endpoint,
+        Dictionary<string, object?> payload,
+        CancellationToken cancellationToken)
+    {
+        var request = new HttpRequestMessage(HttpMethod.Post, endpoint);
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", options.ApiKey);
+        request.Content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
+        return await httpClient.SendAsync(request, cancellationToken);
+    }
+
     internal static string BuildSystemPrompt(CoachTaskSnapshot snapshot, IReadOnlyList<CoachTaskItem> tasks)
     {
         return $"""
             You are a concise planning coach inside a personal task tracker app.
             Answer in 2-4 short sentences. Be practical and encouraging, not preachy.
 
-            When the user's request is vague or missing key details (no timeframe, goal type, or scope), ask ONE friendly follow-up question before suggesting or building anything. End clarifying questions with a question mark. Do not generate calendar assignments until the user gives specifics like plan type and duration. Examples of vague input: "help me", "make a plan", "I need a schedule", "something for wellness" without days or specifics.
+            When the user asks to build, make, or create a plan/schedule/something, do not stall for more details. Default to a 7-weekday plan (or the duration they named) and tell them you will put calendar tasks they can apply in one click.
 
-            When the user is answering your prior clarifying question with enough detail, give a direct helpful answer or explain what you will schedule.
+            Only ask ONE follow-up question for greetings or "help" with no request. End clarifying questions with a question mark.
 
-            When the user asks for a multi-day plan with enough detail (workout, habit, routine, wellness, including duration), tell them you can generate calendar tasks they can apply with one click — do not ask them to reply "ok"; instead explain what you will put on the calendar and that they should ask you to "build the schedule" or say "create it" if they want the calendar entries now.
+            When the user wants a multi-day plan (workout, habit, routine, wellness, or a generic "build me something"), generate calendar tasks they can apply — do not ask them to reply "ok".
 
             Task snapshot:
             - Overdue count: {snapshot.OverdueCount}
@@ -159,7 +195,8 @@ public sealed class OpenAiCoachProvider : ICoachProvider
             - For plans like workouts, habits, or N-day routines: create one new task per day with descriptive titles (up to {CoachScheduleHelper.MaxAssignments} days).
             - Each day task MUST include a checklist array with 4–8 specific, actionable items for that day (exercises with sets/reps, meals with foods, or habit steps). Tailor items to the user's goal (e.g. fat loss, muscle gain, meal plan).
             - Checklist titles should be concise but specific — not generic placeholders.
-            - Prefer scheduling unscheduled existing tasks before creating duplicates.
+            - Prefer scheduling unscheduled existing tasks before creating duplicates, UNLESS the user asked to build/make/create a new plan or "something". In that case CREATE new daily tasks even if the task list is empty.
+            - Never return an empty assignments array for a build/create/make plan request. Default to 7 weekdays when duration is omitted.
             - Spread work across calendar days starting from today ({today}) unless the user specified otherwise.
             - Respect day capacity ({snapshot.DayCapacityLabel}); add estimateMinutes when helpful (e.g. 45 for workouts).
             - Put the full plan in assignments immediately — do NOT ask the user to reply ok or confirm. Tell them to click Apply to calendar.
