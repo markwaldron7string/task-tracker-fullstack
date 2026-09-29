@@ -5,7 +5,13 @@ using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace TaskTracker.Api.Tests;
 
-public class TaskApiTests : IClassFixture<TaskApiFactory>
+// TaskApiFactory configures the app through process-wide environment variables,
+// so the API test classes share one host instead of starting hosts in parallel.
+[CollectionDefinition(nameof(ApiCollection))]
+public sealed class ApiCollection : ICollectionFixture<TaskApiFactory>;
+
+[Collection(nameof(ApiCollection))]
+public class TaskApiTests
 {
     private readonly HttpClient client;
 
@@ -158,7 +164,8 @@ public class TaskApiTests : IClassFixture<TaskApiFactory>
     }
 }
 
-public sealed class CoachApiTests : IClassFixture<TaskApiFactory>
+[Collection(nameof(ApiCollection))]
+public sealed class CoachApiTests
 {
     private readonly TaskApiFactory factory;
     private readonly HttpClient client;
