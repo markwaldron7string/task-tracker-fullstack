@@ -14,7 +14,7 @@
       </header>
 
       <p class="coach-intro">
-        Reads your tasks and suggests what to focus on. Ask anything about today, overdue work, or scheduling. Powered by cloud AI when configured, with on-device fallback offline.
+        Reads your tasks and can build a schedule or task list on command. Ask about today, overdue work, or say “create a 7-day study plan”.
       </p>
 
       <div class="coach-suggestions" aria-label="Suggestions">
@@ -35,14 +35,15 @@
         <label class="coach-chat-label" for="coach-question">Ask the coach</label>
         <div class="coach-quick">
           <button type="button" (click)="quickAsk('What should I focus on today?', coachInput)">Focus today</button>
-          <button type="button" (click)="quickAsk('Am I overcommitted?', coachInput)">Overcommitted?</button>
+          <button type="button" (click)="quickAsk('Build a schedule for this week', coachInput)">Build schedule</button>
+          <button type="button" (click)="quickAsk('Create a task list for this week', coachInput)">Task list</button>
         </div>
         <form class="coach-form" (submit)="$event.preventDefault(); askCoach(coachInput)">
           <input
             #coachInput
             id="coach-question"
             class="coach-input"
-            placeholder="e.g. What should I do first?"
+            placeholder="e.g. Create a 7-day study schedule"
             [disabled]="thinking()"
           />
           <button

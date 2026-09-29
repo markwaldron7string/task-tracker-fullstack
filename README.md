@@ -46,8 +46,8 @@ The API runs on Render's free tier, so the first request after 15 idle minutes c
 ### Pro: AI Planning Coach
 
 - Floating **Coach** panel with task-aware suggestions (overdue, overcommitted, unscheduled)
-- Cloud LLM when configured (`OpenAI`), with on-device rule-based fallback offline
-- Multi-day plan generation (e.g. *30-day workout plan with meals*) with per-day checklists
+- Cloud LLM when configured (free **Gemini 2.5 Flash** by default), with on-device rule-based fallback offline
+- Multi-day plan generation (e.g. *30-day workout plan with meals*) and **task lists** on command, with per-day checklists
 - **Apply to calendar** creates scheduled tasks with detailed sub-steps
 - Conversation history across turns; minimize (−), close (×), or click outside to dismiss
 
@@ -78,7 +78,7 @@ client/ Angular SPA on Vercel
 server/ ASP.NET Core Minimal API in Docker on Render
    |
    +-- SQLite database (tasks)
-   +-- Coach service (OpenAI or stub)
+   +-- Coach service (Gemini / Groq / OpenAI, or local stub)
 ```
 
 ## Tech Stack
@@ -87,9 +87,9 @@ server/ ASP.NET Core Minimal API in Docker on Render
 | --- | --- |
 | Frontend | Angular 22, TypeScript 6, Angular Router, HttpClient, signals, PWA |
 | Backend | .NET 10, ASP.NET Core Minimal APIs, Entity Framework Core 10 |
-| AI Coach | OpenAI Chat Completions (optional), structured JSON schedule output |
+| AI Coach | Gemini 2.5 Flash (free) via OpenAI-compatible Chat Completions, structured JSON plans |
 | Database | SQLite, EF Core migrations |
-| Tests | Vitest/Angular TestBed (30 tests), xUnit/WebApplicationFactory (11 tests) |
+| Tests | Vitest/Angular TestBed, xUnit/WebApplicationFactory |
 | Deployment | Vercel (frontend), Render Docker web service (API), GitHub Actions CI |
 
 ## Repository Layout
@@ -148,15 +148,21 @@ Local frontend builds default to `http://localhost:5226/api/tasks`. Deployed fro
 
 ### AI Coach (optional, local)
 
-By default the API uses the **stub** coach in development. To enable OpenAI locally:
+The coach uses **Google Gemini 2.5 Flash** on the free tier when an API key is set. Create a key at [Google AI Studio](https://aistudio.google.com/apikey) — no billing required.
 
 ```bash
 cd server
-dotnet user-secrets set "Coach:ApiKey" "sk-your-key-here"
-dotnet user-secrets set "Coach:Provider" "OpenAI"
+dotnet user-secrets set "Coach:ApiKey" "AIza-your-gemini-key"
 ```
 
-Restart the API. The coach panel will show **Powered by AI** when the cloud provider responds.
+Restart the API. The coach panel will show **Powered by AI** when Gemini responds. Without a key, it uses the on-device planner (schedules, task lists, workouts, and wellness plans still work).
+
+To use Groq instead (also free):
+
+```bash
+dotnet user-secrets set "Coach:ApiKey" "gsk_your-groq-key"
+dotnet user-secrets set "Coach:Provider" "Groq"
+```
 
 ## Testing
 

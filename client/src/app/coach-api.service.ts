@@ -53,7 +53,7 @@ export class CoachApiService {
             currentSchedule: options.currentSchedule ?? null,
             reviseSchedule: options.reviseSchedule ?? false,
           })
-          .pipe(timeout(45_000), catchError(() => of(null)))
+          .pipe(timeout(90_000), catchError(() => of(null)))
       );
 
       if (!response?.text) return null;

@@ -3,6 +3,7 @@ import {
   answerCoachQuestion,
   buildLocalOverview,
   buildLocalSchedule,
+  buildLocalPlan,
   buildLocalWellnessPlan,
   buildLocalWorkoutPlan,
   buildPlanSummaryTag,
@@ -66,6 +67,8 @@ describe('pro-coach', () => {
 
   it('detects schedule intent', () => {
     expect(isScheduleRequest('Build a schedule for this week')).toBe(true);
+    expect(isScheduleRequest('build me a schedule')).toBe(true);
+    expect(isScheduleRequest('create a task list for moving')).toBe(true);
     expect(isScheduleRequest('30 day workout plan')).toBe(true);
     expect(isScheduleRequest('What should I focus on today?')).toBe(false);
     expect(isScheduleRequest('make a plan')).toBe(false);
@@ -78,6 +81,8 @@ describe('pro-coach', () => {
     expect(isCoachAwaitingReply(buildClarifyingReply('make a plan'))).toBe(true);
     expect(isCoachAwaitingReply("Just let me know if you're ready for me to add it to your calendar!")).toBe(true);
     expect(isVagueCoachInput('30 day mental health plan')).toBe(false);
+    expect(isVagueCoachInput('build me a schedule')).toBe(false);
+    expect(isVagueCoachInput('create a task list for packing')).toBe(false);
     expect(isScheduleRequest('make a plan', [
       { role: 'user', content: '30 day workout plan' },
       { role: 'assistant', content: '30-day workout plan with daily checklists.' },
@@ -117,6 +122,13 @@ describe('pro-coach', () => {
     expect(schedule[0].title).toContain('Morning Mindfulness');
     expect(buildPlanSummaryTag(schedule, '30 day mental health plan')).toContain('mental health');
     expect(buildLocalOverview(schedule, '30 day mental health plan')).toContain('mindfulness');
+  });
+
+  it('builds a local task list from a create-list command', () => {
+    const schedule = buildLocalPlan('create a task list for moving apartments', []);
+    expect(schedule.length).toBeGreaterThanOrEqual(5);
+    expect(schedule.every(item => item.taskId == null)).toBe(true);
+    expect(schedule.some(item => /pack/i.test(item.title ?? ''))).toBe(true);
   });
 
   it('revises a local schedule when asked to shorten tasks', () => {

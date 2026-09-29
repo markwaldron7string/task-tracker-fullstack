@@ -112,6 +112,11 @@ public sealed class StubCoachProvider : ICoachProvider
             return $"{schedule.Count}-day mental health plan to support your well-being.";
         }
 
+        if (Regex.IsMatch(question, @"task list|to-?do|packing|chore", RegexOptions.IgnoreCase))
+        {
+            return $"{schedule.Count} tasks ready to add. Review below and apply to your calendar.";
+        }
+
         if (Regex.IsMatch(question, @"workout|training|exercise|habit|routine", RegexOptions.IgnoreCase))
         {
             return $"{schedule.Count}-day workout plan with daily checklists.";

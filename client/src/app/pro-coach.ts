@@ -41,8 +41,11 @@ export interface CoachChatTurn {
 }
 
 const SCHEDULE_INTENT =
-  /\b(schedule|plan|build\s+(a\s+)?schedule|assign|spread|calendar|this\s+week|next\s+week|week\s+plan|routine|program|workout|habit)\b/i;
-const MULTI_DAY_PLAN_INTENT = /\b(\d+\s*day|month|weekly|routine|workout|training|habit|mental health|wellness|mindfulness|well-being|wellbeing)\b/i;
+  /\b(schedule|plan|build\s+(a\s+)?schedule|assign|spread|calendar|this\s+week|next\s+week|week\s+plan|routine|program|workout|habit|task lists?|to-?do lists?|packing list|chore list|\btodos?\b)\b/i;
+const MULTI_DAY_PLAN_INTENT = /\b(\d+\s*day|month|weekly|routine|workout|training|habit|mental health|wellness|mindfulness|well-being|wellbeing|study|meal plan)\b/i;
+const TASK_LIST_INTENT = /\b(task lists?|to-?do lists?|packing list|chore list|\btodos?\b|checklist of tasks)\b/i;
+const BUILD_COMMAND_INTENT =
+  /\b(build|create|make|generate|draft|write)\b.*\b(schedule|plan|task lists?|to-?do|todos?|checklist|routine)\b/i;
 const CONFIRMATION_INTENT =
   /^(ok|okay|yes|yep|yeah|sure|do it|go ahead|proceed|sounds good|let'?s do it|please do|apply it|create it|make it)\.?!?$/i;
 
@@ -74,7 +77,13 @@ export function isVagueCoachInput(question: string): boolean {
   const lower = trimmed.toLowerCase();
   if (/overdue|today|focus|overcommit|capacity|priority|tomorrow/.test(lower)) return false;
   if (/\d+\s*day/i.test(trimmed)) return false;
-  if (/mental health|wellness|mindfulness|workout|training|this week|next week|for this week/i.test(trimmed)) return false;
+  if (/mental health|wellness|mindfulness|workout|training|this week|next week|for this week|task list|to-?do/i.test(trimmed)) return false;
+  if (
+    BUILD_COMMAND_INTENT.test(trimmed) &&
+    !/^(make|create|build)\s+(a\s+)?(plan|schedule)\.?$/i.test(trimmed)
+  ) {
+    return false;
+  }
 
   if (/^(help(\s+me)?|plan(s|ning)?|schedule)\.?$/i.test(trimmed)) return true;
   if (/^(make|create|build)\s+(a\s+)?(plan|schedule)\.?$/i.test(trimmed)) return true;
@@ -86,7 +95,8 @@ export function isVagueCoachInput(question: string): boolean {
   if (
     words.length <= 4 &&
     /\b(plan|schedule|help|something|better|health|fitness|wellness)\b/i.test(trimmed) &&
-    !/\d+\s*day|week|workout|mental|mindfulness|today|overdue/i.test(trimmed)
+    !/\d+\s*day|week|workout|mental|mindfulness|today|overdue|task list|to-?do/i.test(trimmed) &&
+    !BUILD_COMMAND_INTENT.test(trimmed)
   ) {
     return true;
   }
@@ -213,6 +223,140 @@ export function buildLocalWellnessPlan(question: string, maxDays = 31): CoachSch
   return assignments;
 }
 
+export function buildLocalPlan(
+  question: string,
+  tasks: Array<{ id: number; title: string; due: string | null; priority: string }>,
+  maxDays = 31
+): CoachScheduleAssignment[] {
+  const wellness = buildLocalWellnessPlan(question, maxDays);
+  if (wellness.length > 0) return wellness;
+
+  const workout = buildLocalWorkoutPlan(question, maxDays);
+  if (workout.length > 0) return workout;
+
+  if (TASK_LIST_INTENT.test(question) || wantsNewPlan(question)) {
+    const generic = buildLocalGenericPlan(question, maxDays);
+    if (generic.length > 0) return generic;
+  }
+
+  const reschedule = buildLocalSchedule(tasks);
+  if (reschedule.length > 0) return reschedule;
+
+  return buildLocalGenericPlan(question, maxDays);
+}
+
+function wantsNewPlan(question: string): boolean {
+  if (/\b(this week|next week|unscheduled|existing tasks|my tasks)\b/i.test(question)) return false;
+  return /\d+\s*day|study|meal|packing|launch|moving|project|habit|routine/i.test(question);
+}
+
+export function buildLocalGenericPlan(question: string, maxDays = 31): CoachScheduleAssignment[] {
+  const days = parsePlanLength(question, maxDays);
+  const topic = extractPlanTopic(question);
+  const isList = TASK_LIST_INTENT.test(question);
+  const assignments: CoachScheduleAssignment[] = [];
+  let day = new Date();
+
+  for (let index = 0; index < days; index++) {
+    if (index > 0) day = addDays(day, 1);
+    day = nextWeekday(day);
+    assignments.push({
+      due: formatIso(day),
+      title: isList ? buildTaskListTitle(topic, index, days) : `Day ${index + 1} – ${topic}`,
+      estimateMinutes: isList ? 25 : 40,
+      checklist: buildGenericChecklist(topic, index, isList),
+    });
+  }
+
+  return assignments;
+}
+
+function parsePlanLength(question: string, maxDays: number): number {
+  const match = question.match(/(\d+)\s*day/i);
+  if (match) return Math.min(Math.max(parseInt(match[1], 10) || 1, 1), maxDays);
+  if (/\bmonth\b/i.test(question)) return Math.min(20, maxDays);
+  if (/\b(this week|next week|week)\b/i.test(question)) return Math.min(5, maxDays);
+  return Math.min(TASK_LIST_INTENT.test(question) ? 6 : 5, maxDays);
+}
+
+function extractPlanTopic(question: string): string {
+  const cleaned = question
+    .replace(
+      /\b(please|can you|could you|build|create|make|generate|draft|write|me|a|an|the|my|for|of|to|on|with|and|or|schedule|plan|task lists?|to-?do lists?|todos?|checklist|calendar|days?)\b/gi,
+      ' '
+    )
+    .replace(/\d+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(/^[-,.\s]+|[-,.\s]+$/g, '');
+  if (!cleaned) return TASK_LIST_INTENT.test(question) ? 'Action items' : 'Focus block';
+  return cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
+}
+
+function genericTaskTitles(topic: string): string[] {
+  const lower = topic.toLowerCase();
+  if (/pack|mov/.test(lower)) {
+    return [
+      "Sort and donate what you won't take",
+      'Pack kitchen and pantry',
+      'Pack clothes and daily essentials',
+      'Pack books, media, and office',
+      'Confirm movers, keys, and utilities',
+      'Final walkthrough and load the car',
+    ];
+  }
+  if (/launch|ship|release|app/.test(lower)) {
+    return [
+      'Write the launch checklist',
+      'Fix remaining must-ship bugs',
+      'Prepare release notes',
+      'Test the install and first-run flow',
+      'Stage production config',
+      'Ship and verify monitoring',
+    ];
+  }
+  if (/stud/.test(lower)) {
+    return [
+      'Gather notes and exam scope',
+      'Review core concepts',
+      'Practice problems set 1',
+      'Practice problems set 2',
+      'Timed mock exam',
+      'Weak-spot review',
+    ];
+  }
+  return [
+    `Clarify the goal for ${topic}`,
+    `Break ${topic} into next actions`,
+    `Do the first focused block on ${topic}`,
+    `Unblock the riskiest step`,
+    `Review progress and adjust`,
+    `Wrap up and plan the next step`,
+  ];
+}
+
+function buildTaskListTitle(topic: string, index: number, total: number): string {
+  const steps = genericTaskTitles(topic);
+  return steps[index] ?? `${topic} (${index + 1} of ${total})`;
+}
+
+function buildGenericChecklist(topic: string, index: number, isList: boolean) {
+  if (isList) {
+    return [
+      { title: 'Define done for this item', done: false },
+      { title: 'Complete the main action', done: false },
+      { title: 'Capture any leftover follow-up', done: false },
+    ];
+  }
+  const focus = genericTaskTitles(topic)[index % 6];
+  return [
+    { title: `Start: ${focus}`, done: false },
+    { title: `Work a focused block on ${topic}`, done: false },
+    { title: 'Take a 5-minute reset', done: false },
+    { title: 'Note what to continue tomorrow', done: false },
+  ];
+}
+
 export function reviseLocalSchedule(
   question: string,
   currentSchedule: CoachScheduleAssignment[]
@@ -316,6 +460,9 @@ export function buildPlanSummaryTag(schedule: CoachScheduleAssignment[], questio
   }
   if (/\b(workout|training|exercise|habit|routine)\b/i.test(question)) {
     return `${schedule.length}-day workout plan with daily checklists.`;
+  }
+  if (TASK_LIST_INTENT.test(question)) {
+    return `${schedule.length} tasks ready to add. Review below and apply to your calendar.`;
   }
   return `I created a ${schedule.length}-day plan with new calendar tasks. Review below and apply to your calendar.`;
 }

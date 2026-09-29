@@ -285,6 +285,23 @@ public sealed class CoachApiTests : IClassFixture<TaskApiFactory>
   }
 
   [Fact]
+  public async Task Coach_chat_can_propose_task_list()
+  {
+    var response = await client.PostAsJsonAsync("/api/coach/chat", new
+    {
+      question = "create a task list for moving apartments",
+      snapshot = SampleSnapshot()
+    });
+
+    response.EnsureSuccessStatusCode();
+    var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+    Assert.True(body.TryGetProperty("schedule", out var schedule));
+    Assert.Equal(JsonValueKind.Array, schedule.ValueKind);
+    Assert.True(schedule.GetArrayLength() >= 5);
+    Assert.Equal(JsonValueKind.Null, schedule[0].GetProperty("taskId").ValueKind);
+  }
+
+  [Fact]
   public async Task Tasks_can_store_checklist()
   {
     var createResponse = await client.PostAsJsonAsync("/api/tasks", new

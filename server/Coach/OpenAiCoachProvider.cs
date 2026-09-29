@@ -38,6 +38,7 @@ public sealed class OpenAiCoachProvider : ICoachProvider
                 AwaitingReply: true);
         }
 
+        var settings = CoachLlmSettings.Resolve(options);
         var scheduleMode = CoachScheduleHelper.ShouldUseScheduleMode(
             question, history, currentSchedule, reviseSchedule);
         var systemPrompt = scheduleMode
@@ -53,22 +54,59 @@ public sealed class OpenAiCoachProvider : ICoachProvider
 
         var payload = new Dictionary<string, object?>
         {
-            ["model"] = options.Model,
+            ["model"] = settings.Model,
             ["max_tokens"] = scheduleMode ? Math.Max(options.ScheduleMaxTokens, options.MaxTokens) : options.MaxTokens,
-            ["temperature"] = scheduleMode ? 0.35 : 0.6,
+            ["temperature"] = scheduleMode ? 0.35 : 0.5,
             ["messages"] = messages
         };
 
         if (scheduleMode)
             payload["response_format"] = new { type = "json_object" };
+        if (settings.DisableThinking)
+            payload["reasoning_effort"] = "none";
 
-        using var request = new HttpRequestMessage(HttpMethod.Post, options.Endpoint);
+        using var request = new HttpRequestMessage(HttpMethod.Post, settings.Endpoint);
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", options.ApiKey);
         request.Content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
 
         using var response = await httpClient.SendAsync(request, cancellationToken);
-        response.EnsureSuccessStatusCode();
+        if (!response.IsSuccessStatusCode)
+        {
+            var errorBody = await response.Content.ReadAsStringAsync(cancellationToken);
+            var canRetry = (int)response.StatusCode is 400 or 422 &&
+                           (payload.ContainsKey("reasoning_effort") || payload.ContainsKey("response_format"));
+            if (!canRetry)
+            {
+                var detail = errorBody.Length > 400 ? errorBody[..400] : errorBody;
+                throw new InvalidOperationException($"Coach model request failed ({(int)response.StatusCode}): {detail}");
+            }
 
+            payload.Remove("reasoning_effort");
+            payload.Remove("response_format");
+            using var retry = new HttpRequestMessage(HttpMethod.Post, settings.Endpoint);
+            retry.Headers.Authorization = new AuthenticationHeaderValue("Bearer", options.ApiKey);
+            retry.Content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
+            using var retryResponse = await httpClient.SendAsync(retry, cancellationToken);
+            if (!retryResponse.IsSuccessStatusCode)
+            {
+                var retryBody = await retryResponse.Content.ReadAsStringAsync(cancellationToken);
+                var detail = retryBody.Length > 400 ? retryBody[..400] : retryBody;
+                throw new InvalidOperationException($"Coach model request failed ({(int)retryResponse.StatusCode}): {detail}");
+            }
+
+            return await ReadModelReplyAsync(retryResponse, scheduleMode, tasks, currentSchedule, cancellationToken);
+        }
+
+        return await ReadModelReplyAsync(response, scheduleMode, tasks, currentSchedule, cancellationToken);
+    }
+
+    private static async Task<CoachProviderResult> ReadModelReplyAsync(
+        HttpResponseMessage response,
+        bool scheduleMode,
+        IReadOnlyList<CoachTaskItem> tasks,
+        IReadOnlyList<ScheduleAssignment>? currentSchedule,
+        CancellationToken cancellationToken)
+    {
         using var document = await JsonDocument.ParseAsync(
             await response.Content.ReadAsStreamAsync(cancellationToken),
             cancellationToken: cancellationToken);
@@ -100,7 +138,7 @@ public sealed class OpenAiCoachProvider : ICoachProvider
 
             When the user is answering your prior clarifying question with enough detail, give a direct helpful answer or explain what you will schedule.
 
-            When the user asks for a multi-day plan with enough detail (workout, habit, routine, wellness, including duration), tell them you can generate calendar tasks they can apply with one click — do not ask them to reply "ok"; instead explain what you will put on the calendar and that they should ask you to "build the schedule" or say "create it" if they want the calendar entries now.
+            When the user asks you to build a schedule, create a task list, or make a multi-day plan with enough detail, tell them you can generate calendar tasks they can apply with one click. Do not ask them to reply "ok". Explain what you will put on the calendar and that they can say "build the schedule" or "create it" if they want the entries now.
 
             Task snapshot:
             - Overdue count: {snapshot.OverdueCount}
@@ -129,10 +167,10 @@ public sealed class OpenAiCoachProvider : ICoachProvider
             """;
         var historyNote = history.Count > 0
             ? "Use the conversation history. If the user is confirming a plan you already outlined, generate the full calendar assignments now."
-            : "If the user asked for a multi-day plan, create one task per day with clear titles and a specific checklist for that day.";
+            : "If the user asked for a multi-day plan or task list, create concrete tasks immediately.";
         var revisionNote = currentSchedule is { Count: > 0 }
             ? $"""
-              
+
               The user already has a proposed schedule (not yet applied). Revise it based on their latest message.
               Current proposed schedule JSON:
               {JsonSerializer.Serialize(currentSchedule.Select(assignment => new
@@ -156,13 +194,15 @@ public sealed class OpenAiCoachProvider : ICoachProvider
             - message is a brief one-line tag shown under the chat reply (under ~120 characters).
             - overview is 1-2 short paragraphs explaining the plan's purpose, structure, and how to use it.
             - assignments may schedule EXISTING tasks using taskId + due, OR CREATE new tasks using title + due (omit taskId for new tasks).
-            - For plans like workouts, habits, or N-day routines: create one new task per day with descriptive titles (up to {CoachScheduleHelper.MaxAssignments} days).
-            - Each day task MUST include a checklist array with 4–8 specific, actionable items for that day (exercises with sets/reps, meals with foods, or habit steps). Tailor items to the user's goal (e.g. fat loss, muscle gain, meal plan).
+            - If the user asks to build a schedule for existing work, prefer scheduling unscheduled existing tasks before creating duplicates.
+            - If the user asks for a TASK LIST (todos, packing list, launch checklist, chores): create 5–12 distinct new tasks with specific titles. Put them on upcoming weekdays starting today ({today}) unless they specified dates. Each task should include a short checklist of 2–6 actionable steps.
+            - For plans like workouts, habits, study, or N-day routines: create one new task per day with descriptive titles (up to {CoachScheduleHelper.MaxAssignments} days).
+            - Each day/plan task MUST include a checklist array with 4–8 specific, actionable items for that day (exercises with sets/reps, meals, study blocks, or habit steps). Tailor items to the user's goal.
             - Checklist titles should be concise but specific — not generic placeholders.
-            - Prefer scheduling unscheduled existing tasks before creating duplicates.
             - Spread work across calendar days starting from today ({today}) unless the user specified otherwise.
-            - Respect day capacity ({snapshot.DayCapacityLabel}); add estimateMinutes when helpful (e.g. 45 for workouts).
+            - Respect day capacity ({snapshot.DayCapacityLabel}); add estimateMinutes when helpful (e.g. 45 for workouts, 25 for focused tasks).
             - Put the full plan in assignments immediately — do NOT ask the user to reply ok or confirm. Tell them to click Apply to calendar.
+            - If they gave a topic but no duration, choose a sensible default (5 weekdays for a schedule, 6–8 tasks for a list).
             - Do NOT reuse topics from earlier conversation unless the user's current message clearly continues that same plan.
             - {historyNote}{revisionNote}
 

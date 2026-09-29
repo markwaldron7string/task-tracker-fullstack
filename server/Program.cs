@@ -8,7 +8,10 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddOpenApi();
 builder.Services.Configure<CoachOptions>(builder.Configuration.GetSection("Coach"));
-builder.Services.AddHttpClient<OpenAiCoachProvider>();
+builder.Services.AddHttpClient<OpenAiCoachProvider>(client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(90);
+});
 builder.Services.AddSingleton<StubCoachProvider>();
 builder.Services.AddSingleton<CoachService>();
 

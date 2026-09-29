@@ -7,15 +7,18 @@ public sealed class CoachService
     private readonly CoachOptions options;
     private readonly StubCoachProvider stubProvider;
     private readonly OpenAiCoachProvider openAiProvider;
+    private readonly ILogger<CoachService> logger;
 
     public CoachService(
         IOptions<CoachOptions> options,
         StubCoachProvider stubProvider,
-        OpenAiCoachProvider openAiProvider)
+        OpenAiCoachProvider openAiProvider,
+        ILogger<CoachService> logger)
     {
         this.options = options.Value;
         this.stubProvider = stubProvider;
         this.openAiProvider = openAiProvider;
+        this.logger = logger;
     }
 
     public async Task<CoachChatResponse> ChatAsync(
@@ -49,6 +52,26 @@ public sealed class CoachService
                     tasks)
                 : Array.Empty<ScheduleAssignment>();
 
+            if (schedule.Count == 0 &&
+                provider != stubProvider &&
+                !result.AwaitingReply &&
+                CoachScheduleHelper.IsScheduleRequest(normalizedQuestion, normalizedHistory))
+            {
+                var fallbackPlan = await stubProvider.GetReplyAsync(
+                    normalizedQuestion,
+                    snapshot,
+                    tasks,
+                    normalizedHistory,
+                    normalizedSchedule,
+                    reviseSchedule,
+                    cancellationToken);
+                if (fallbackPlan.Assignments.Count > 0)
+                {
+                    logger.LogInformation("Coach LLM returned no assignments; using local plan builder.");
+                    return ToResponse(fallbackPlan, stubProvider.Name, tasks);
+                }
+            }
+
             return new CoachChatResponse(
                 result.Text,
                 provider.Name,
@@ -56,8 +79,9 @@ public sealed class CoachService
                 result.Overview,
                 result.AwaitingReply);
         }
-        catch when (provider != stubProvider)
+        catch (Exception ex) when (provider != stubProvider)
         {
+            logger.LogWarning(ex, "Coach LLM provider failed; falling back to local planner.");
             var fallback = await stubProvider.GetReplyAsync(
                 normalizedQuestion,
                 snapshot,
@@ -66,14 +90,27 @@ public sealed class CoachService
                 normalizedSchedule,
                 reviseSchedule,
                 cancellationToken);
-            var schedule = fallback.Assignments.Count > 0 ? fallback.Assignments : null;
-            return new CoachChatResponse(
-                fallback.Text,
-                stubProvider.Name,
-                schedule,
-                fallback.Overview,
-                fallback.AwaitingReply);
+            return ToResponse(fallback, stubProvider.Name, tasks);
         }
+    }
+
+    private static CoachChatResponse ToResponse(
+        CoachProviderResult result,
+        string source,
+        IReadOnlyList<CoachTaskItem> tasks)
+    {
+        var schedule = result.Assignments.Count > 0
+            ? CoachScheduleHelper.EnrichWithTitles(
+                CoachScheduleHelper.NormalizeAssignments(result.Assignments, tasks),
+                tasks)
+            : null;
+
+        return new CoachChatResponse(
+            result.Text,
+            source,
+            schedule is { Count: > 0 } ? schedule : null,
+            result.Overview,
+            result.AwaitingReply);
     }
 
     private static IReadOnlyList<ScheduleAssignment>? NormalizeCurrentSchedule(
@@ -107,12 +144,7 @@ public sealed class CoachService
 
     private ICoachProvider ResolveProvider()
     {
-        var provider = options.Provider.Trim().ToLowerInvariant();
-        return provider switch
-        {
-            "stub" => stubProvider,
-            "openai" => openAiProvider,
-            _ => string.IsNullOrWhiteSpace(options.ApiKey) ? stubProvider : openAiProvider,
-        };
+        var settings = CoachLlmSettings.Resolve(options);
+        return settings.UseStub ? stubProvider : openAiProvider;
     }
 }

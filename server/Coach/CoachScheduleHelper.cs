@@ -7,12 +7,22 @@ namespace TaskTracker.Coach;
 public static class CoachScheduleHelper
 {
     private static readonly Regex ScheduleIntent = new(
-        @"\b(schedule|plan|build\s+(a\s+)?schedule|assign|spread|calendar|this\s+week|next\s+week|week\s+plan|routine|program|workout|habit)\b",
+        @"\b(schedule|plan|build\s+(a\s+)?schedule|assign|spread|calendar|this\s+week|next\s+week|week\s+plan|routine|program|workout|habit|task lists?|to-?do lists?|packing list|chore list|\btodos?\b)\b",
         RegexOptions.IgnoreCase | RegexOptions.CultureInvariant
     );
 
     private static readonly Regex MultiDayPlanIntent = new(
-        @"\b(\d+\s*day|month|weekly|routine|workout|training|habit)\b",
+        @"\b(\d+\s*day|month|weekly|routine|workout|training|habit|study|meal plan)\b",
+        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant
+    );
+
+    private static readonly Regex TaskListIntent = new(
+        @"\b(task lists?|to-?do lists?|packing list|chore list|\btodos?\b|checklist of tasks)\b",
+        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant
+    );
+
+    private static readonly Regex BuildCommandIntent = new(
+        @"\b(build|create|make|generate|draft|write)\b.*\b(schedule|plan|task lists?|to-?do|todos?|checklist|routine)\b",
         RegexOptions.IgnoreCase | RegexOptions.CultureInvariant
     );
 
@@ -84,7 +94,10 @@ public static class CoachScheduleHelper
         if (Regex.IsMatch(trimmed, @"\d+\s*day", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant))
             return false;
 
-        if (Regex.IsMatch(lower, @"mental health|wellness|mindfulness|workout|training|this week|next week|for this week"))
+        if (Regex.IsMatch(lower, @"mental health|wellness|mindfulness|workout|training|this week|next week|for this week|task list|to-?do"))
+            return false;
+
+        if (BuildCommandIntent.IsMatch(trimmed) && !Regex.IsMatch(trimmed, @"^(make|create|build)\s+(a\s+)?(plan|schedule)\.?$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant))
             return false;
 
         if (Regex.IsMatch(trimmed, @"^(help(\s+me)?|plan(s|ning)?|schedule)\.?$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant))
@@ -102,7 +115,8 @@ public static class CoachScheduleHelper
 
         if (words.Length <= 4 &&
             Regex.IsMatch(lower, @"\b(plan|schedule|help|something|better|health|fitness|wellness)\b") &&
-            !Regex.IsMatch(lower, @"\d+\s*day|week|workout|mental|mindfulness|today|overdue"))
+            !Regex.IsMatch(lower, @"\d+\s*day|week|workout|mental|mindfulness|today|overdue|task list|to-?do") &&
+            !BuildCommandIntent.IsMatch(trimmed))
         {
             return true;
         }
@@ -191,11 +205,179 @@ public static class CoachScheduleHelper
         if (wellness.Count > 0)
             return wellness;
 
-        return BuildStubReschedule(tasks);
+        if (TaskListIntent.IsMatch(planQuestion) || WantsNewPlan(planQuestion))
+        {
+            var generic = BuildStubGenericPlan(planQuestion);
+            if (generic.Count > 0)
+                return generic;
+        }
+
+        var reschedule = BuildStubReschedule(tasks);
+        if (reschedule.Count > 0)
+            return reschedule;
+
+        return BuildStubGenericPlan(planQuestion);
     }
 
     public static string ResolvePlanQuestionPublic(string question, IReadOnlyList<CoachChatMessage>? history) =>
         ResolvePlanQuestion(question, history);
+
+    public static IReadOnlyList<ScheduleAssignment> BuildStubGenericPlan(string question)
+    {
+        var days = ParsePlanLength(question);
+        var topic = ExtractPlanTopic(question);
+        var isList = TaskListIntent.IsMatch(question);
+        var assignments = new List<ScheduleAssignment>();
+        var day = DateOnly.FromDateTime(DateTime.Now);
+
+        for (var index = 0; index < days; index++)
+        {
+            if (index > 0)
+                day = NextWeekday(day.AddDays(1));
+            else
+                day = NextWeekday(day);
+
+            var title = isList
+                ? BuildTaskListTitle(topic, index, days)
+                : $"Day {index + 1} – {topic}";
+
+            assignments.Add(new ScheduleAssignment(
+                null,
+                day.ToString("yyyy-MM-dd"),
+                title,
+                isList ? 25 : 40,
+                BuildGenericChecklist(topic, index, isList)));
+        }
+
+        return assignments;
+    }
+
+    private static bool WantsNewPlan(string question)
+    {
+        if (Regex.IsMatch(question, @"this week|next week|unscheduled|existing tasks|my tasks", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant))
+            return false;
+
+        return Regex.IsMatch(
+            question,
+            @"\d+\s*day|study|meal|packing|launch|moving|project|habit|routine",
+            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+    }
+
+    private static int ParsePlanLength(string question)
+    {
+        var match = Regex.Match(question, @"(\d+)\s*day", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+        if (match.Success && int.TryParse(match.Groups[1].Value, out var days))
+            return Math.Clamp(days, 1, MaxAssignments);
+
+        if (Regex.IsMatch(question, @"\bmonth\b", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant))
+            return 20;
+
+        if (Regex.IsMatch(question, @"\b(this week|next week|week)\b", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant))
+            return 5;
+
+        return TaskListIntent.IsMatch(question) ? 6 : 5;
+    }
+
+    private static string ExtractPlanTopic(string question)
+    {
+        var cleaned = Regex.Replace(
+            question,
+            @"\b(please|can you|could you|build|create|make|generate|draft|write|me|a|an|the|my|for|of|to|on|with|and|or|schedule|plan|task lists?|to-?do lists?|todos?|checklist|calendar|days?)\b",
+            " ",
+            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+        cleaned = Regex.Replace(cleaned, @"\d+", " ");
+        cleaned = Regex.Replace(cleaned, @"\s+", " ").Trim(' ', '-', ',', '.', '!');
+        if (string.IsNullOrWhiteSpace(cleaned))
+            return TaskListIntent.IsMatch(question) ? "Action items" : "Focus block";
+
+        return char.ToUpperInvariant(cleaned[0]) + cleaned[1..];
+    }
+
+    private static string BuildTaskListTitle(string topic, int index, int total)
+    {
+        var steps = GenericTaskTitles(topic);
+        if (index < steps.Length)
+            return steps[index];
+
+        return $"{topic} ({index + 1} of {total})";
+    }
+
+    private static string[] GenericTaskTitles(string topic)
+    {
+        var lower = topic.ToLowerInvariant();
+        if (Regex.IsMatch(lower, @"pack|mov"))
+        {
+            return
+            [
+                "Sort and donate what you won't take",
+                "Pack kitchen and pantry",
+                "Pack clothes and daily essentials",
+                "Pack books, media, and office",
+                "Confirm movers, keys, and utilities",
+                "Final walkthrough and load the car",
+            ];
+        }
+
+        if (Regex.IsMatch(lower, @"launch|ship|release|app"))
+        {
+            return
+            [
+                "Write the launch checklist",
+                "Fix remaining must-ship bugs",
+                "Prepare release notes",
+                "Test the install and first-run flow",
+                "Stage production config",
+                "Ship and verify monitoring",
+            ];
+        }
+
+        if (Regex.IsMatch(lower, @"stud"))
+        {
+            return
+            [
+                "Gather notes and exam scope",
+                "Review core concepts",
+                "Practice problems set 1",
+                "Practice problems set 2",
+                "Timed mock exam",
+                "Weak-spot review",
+            ];
+        }
+
+        return
+        [
+            $"Clarify the goal for {topic}",
+            $"Break {topic} into next actions",
+            $"Do the first focused block on {topic}",
+            $"Unblock the riskiest step",
+            $"Review progress and adjust",
+            $"Wrap up and plan the next step",
+        ];
+    }
+
+    private static List<ChecklistItem> BuildGenericChecklist(string topic, int index, bool isList)
+    {
+        var titles = GenericTaskTitles(topic);
+        if (isList)
+        {
+            return
+            [
+                MakeChecklistItem("Define done for this item"),
+                MakeChecklistItem("Complete the main action"),
+                MakeChecklistItem("Capture any leftover follow-up"),
+            ];
+        }
+
+        var focus = titles[index % titles.Length];
+        return
+        [
+            MakeChecklistItem($"Start: {focus}"),
+            MakeChecklistItem($"Work a focused block on {topic}"),
+            MakeChecklistItem("Take a 5-minute reset"),
+            MakeChecklistItem("Note what to continue tomorrow"),
+        ];
+    }
+
 
     private static IReadOnlyList<ScheduleAssignment> BuildStubWellnessPlan(string question)
     {
@@ -384,12 +566,31 @@ public static class CoachScheduleHelper
         Done = false,
     };
 
+    public static string ExtractJsonPayload(string content)
+    {
+        var trimmed = content.Trim();
+        if (trimmed.StartsWith("```", StringComparison.Ordinal))
+        {
+            var firstNewline = trimmed.IndexOf('\n');
+            var lastFence = trimmed.LastIndexOf("```", StringComparison.Ordinal);
+            if (firstNewline > 0 && lastFence > firstNewline)
+                trimmed = trimmed[(firstNewline + 1)..lastFence].Trim();
+        }
+
+        var start = trimmed.IndexOf('{');
+        var end = trimmed.LastIndexOf('}');
+        if (start >= 0 && end > start)
+            return trimmed[start..(end + 1)];
+
+        return trimmed;
+    }
+
     public static CoachProviderResult ParseStructuredResponse(
         string json,
         IReadOnlyList<CoachTaskItem> tasks,
         IReadOnlyList<ScheduleAssignment>? currentSchedule = null)
     {
-        using var document = JsonDocument.Parse(json);
+        using var document = JsonDocument.Parse(ExtractJsonPayload(json));
         var root = document.RootElement;
 
         var message = root.TryGetProperty("message", out var messageElement)

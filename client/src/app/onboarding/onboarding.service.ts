@@ -106,7 +106,7 @@ const PRO_TOUR_STEPS: TourStep[] = [
     id: 'pro-coach',
     target: 'coach-fab',
     title: 'AI Planning Coach',
-    body: 'Ask what to focus on, check if you’re overcommitted, or build a multi-day schedule — then apply it to your calendar.',
+    body: 'Ask what to focus on, or tell it to build a schedule or create a task list — then apply it to your calendar.',
     placement: 'top',
     route: '/',
   },

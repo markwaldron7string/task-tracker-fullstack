@@ -7,9 +7,7 @@ import {
   buildCoachSuggestions,
   buildClarifyingReply,
   buildLocalOverview,
-  buildLocalSchedule,
-  buildLocalWellnessPlan,
-  buildLocalWorkoutPlan,
+  buildLocalPlan,
   buildPlanSummaryTag,
   CoachScheduleAssignment,
   CoachSuggestion,
@@ -330,9 +328,7 @@ export class ProAssistant {
     }
 
     const planQuestion = planQuestionFromHistory(history, question);
-    const wellness = buildLocalWellnessPlan(planQuestion);
-    const workout = wellness.length > 0 ? wellness : buildLocalWorkoutPlan(planQuestion);
-    const schedule = workout.length > 0 ? workout : buildLocalSchedule(this.store.activeEnrichedTasks());
+    const schedule = buildLocalPlan(planQuestion, this.store.activeEnrichedTasks());
 
     if (schedule.length === 0) return;
 
@@ -417,7 +413,9 @@ function planQuestionFromHistory(history: CoachChatTurn[], question: string): st
     const turn = combined[index];
     if (turn.role !== 'user' || isVagueCoachInput(turn.content)) continue;
     if (
-      /\b(\d+\s*day|workout|training|routine|habit|mental health|wellness|mindfulness)\b/i.test(turn.content)
+      /\b(\d+\s*day|workout|training|routine|habit|mental health|wellness|mindfulness|task list|to-?do|study)\b/i.test(
+        turn.content
+      )
     ) {
       return turn.content;
     }

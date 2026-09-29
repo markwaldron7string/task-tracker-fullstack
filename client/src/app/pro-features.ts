@@ -26,7 +26,7 @@ export const PRO_FEATURES: ProFeature[] = [
   {
     id: 'ai-coach',
     title: 'AI Planning Coach',
-    description: 'A built-in assistant that reads your tasks and suggests what to focus on, when to schedule, and how to lighten an overcommitted day.',
+    description: 'A built-in assistant that reads your tasks and can build a schedule or task list on command.',
     highlight: true,
   },
   {
