@@ -1,12 +1,15 @@
 services:
   - type: web
-    name: task-tracker-api-mark
+    name: task-tracker-api
     runtime: docker
     plan: free
     region: oregon
     dockerfilePath: ./server/Dockerfile
     dockerContext: ./server
     healthCheckPath: /health
+    buildFilter:
+      paths:
+        - server/**
     envVars:
       - key: ASPNETCORE_ENVIRONMENT
         value: Production

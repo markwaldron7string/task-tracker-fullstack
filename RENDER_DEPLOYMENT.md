@@ -68,3 +68,5 @@ You should see `{"status":"ok"}`. The first request after idle may take ~30–60
 If the browser console shows a CORS error, `Cors__AllowedOrigins__0` must match the Vercel origin exactly (`https://task-tracker-fullstack-nu.vercel.app`).
 
 Render auto-deploys pushes to the branch set under **Settings > Build & Deploy > Branch**. Set it to `main` so later pushes rebuild the API.
+
+To skip rebuilds when only the frontend or docs change, add `server/**` under **Settings > Build & Deploy > Build Filters > Included Paths**. `render.yaml` sets the same filter, but only a service managed by a Blueprint reads that file.
