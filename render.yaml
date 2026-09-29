@@ -1,0 +1,24 @@
+services:
+  - type: web
+    name: task-tracker-api-mark
+    runtime: docker
+    plan: free
+    region: oregon
+    dockerfilePath: ./server/Dockerfile
+    dockerContext: ./server
+    healthCheckPath: /health
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      - key: Cors__AllowedOrigins__0
+        value: https://task-tracker-fullstack-nu.vercel.app
+      - key: ConnectionStrings__Tasks
+        value: Data Source=/tmp/data/tasks.db
+      - key: Coach__ApiKey
+        sync: false
+      - key: Coach__Provider
+        value: Auto
+      - key: Coach__Model
+        value: gemini-2.5-flash
+      - key: Coach__Endpoint
+        value: https://generativelanguage.googleapis.com/v1beta/openai/chat/completions

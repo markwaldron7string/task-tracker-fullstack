@@ -57,3 +57,14 @@ jobs:
 
       - name: Build
         run: yarn build
+
+  api-image:
+    name: API Docker image
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Build API image
+        run: docker build -t task-tracker-api ./server

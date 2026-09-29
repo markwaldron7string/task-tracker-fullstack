@@ -1,7 +1,6 @@
 # Task Tracker Fullstack
 
 [![CI](https://github.com/markwaldron7string/task-tracker-fullstack/actions/workflows/ci.yml/badge.svg)](https://github.com/markwaldron7string/task-tracker-fullstack/actions/workflows/ci.yml)
-[![Azure API Deploy](https://github.com/markwaldron7string/task-tracker-fullstack/actions/workflows/deploy-api-azure.yml/badge.svg)](https://github.com/markwaldron7string/task-tracker-fullstack/actions/workflows/deploy-api-azure.yml)
 ![Angular](https://img.shields.io/badge/Angular-22-DD0031?logo=angular&logoColor=white)
 ![TypeScript](https://img.shields.io/badge/TypeScript-6-3178C6?logo=typescript&logoColor=white)
 ![.NET](https://img.shields.io/badge/.NET-10-512BD4?logo=dotnet&logoColor=white)
@@ -12,7 +11,8 @@
 ![xUnit](https://img.shields.io/badge/xUnit-backend%20tests-512BD4)
 ![PWA](https://img.shields.io/badge/PWA-installable-5A0FC8?logo=pwa&logoColor=white)
 ![Vercel](https://img.shields.io/badge/Vercel-frontend-000000?logo=vercel&logoColor=white)
-![Azure App Service](https://img.shields.io/badge/Azure%20App%20Service-backend-0078D4?logo=microsoftazure&logoColor=white)
+![Render](https://img.shields.io/badge/Render-backend-46E3B7?logo=render&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-API%20image-2496ED?logo=docker&logoColor=white)
 
 A full-stack task manager built with Angular and ASP.NET Core. The Angular single-page app reads and writes tasks through a C# Minimal API, and the API persists data with Entity Framework Core and SQLite.
 
@@ -21,8 +21,9 @@ This is a learning project, but it is wired like a real full-stack app: separate
 ## Live App
 
 - Frontend: [task-tracker-fullstack-nu.vercel.app](https://task-tracker-fullstack-nu.vercel.app)
-- API health check: [Azure `/health`](https://task-tracker-fullstack-api-mark-h5aje3baaagnhvah.westus3-01.azurewebsites.net/health)
-- API tasks endpoint: [Azure `/api/tasks`](https://task-tracker-fullstack-api-mark-h5aje3baaagnhvah.westus3-01.azurewebsites.net/api/tasks)
+- API health check: [Render `/health`](https://task-tracker-api-i1hl.onrender.com/health)
+
+The API runs on Render's free tier, so the first request after 15 idle minutes can take up to a minute while the service wakes up.
 
 ## Features
 
@@ -74,7 +75,7 @@ client/ Angular SPA on Vercel
    |
    | HTTP JSON (X-User-ID header for per-device identity)
    v
-server/ ASP.NET Core Minimal API on Azure App Service
+server/ ASP.NET Core Minimal API in Docker on Render
    |
    +-- SQLite database (tasks)
    +-- Coach service (OpenAI or stub)
@@ -89,7 +90,7 @@ server/ ASP.NET Core Minimal API on Azure App Service
 | AI Coach | OpenAI Chat Completions (optional), structured JSON schedule output |
 | Database | SQLite, EF Core migrations |
 | Tests | Vitest/Angular TestBed (30 tests), xUnit/WebApplicationFactory (11 tests) |
-| Deployment | Vercel (frontend), Azure App Service (API), GitHub Actions |
+| Deployment | Vercel (frontend), Render Docker web service (API), GitHub Actions CI |
 
 ## Repository Layout
 
@@ -104,10 +105,13 @@ server/ ASP.NET Core Minimal API on Azure App Service
 │       └── task-store.ts         # Offline-first task state + sync
 ├── server/
 │   ├── Program.cs                # API endpoints
+│   ├── Dockerfile                # API container image for Render
 │   └── Coach/                    # LLM coach providers and schedule parsing
 ├── tests/TaskTracker.Api.Tests/  # Backend integration tests
-├── .github/workflows/            # CI and Azure deployment
-├── AZURE_DEPLOYMENT.md           # Azure setup notes
+├── .github/workflows/            # CI (tests, vulnerability check, API image build)
+├── render.yaml                   # Render Blueprint for the API
+├── RENDER_DEPLOYMENT.md          # Render setup notes
+├── AZURE_DEPLOYMENT.md           # Legacy Azure notes
 └── TaskTracker.slnx              # .NET solution
 ```
 
@@ -217,40 +221,31 @@ All task routes require an `X-User-ID` header (the client generates and persists
 
 ## Deployment
 
-Pushes to **`main`** run CI and deploy the API to Azure (when server files change). Vercel deploys the frontend from the connected repository.
+The API was first hosted on Azure App Service and later moved to [Render](https://render.com) after the Azure free-trial subscription ended. Render builds `server/Dockerfile` and redeploys when the tracked branch changes. Vercel deploys the frontend from the connected repository. GitHub Actions runs CI on pushes to `main` and on pull requests.
 
 ### Frontend (Vercel)
 
 Set this environment variable:
 
 ```text
-TASKS_API_URL=https://task-tracker-fullstack-api-mark-h5aje3baaagnhvah.westus3-01.azurewebsites.net/api/tasks
+TASKS_API_URL=https://task-tracker-api-i1hl.onrender.com/api/tasks
 ```
 
-### Backend (Azure App Service)
+### Backend (Render)
 
-Required GitHub Actions settings:
-
-```text
-AZURE_WEBAPP_NAME=task-tracker-fullstack-api-mark
-AZURE_WEBAPP_PUBLISH_PROFILE=<Azure publish profile XML>
-```
-
-Required Azure App Service app settings:
+The service is defined in [render.yaml](render.yaml) as a free Docker web service with `/health` as its health check. Environment variables on Render:
 
 ```text
-ConnectionStrings__Tasks=Data Source=D:/home/data/tasks.db
+ASPNETCORE_ENVIRONMENT=Production
 Cors__AllowedOrigins__0=https://task-tracker-fullstack-nu.vercel.app
+ConnectionStrings__Tasks=Data Source=/tmp/data/tasks.db
 ```
 
-Optional — enable cloud AI coach in production:
+SQLite lives on the free instance's ephemeral disk, so server data can reset on redeploys. The frontend's offline cache keeps each browser's tasks.
 
-```text
-Coach__Provider=OpenAI
-Coach__ApiKey=sk-your-key-here
-```
+Optional: to enable the free cloud AI coach, add `Coach__ApiKey` in the Render dashboard (Gemini key from [Google AI Studio](https://aistudio.google.com/apikey)). Do not add it to Vercel.
 
-More detail is in [AZURE_DEPLOYMENT.md](AZURE_DEPLOYMENT.md).
+More detail is in [RENDER_DEPLOYMENT.md](RENDER_DEPLOYMENT.md). The old Azure setup is in [AZURE_DEPLOYMENT.md](AZURE_DEPLOYMENT.md).
 
 ## Install On Phone
 
@@ -259,4 +254,4 @@ After the Vercel deployment finishes, open the frontend URL on your phone:
 - iPhone: open in Safari, tap Share, then tap **Add to Home Screen**.
 - Android: open in Chrome, tap the install prompt or menu, then tap **Install app**.
 
-The PWA installs with its own home-screen icon and standalone app window. Tasks sync through the Azure API when online; offline edits queue and sync when connectivity returns.
+The PWA installs with its own home-screen icon and standalone app window. Tasks sync through the Render API when online; offline edits queue and sync when connectivity returns.
